@@ -47,7 +47,7 @@
           ! use co_util, only : co_bcast
           use mpi_f08, only : MPI_Comm_size, MPI_COMM_WORLD, &
                               MPI_Type_create_f90_integer,   &
-                              MPI_Datatype
+                              MPI_Datatype, MPI_Integer
           use timer_interface, only : timer_t
 
 !       USE module_wrf_error
@@ -410,6 +410,8 @@
                           its, ite, jts, jte, kts, kte)
 
       IMPLICIT NONE
+
+      INTEGER:: rank, ierr
 
       INTEGER, OPTIONAL, INTENT(IN):: ids,ide, jds,jde, kds,kde, &
                             ims,ime, jms,jme, kms,kme, &
@@ -995,7 +997,8 @@
       call timer%start()
       call qr_acr_qg
       call timer%stop()
-      if (this_image()==1) then
+      MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      if (rank==1) then
           print*, "qr_acr_qg initialized:", timer%as_string()
       endif
 
@@ -1006,7 +1009,7 @@
       call timer%start()
       call qr_acr_qs
       call timer%stop()
-      if (this_image()==1) then
+      if (rank==1) then
           print*, "qr_acr_qs initialized:", timer%as_string()
       endif
 
@@ -1016,7 +1019,7 @@
       call timer%start()
       call freezeH2O
       call timer%stop()
-      if (this_image()==1) then
+      if (rank==1) then
           print*, "freezeH2O initialized:", timer%as_string()
       endif
 
@@ -1026,7 +1029,7 @@
       call timer%start()
       call qi_aut_qs
       call timer%stop()
-      if (this_image()==1) then
+      if (rank==1) then
           print*, "qi_aut_qs initialized:", timer%as_string()
       endif
 
@@ -3898,6 +3901,7 @@
           !! tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, tcr_sacr1,
           !! tms_sacr1, tcr_sacr2, tms_sacr2, tnr_racs1, tnr_racs2,
           !! tnr_sacr1, tnr_sacr2
+
           call MPI_Bcast(tcs_racs1, send_count, integer_8_t, 1, &
                          MPI_COMM_WORLD)
           call MPI_Bcast(tmr_racs1, send_count, integer_8_t, 1, &
@@ -4129,6 +4133,8 @@
       implicit none
 
 !..Local variables
+      INTEGER:: rank, ierr, send_count
+      TYPE(MPI_Datatype) :: integer_8_t
       INTEGER:: i, j, k, m, n, n2
       DOUBLE PRECISION, DIMENSION(nbr):: N_r, massr
       DOUBLE PRECISION, DIMENSION(nbc):: N_c, massc
@@ -4146,9 +4152,10 @@
 !+---+
     !   CALL nl_get_force_read_thompson(1,force_read_thompson)
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
 
       good = 0
-      IF ( this_image() == 1 ) THEN
+      IF ( rank == 1 ) THEN
         INQUIRE(FILE="freezeH2O.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read freezeH2O.dat instead of computing"
@@ -4165,31 +4172,41 @@
           IF (lopen) THEN
             CLOSE(63)
           endif
-          do i=2,num_images()
-              good[i]     = good
+          ! do i=2,num_images()
+          !     good[i]     = good
             !   tpi_qrfz(:,:,:,:)[i] = tpi_qrfz(:,:,:,:)
             !   tni_qrfz(:,:,:,:)[i] = tni_qrfz(:,:,:,:)
             !   tpg_qrfz(:,:,:,:)[i] = tpg_qrfz(:,:,:,:)
             !   tnr_qrfz(:,:,:,:)[i] = tnr_qrfz(:,:,:,:)
             !   tpi_qcfz(:,:,:,:)[i] = tpi_qcfz(:,:,:,:)
             !   tni_qcfz(:,:,:,:)[i] = tni_qcfz(:,:,:,:)
-          enddo
+          ! enddo
         ENDIF
       ENDIF
 
-      sync all
+      call MPI_Bcast(good, 1, MPI_Integer, 1, MPI_COMM_WORLD)
+
       if (good.eq.1) then
-          call co_bcast(tpi_qrfz, 1, 1, num_images())
-          call co_bcast(tni_qrfz, 1, 1, num_images())
-          call co_bcast(tpg_qrfz, 1, 1, num_images())
-          call co_bcast(tnr_qrfz, 1, 1, num_images())
-          call co_bcast(tpi_qcfz, 1, 1, num_images())
-          call co_bcast(tni_qcfz, 1, 1, num_images())
+          send_count = ntb_r * ntb_r1 * 45 * ntb_IN
+          call MPI_Bcast(tpi_qrfz, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tni_qrfz, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tpg_qrfz, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tnr_qrfz, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+
+          send_count = ntb_c * nbc * 45 * ntb_IN
+          call MPI_Bcast(tpi_qcfz, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tni_qcfz, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
       endif
 
 
       IF ( good .NE. 1 ) THEN
-        if (this_image()==1) print *, "ThompMP: computing freezeH2O"
+        if (rank==1) print *, "ThompMP: computing freezeH2O"
 
         orho_w = 1./rho_w
 
@@ -4257,7 +4274,7 @@
         enddo
         enddo
 
-        IF ( this_image() == 1 ) THEN
+        IF ( rank == 1 ) THEN
           print *, "Writing freezeH2O.dat in Thompson MP init"
           OPEN(63,file="freezeH2O.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tpi_qrfz
