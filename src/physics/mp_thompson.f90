@@ -3624,8 +3624,8 @@
       implicit none
 
 !..Local variables
-      INTEGER:: num_images, rank, ierr, send_count
-      TYPE(MPI_Datatype) :: integer_8_t, integer_4_t
+      INTEGER:: rank, ierr, send_count
+      TYPE(MPI_Datatype) :: integer_8_t
       INTEGER:: i, j, k, m, n, n2
       INTEGER:: km, km_s, km_e
       DOUBLE PRECISION, DIMENSION(nbg):: vg, N_g
@@ -3683,7 +3683,6 @@
 
 
       if (good.eq.1) then
-          call MPI_Comm_size(MPI_COMM_WORLD, num_images,ierr)
           call MPI_Type_create_f90_integer(R8SIZE, integer_8_t, ierr)
           !! this send_count is the size of
           !! tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, tnr_racg, tnr_gacr
@@ -3700,17 +3699,10 @@
                          MPI_COMM_WORLD)
           call MPI_Bcast(tnr_gacr, send_count, integer_8_t, 1, &
                          MPI_COMM_WORLD)
-          ! replaces the follow code
-          ! call co_bcast(tcg_racg, 1, 1, num_images())
-          ! call co_bcast(tmr_racg, 1, 1, num_images())
-          ! call co_bcast(tcr_gacr, 1, 1, num_images())
-          ! call co_bcast(tmg_gacr, 1, 1, num_images())
-          ! call co_bcast(tnr_racg, 1, 1, num_images())
-          ! call co_bcast(tnr_gacr, 1, 1, num_images())
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (this_image()==1) print *, "ThompMP: computing qr_acr_qg"
+        if (rank==1) print *, "ThompMP: computing qr_acr_qg"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -3802,7 +3794,7 @@
 !         CALL wrf_dm_gatherv(tnr_gacr, ntb_g*ntb_g1, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( this_image()==1 ) THEN
+        IF ( rank==1 ) THEN
           print *, "Writing qr_acr_qg.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qg.dat",form="unformatted",err=9234)
           WRITE(63,err=9234) tcg_racg
@@ -3830,6 +3822,8 @@
       implicit none
 
 !..Local variables
+      INTEGER:: rank, ierr, send_count
+      TYPE(MPI_Datatype) :: integer_8_t
       INTEGER:: i, j, k, m, n, n2
       INTEGER:: km, km_s, km_e
       DOUBLE PRECISION, DIMENSION(nbr):: vr, D1, N_r
@@ -3849,9 +3843,10 @@
 
     !   CALL nl_get_force_read_thompson(1,force_read_thompson)
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
 
       good = 0
-      IF ( this_image() == 1 ) THEN
+      IF ( rank == 1 ) THEN
         INQUIRE(FILE="qr_acr_qs.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read qr_acr_qs.dat instead of computing"
@@ -3874,8 +3869,10 @@
           IF (lopen) THEN
             CLOSE(63)
           ENDIF
-          do i=2,num_images()
-              good[i]     = good
+          ! do i=2,num_images()
+          !     good[i]     = good
+
+            !! this section already commented out
             !   tcs_racs1(:,:,:,:)[i] = tcs_racs1(:,:,:,:)
             !   tmr_racs1(:,:,:,:)[i] = tmr_racs1(:,:,:,:)
             !   tcs_racs2(:,:,:,:)[i] = tcs_racs2(:,:,:,:)
@@ -3888,28 +3885,47 @@
             !   tnr_racs2(:,:,:,:)[i] = tnr_racs2(:,:,:,:)
             !   tnr_sacr1(:,:,:,:)[i] = tnr_sacr1(:,:,:,:)
             !   tnr_sacr2(:,:,:,:)[i] = tnr_sacr2(:,:,:,:)
-          enddo
+          ! enddo
         ENDIF
       endif
 
-      sync all
+      call MPI_Bcast(good, 1, MPI_Integer, 1, MPI_COMM_WORLD);
+
       if (good.eq.1) then
-          call co_bcast(tcs_racs1, 1, 1, num_images())
-          call co_bcast(tmr_racs1, 1, 1, num_images())
-          call co_bcast(tcs_racs2, 1, 1, num_images())
-          call co_bcast(tmr_racs2, 1, 1, num_images())
-          call co_bcast(tcr_sacr1, 1, 1, num_images())
-          call co_bcast(tms_sacr1, 1, 1, num_images())
-          call co_bcast(tcr_sacr2, 1, 1, num_images())
-          call co_bcast(tms_sacr2, 1, 1, num_images())
-          call co_bcast(tnr_racs1, 1, 1, num_images())
-          call co_bcast(tnr_racs2, 1, 1, num_images())
-          call co_bcast(tnr_sacr1, 1, 1, num_images())
-          call co_bcast(tnr_sacr2, 1, 1, num_images())
+          call MPI_Type_create_f90_integer(R8SIZE, integer_8_t, ierr)
+          send_count = ntb_s * ntb_t * ntb_r1 * ntb_r
+          !! this send_count is the size of
+          !! tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, tcr_sacr1,
+          !! tms_sacr1, tcr_sacr2, tms_sacr2, tnr_racs1, tnr_racs2,
+          !! tnr_sacr1, tnr_sacr2
+          call MPI_Bcast(tcs_racs1, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tmr_racs1, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tcs_racs2, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tmr_racs2, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tcr_sacr1, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tms_sacr1, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tcr_sacr2, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tms_sacr2, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tnr_racs1, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tnr_racs2, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tnr_sacr1, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tnr_sacr2, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (this_image()==1) print *, "ThompMP: computing qr_acr_qs"
+        if (rank==1) print *, "ThompMP: computing qr_acr_qs"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -4077,7 +4093,7 @@
 !         CALL wrf_dm_gatherv(tnr_sacr2, ntb_s*ntb_t, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( this_image()==1 ) THEN
+        IF ( rank==1 ) THEN
           print *, "Writing qr_acr_qs.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qs.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tcs_racs1
