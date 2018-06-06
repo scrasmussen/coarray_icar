@@ -44,7 +44,10 @@
 !
       MODULE module_mp_thompson
 
-          use co_util, only : co_bcast
+          ! use co_util, only : co_bcast
+          use mpi_f08, only : MPI_Comm_size, MPI_COMM_WORLD, &
+                              MPI_Type_create_f90_integer,   &
+                              MPI_Datatype
           use timer_interface, only : timer_t
 
 !       USE module_wrf_error
@@ -353,16 +356,16 @@
       INTEGER, PARAMETER, PRIVATE:: R8SIZE = 8
       INTEGER, PARAMETER, PRIVATE:: R4SIZE = 4
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
-                tcg_racg[:], tmr_racg[:], tcr_gacr[:], tmg_gacr[:],     &
-                tnr_racg[:], tnr_gacr[:]
+                tcg_racg, tmr_racg, tcr_gacr, tmg_gacr,     &
+                tnr_racg, tnr_gacr
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
-                tcs_racs1[:], tmr_racs1[:], tcs_racs2[:], tmr_racs2[:], &
-                tcr_sacr1[:], tms_sacr1[:], tcr_sacr2[:], tms_sacr2[:], &
-                tnr_racs1[:], tnr_racs2[:], tnr_sacr1[:], tnr_sacr2[:]
+                tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, &
+                tcr_sacr1, tms_sacr1, tcr_sacr2, tms_sacr2, &
+                tnr_racs1, tnr_racs2, tnr_sacr1, tnr_sacr2
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
-                tpi_qcfz[:], tni_qcfz[:]
+                tpi_qcfz, tni_qcfz
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
-                tpi_qrfz[:], tpg_qrfz[:], tni_qrfz[:], tnr_qrfz[:]
+                tpi_qrfz, tpg_qrfz, tni_qrfz, tnr_qrfz
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:)::                 &
                 tps_iaus, tni_iaus, tpi_ide
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:):: t_Efrw
@@ -560,36 +563,36 @@
 !..Allocate space for lookup tables (J. Michalakes 2009Jun08).
 
       if (.NOT. ALLOCATED(tcg_racg) ) then
-         ALLOCATE(tcg_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
+         ALLOCATE(tcg_racg(ntb_g1,ntb_g,ntb_r1,ntb_r))
          micro_init = .TRUE.
       endif
 
-      if (.NOT. ALLOCATED(tmr_racg)) ALLOCATE(tmr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcr_gacr)) ALLOCATE(tcr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tmg_gacr)) ALLOCATE(tmg_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_racg)) ALLOCATE(tnr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_gacr)) ALLOCATE(tnr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
+      if (.NOT. ALLOCATED(tmr_racg)) ALLOCATE(tmr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tcr_gacr)) ALLOCATE(tcr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tmg_gacr)) ALLOCATE(tmg_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tnr_racg)) ALLOCATE(tnr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tnr_gacr)) ALLOCATE(tnr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r))
 
-      if (.NOT. ALLOCATED(tcs_racs1)) ALLOCATE(tcs_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tmr_racs1)) ALLOCATE(tmr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcs_racs2)) ALLOCATE(tcs_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tmr_racs2)) ALLOCATE(tmr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcr_sacr1)) ALLOCATE(tcr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tms_sacr1)) ALLOCATE(tms_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcr_sacr2)) ALLOCATE(tcr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tms_sacr2)) ALLOCATE(tms_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_racs1)) ALLOCATE(tnr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_racs2)) ALLOCATE(tnr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_sacr1)) ALLOCATE(tnr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_sacr2)) ALLOCATE(tnr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
+      if (.NOT. ALLOCATED(tcs_racs1)) ALLOCATE(tcs_racs1(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tmr_racs1)) ALLOCATE(tmr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tcs_racs2)) ALLOCATE(tcs_racs2(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tmr_racs2)) ALLOCATE(tmr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tcr_sacr1)) ALLOCATE(tcr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tms_sacr1)) ALLOCATE(tms_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tcr_sacr2)) ALLOCATE(tcr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tms_sacr2)) ALLOCATE(tms_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tnr_racs1)) ALLOCATE(tnr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tnr_racs2)) ALLOCATE(tnr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tnr_sacr1)) ALLOCATE(tnr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r))
+      if (.NOT. ALLOCATED(tnr_sacr2)) ALLOCATE(tnr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r))
 
-      if (.NOT. ALLOCATED(tpi_qcfz)) ALLOCATE(tpi_qcfz(ntb_c,nbc,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tni_qcfz)) ALLOCATE(tni_qcfz(ntb_c,nbc,45,ntb_IN)[*])
+      if (.NOT. ALLOCATED(tpi_qcfz)) ALLOCATE(tpi_qcfz(ntb_c,nbc,45,ntb_IN))
+      if (.NOT. ALLOCATED(tni_qcfz)) ALLOCATE(tni_qcfz(ntb_c,nbc,45,ntb_IN))
 
-      if (.NOT. ALLOCATED(tpi_qrfz)) ALLOCATE(tpi_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tpg_qrfz)) ALLOCATE(tpg_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tni_qrfz)) ALLOCATE(tni_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tnr_qrfz)) ALLOCATE(tnr_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
+      if (.NOT. ALLOCATED(tpi_qrfz)) ALLOCATE(tpi_qrfz(ntb_r,ntb_r1,45,ntb_IN))
+      if (.NOT. ALLOCATED(tpg_qrfz)) ALLOCATE(tpg_qrfz(ntb_r,ntb_r1,45,ntb_IN))
+      if (.NOT. ALLOCATED(tni_qrfz)) ALLOCATE(tni_qrfz(ntb_r,ntb_r1,45,ntb_IN))
+      if (.NOT. ALLOCATED(tnr_qrfz)) ALLOCATE(tnr_qrfz(ntb_r,ntb_r1,45,ntb_IN))
 
       if (.NOT. ALLOCATED(tps_iaus)) ALLOCATE(tps_iaus(ntb_i,ntb_i1))
       if (.NOT. ALLOCATED(tni_iaus)) ALLOCATE(tni_iaus(ntb_i,ntb_i1))
@@ -3621,6 +3624,8 @@
       implicit none
 
 !..Local variables
+      INTEGER:: num_images, rank, ierr, send_count
+      TYPE(MPI_Datatype) :: integer_8_t, integer_4_t
       INTEGER:: i, j, k, m, n, n2
       INTEGER:: km, km_s, km_e
       DOUBLE PRECISION, DIMENSION(nbg):: vg, N_g
@@ -3629,9 +3634,9 @@
       DOUBLE PRECISION:: massg, massr, dvg, dvr, t1, t2, z1, z2, y1, y2
       LOGICAL force_read_thompson, write_thompson_tables
       LOGICAL lexist,lopen
-      INTEGER, allocatable :: good[:]
+      INTEGER, allocatable :: good
     !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
-      allocate(good[*])
+      allocate(good)
 
 !+---+
 
@@ -3639,7 +3644,8 @@
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
 
       good = 0
-      if (this_image()==1) then
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      if (rank==1) then
           INQUIRE(FILE="qr_acr_qg.dat",EXIST=lexist)
           IF ( lexist ) THEN
             print *, "ThompMP: read qr_acr_qg.dat instead of computing"
@@ -3657,27 +3663,50 @@
               CLOSE(63)
             ENDIF
 
-            ! broadcast the data to all images
-            do i=2,num_images()
-                good[i]     = good
+            !! old coarray broadcast
+            !! broadcast the data to all images
+            ! do i=2,num_images()
+            !     good[i]     = good
+
+            !! this section already commented out
             !     tcg_racg(:,:,:,:)[i] = tcg_racg(:,:,:,:)
             !     tmr_racg(:,:,:,:)[i] = tmr_racg(:,:,:,:)
             !     tcr_gacr(:,:,:,:)[i] = tcr_gacr(:,:,:,:)
             !     tmg_gacr(:,:,:,:)[i] = tmg_gacr(:,:,:,:)
             !     tnr_racg(:,:,:,:)[i] = tnr_racg(:,:,:,:)
             !     tnr_gacr(:,:,:,:)[i] = tnr_gacr(:,:,:,:)
-            enddo
+            ! enddo
           ENDIF
       endif
 
-      sync all
+      call MPI_Bcast(good, 1, MPI_Integer, 1, MPI_COMM_WORLD);
+
+
       if (good.eq.1) then
-          call co_bcast(tcg_racg, 1, 1, num_images())
-          call co_bcast(tmr_racg, 1, 1, num_images())
-          call co_bcast(tcr_gacr, 1, 1, num_images())
-          call co_bcast(tmg_gacr, 1, 1, num_images())
-          call co_bcast(tnr_racg, 1, 1, num_images())
-          call co_bcast(tnr_gacr, 1, 1, num_images())
+          call MPI_Comm_size(MPI_COMM_WORLD, num_images,ierr)
+          call MPI_Type_create_f90_integer(R8SIZE, integer_8_t, ierr)
+          !! this send_count is the size of
+          !! tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, tnr_racg, tnr_gacr
+          send_count = ntb_g1 * ntb_g * ntb_r1 * ntb_r
+          call MPI_Bcast(tcg_racg, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tmr_racg, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tcr_gacr, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tmg_gacr, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tnr_racg, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          call MPI_Bcast(tnr_gacr, send_count, integer_8_t, 1, &
+                         MPI_COMM_WORLD)
+          ! replaces the follow code
+          ! call co_bcast(tcg_racg, 1, 1, num_images())
+          ! call co_bcast(tmr_racg, 1, 1, num_images())
+          ! call co_bcast(tcr_gacr, 1, 1, num_images())
+          ! call co_bcast(tmg_gacr, 1, 1, num_images())
+          ! call co_bcast(tnr_racg, 1, 1, num_images())
+          ! call co_bcast(tnr_gacr, 1, 1, num_images())
       endif
 
       IF ( good .NE. 1 ) THEN
@@ -3812,9 +3841,9 @@
       DOUBLE PRECISION:: y1, y2, y3, y4
       LOGICAL force_read_thompson, write_thompson_tables
       LOGICAL lexist,lopen
-      INTEGER, allocatable :: good[:]
+      INTEGER, allocatable :: good
     !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
-      allocate(good[*])
+      allocate(good)
 
 !+---+
 
@@ -4094,9 +4123,9 @@
       REAL:: T_adjust
       LOGICAL force_read_thompson, write_thompson_tables
       LOGICAL lexist,lopen
-      INTEGER, allocatable :: good[:]
+      INTEGER, allocatable :: good
     !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
-      allocate(good[*])
+      allocate(good)
 
 !+---+
     !   CALL nl_get_force_read_thompson(1,force_read_thompson)
