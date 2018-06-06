@@ -12,7 +12,6 @@ add_library( icar_utils
   assertions_interface.f90
   configuration_implementation.f90
   configuration_interface.f90
-  co_utilities.f90
 )
 
 install(TARGETS icar_utils DESTINATION lib)
