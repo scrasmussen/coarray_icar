@@ -1,4 +1,6 @@
 submodule(domain_interface) domain_implementation
+  use mpi_f08, only : MPI_COMM_WORLD, MPI_Barrier, MPI_Comm_size, &
+                      MPI_Comm_rank
   use assertions_interface, only : assert,assertions
   use iso_fortran_env, only : error_unit
   use grid_interface, only : grid_t
@@ -13,26 +15,29 @@ contains
         integer :: i, j
         integer :: nx, xstep
         integer :: ny, ystep
+        integer :: num_ranks, rank, ierr
 
         nx = size(input,1)
         ny = size(input,2)
         ystep = ny/8
         xstep = nx/8
-        do i=1,num_images()
-            if (this_image()==i) then
-                write(*,*) this_image()
+        call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
+        call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+        do i=1,num_ranks
+            if (rank==i) then
+                write(*,*) rank
                 do j=lbound(input,2),ubound(input,2),ystep
                     write(*,*) input(::xstep,j)
                 enddo
             endif
-            sync all
+            call MPI_Barrier(MPI_COMM_WORLD)
         end do
 
     end subroutine print_in_image_order
 
     subroutine master_initialize(this)
       class(domain_t), intent(inout) :: this
-      integer :: i,j
+      integer :: i,j, rank, ierr
       real :: sine_curve
 
       associate(                                            &
@@ -51,7 +56,9 @@ contains
         call this%u%initialize(this%get_grid_dimensions(nx_extra = 1), u_test_val)
         call this%v%initialize(this%get_grid_dimensions(ny_extra = 1), v_test_val)
         call this%w%initialize(this%get_grid_dimensions(), w_test_val)
-        if (this_image()==1) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
+
+        call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+        if (rank==1) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
         call this%water_vapor%initialize(           this%get_grid_dimensions(),water_vapor_test_val)
         call this%potential_temperature%initialize( this%get_grid_dimensions(),potential_temperature_test_val)
         call this%cloud_water_mass%initialize(      this%get_grid_dimensions(),cloud_water_mass_test_val)
@@ -250,7 +257,7 @@ contains
         integer,         intent(in)    :: nx, ny, nimages
         real,            intent(in), optional :: ratio
         real :: multiplier
-        integer :: ysplit, xsplit, xs, ys, i
+        integer :: ysplit, xsplit, xs, ys, i, rank, ierr
         real :: best, current, x, y
 
         multiplier=1
@@ -295,14 +302,15 @@ contains
         this%ximages = xs
         this%yimages = ys
 
-        this%ximg = mod(this_image()-1,  this%ximages)+1
-        this%yimg = floor(real(this_image()-1) / this%ximages)+1
+        call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+        this%ximg = mod(rank-1,  this%ximages)+1
+        this%yimg = floor(real(rank-1) / this%ximages)+1
 
         x = (nx/float(xs))
         y = (ny/float(ys))
 
         if (assertions) call assert((xs*ys) == nimages, "Number of tiles does not sum to number of images")
-        if (this_image()==1) print*, "ximgs=",xs, "yimgs=",ys
+        if (rank==1) print*, "ximgs=",xs, "yimgs=",ys
 
     end subroutine domain_decomposition
 
@@ -313,40 +321,43 @@ contains
     module subroutine initialize_from_file(this,file_name)
       class(domain_t), intent(inout) :: this
       character(len=*), intent(in) :: file_name
-      integer :: nx,ny,nz
+      integer :: nx,ny,nz,num_ranks,rank,ierr
       real    :: preferred_ratio
       integer :: my_unit,stat
       character(len=64) error_message
       namelist/grid/ nx,ny,nz
       namelist/options/ preferred_ratio
 
+      call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+
       open(file=file_name,newunit=my_unit,iostat=stat,status='old',action='read')
-      write(error_message,*) "image ",this_image()," could not open file " // trim(file_name)
+      write(error_message,*) "image ",rank," could not open file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
       if (stat/=0) print*, error_message
 
       read(unit=my_unit,nml=grid,iostat=stat)
-      write(error_message,*)"image ",this_image()," could not read file " // trim(file_name)
+      write(error_message,*)"image ",rank," could not read file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
       if (stat/=0) print*, error_message
 
       preferred_ratio = 1
       read(unit=my_unit,nml=options,iostat=stat)
-      write(error_message,*)"image ",this_image()," could not read file " // trim(file_name)
+      write(error_message,*)"image ",rank," could not read file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
       if (stat/=0) print*, error_message
 
       close(my_unit,iostat=stat)
-      write(error_message,*)"image ",this_image()," could not close file " // trim(file_name)
+      write(error_message,*)"image ",rank," could not close file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
 
       this%nx_global = nx
       this%ny_global = ny
-      call this%domain_decomposition(nx, ny, num_images(), preferred_ratio)
+      call this%domain_decomposition(nx, ny, num_ranks, preferred_ratio)
       this%nx = my_n(nx, this%ximg, this%ximages)
       this%ny = my_n(ny, this%yimg, this%yimages)
       this%nz = nz
-      if (this_image()==1) print *,"call master_initialize(this)"
+      if (rank==1) print *,"call master_initialize(this)"
       call master_initialize(this)
     end subroutine
 
@@ -357,10 +368,12 @@ contains
     module subroutine default_initialize(this)
       class(domain_t), intent(inout) :: this
       integer, parameter :: nx_global=200,ny_global=200,nz_global=20
+      integer :: num_ranks, ierr
 
+      call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
       this%nx_global = nx_global
       this%ny_global = ny_global
-      call this%domain_decomposition(nx_global, ny_global, num_images())
+      call this%domain_decomposition(nx_global, ny_global, num_ranks)
       this%nx = my_n(nx_global, this%ximg, this%ximages)
       this%ny = my_n(ny_global, this%yimg, this%yimages)
       this%nz = nz_global
