@@ -997,7 +997,7 @@
       call timer%start()
       call qr_acr_qg
       call timer%stop()
-      MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
       if (rank==1) then
           print*, "qr_acr_qg initialized:", timer%as_string()
       endif
