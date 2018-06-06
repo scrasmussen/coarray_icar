@@ -4,9 +4,14 @@ program main
   use assertions_interface, only : assert
   use module_mp_driver, only: microphysics
   use timer_interface, only: timer_t
+  use mpi_f08, only: MPI_COMM_WORLD, MPI_Comm_rank, MPI_Comm_size
   implicit none
 
-  if (this_image()==1) print *,"Number of images = ",num_images()
+  integer :: num_ranks, rank, ierr
+
+  call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+  call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
+  if (rank==1) print *,"Number of images = ", num_ranks
 
 
   block
@@ -14,10 +19,11 @@ program main
     integer :: i,nz, ypos,xpos
     type(timer_t) :: timer
 
-    if (this_image()==1) print *,this_image(),"domain%initialize_from_file('input-parameters.txt')"
+    if (rank==1) print *,rank, &
+                 "domain%initialize_from_file('input-parameters.txt')"
     call domain%initialize_from_file('input-parameters.txt')
 
-    if (this_image()==1) then
+    if (rank==1) then
         nz = size(domain%pressure,2)
         print *, " Layer height       Pressure        Temperature      Water Vapor"
         print *, "     [m]              [hPa]             [K]            [kg/kg]"
@@ -31,9 +37,9 @@ program main
 
     ! initialize microphysics before starting the timer
     call microphysics(domain, dt = 20.0)
-    if (this_image()==1) print*, ""
-    if (this_image()==1) print*, "Beginning simulation..."
-    sync all
+    if (rank==1) print*, ""
+    if (rank==1) print*, "Beginning simulation..."
+    call MPI_Barrier(MPI_COMM_WORLD)
     call timer%start()
     do i=1,25
         ! print *,"Microphysics"
@@ -51,27 +57,26 @@ program main
         ! endif
 
     end do
-    sync all
+    call MPI_Barrier(MPI_COMM_WORLD)
     call timer%stop()
 
-    if (this_image()==1) then
+    if (rank==1) then
         print *,"Model run time:",timer%as_string('(f8.3," seconds")')
     endif
 
     ypos = (domain%jde-domain%jds)/2 + domain%jds
-    do i=1,num_images()
-        sync all
-        if (this_image()==i) then
+    do i=1,num_ranks
+        call MPI_Barrier(MPI_COMM_WORLD)
+        if (rank==i) then
             if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
                 xpos = (domain%ite-domain%its)/2 + domain%its
-                print*, this_image(), " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
+                print*, rank, " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
             endif
         endif
     enddo
 
   end block
 
-
-  if (this_image()==1) print *,"Test passed."
+  if (rank==1) print *,"Test passed."
 
 end program
