@@ -1,4 +1,5 @@
 module exchangeable_interface
+  use mpi_f08, only : MPI_Request
   use grid_interface, only : grid_t
   implicit none
 
@@ -12,6 +13,9 @@ module exchangeable_interface
     real, allocatable :: halo_north_in(:,:,:)
     real, allocatable :: halo_west_in(:,:,:)
     real, allocatable :: halo_east_in(:,:,:)
+
+    type(MPI_Request) :: request(4)
+    integer :: num_request=0
 
     logical :: north_boundary=.false.
     logical :: south_boundary=.false.
