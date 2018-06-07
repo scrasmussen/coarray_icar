@@ -8,7 +8,7 @@ program main
   implicit none
 
   integer :: num_ranks, rank, ierr
-
+  call MPI_Init(ierr)
   call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
   if (rank==1) print *,"Number of images = ", num_ranks
@@ -78,5 +78,5 @@ program main
   end block
 
   if (rank==1) print *,"Test passed."
-
+  call MPI_Finalize(ierr)
 end program
