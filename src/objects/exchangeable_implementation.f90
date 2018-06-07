@@ -1,4 +1,5 @@
 submodule(exchangeable_interface) exchangeable_implementation
+  use mpi_f08, only : MPI_COMM_WORLD, MPI_Comm_rank, MPI_Barrier
   use assertions_interface, only : assert, assertions
   use grid_interface, only : grid_t
   implicit none
@@ -16,7 +17,7 @@ contains
     real,                  intent(in)    :: initial_value
     integer,               intent(in), optional :: halo_width
 
-    integer :: n_neighbors, current
+    integer :: n_neighbors, current, rank, ierr
     integer :: ims,ime,kms,kme,jms,jme
 
     if (present(halo_width)) then
@@ -46,15 +47,15 @@ contains
       allocate(this%local(ims:ime,kms:kme,jms:jme), source=initial_value)
     end associate
 
-    allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
-    allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
-    allocate( this%halo_east_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
-    allocate( this%halo_west_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
+    allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    ), source=initial_value)
+    allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    ), source=initial_value)
+    allocate( this%halo_east_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2), source=initial_value)
+    allocate( this%halo_west_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2), source=initial_value)
 
-
+    call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
     ! set up the neighbors array so we can sync with our neighbors when needed
     if (.not.allocated(neighbors)) then
-      associate(me=>this_image())
+      associate(me=>rank)
         south_neighbor = me - grid%ximages
         north_neighbor = me + grid%ximages
         east_neighbor  = me + 1
@@ -97,7 +98,10 @@ contains
 
   module subroutine send(this)
     class(exchangeable_t), intent(inout) :: this
-    if (.not. this%north_boundary) call this%put_north
+    ! each put has to be called by both? or just the send
+    ! have get call the receive?? Doesnt make sense for isends
+    ! do both immedielty, let implementation complete when able
+    if (.not. this%north_boundary) call this%put_north  !! ARTLESS
     if (.not. this%south_boundary) call this%put_south
     if (.not. this%east_boundary)  call this%put_east
     if (.not. this%west_boundary)  call this%put_west
@@ -106,12 +110,16 @@ contains
   module subroutine retrieve(this, no_sync)
     class(exchangeable_t), intent(inout) :: this
     logical,               intent(in),   optional :: no_sync
+    integer :: ierr
 
     if (.not. present(no_sync)) then
-        sync images( neighbors )
+        ! ARTLESS CLEAN :: sync images( neighbors )
+        call MPI_Waitall(this%num_request, this%request, &
+                         MPI_STATUSES_IGNORE, ierr)
     else
         if (.not. no_sync) then
-            sync images( neighbors )
+            call MPI_Waitall(this%num_request, this%request, &
+                             MPI_STATUSES_IGNORE, ierr)
         endif
     endif
 
@@ -123,12 +131,14 @@ contains
 
   module subroutine exchange(this)
     class(exchangeable_t), intent(inout) :: this
+    integer :: ierr
     if (.not. this%north_boundary) call this%put_north
     if (.not. this%south_boundary) call this%put_south
     if (.not. this%east_boundary)  call this%put_east
     if (.not. this%west_boundary)  call this%put_west
 
-    sync images( neighbors )
+    call MPI_Waitall(this%num_request, this%request, &
+                             MPI_STATUSES_IGNORE, ierr)
 
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
@@ -149,8 +159,21 @@ contains
                      "put_north: conformable halo_south_in and local " )
       end if
 
+      ! artless
       !dir$ pgas defer_sync
-      this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+      ! this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+      if (this%south_boundary) then ! to north_neighbor
+        call MPI_Isend(this%local(:,:,n-halo_size*2+1:n-halo_size), $COUNT, &
+                       MPI_Real, north_neighbor, -1, MPI_COMM_WORLD, &
+                       request, ierr))
+      end if
+      if (.not. this%south_boundary) then ! from south_neighbor
+        ! need to figure out count and how to send multidimensional array
+        call MPI_Irecv(this%halo_south_in(1:nx,:,1:halo_size), $COUNT &
+                       MPI_Real, south_neighbor, -1, MPI_COMM_WORLD, &
+                       request, ierr)
+      end if
+
   end subroutine
 
   module subroutine put_south(this)
