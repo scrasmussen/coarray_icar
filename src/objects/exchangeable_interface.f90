@@ -14,7 +14,7 @@ module exchangeable_interface
     real, allocatable :: halo_west_in(:,:,:)
     real, allocatable :: halo_east_in(:,:,:)
 
-    type(MPI_Request) :: request(4)
+    type(MPI_Request) :: request(8) ! max request size
     integer :: num_request=0
 
     logical :: north_boundary=.false.
@@ -29,6 +29,8 @@ module exchangeable_interface
     procedure, public :: retrieve
     procedure, public :: exchange
     generic,   public :: initialize=>const
+    procedure, public :: waitall
+    procedure, public :: save_request
 
     procedure :: put_north
     procedure :: put_south
@@ -66,6 +68,17 @@ module exchangeable_interface
     module subroutine exchange(this)
       implicit none
       class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine waitall(this)
+      implicit none
+      class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine save_request(this, request)
+      implicit none
+      class(exchangeable_t), intent(inout) :: this
+      type(MPI_Request), intent(in) :: request
     end subroutine
 
     module subroutine put_north(this)
