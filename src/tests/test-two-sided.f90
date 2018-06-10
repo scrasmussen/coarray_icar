@@ -11,7 +11,7 @@ program main
   call MPI_Init(ierr)
   call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
-  if (rank==1) print *,"Number of images = ", num_ranks
+  if (rank==0) print *,"Number of images = ", num_ranks
 
 
   block
@@ -19,11 +19,11 @@ program main
     integer :: i,nz, ypos,xpos
     type(timer_t) :: timer
 
-    if (rank==1) print *,rank, &
+    if (rank==0) print *,rank, &
                  "domain%initialize_from_file('input-parameters.txt')"
     call domain%initialize_from_file('input-parameters.txt')
 
-    if (rank==1) then
+    if (rank==0) then
         nz = size(domain%pressure,2)
         print *, " Layer height       Pressure        Temperature      Water Vapor"
         print *, "     [m]              [hPa]             [K]            [kg/kg]"
@@ -37,17 +37,22 @@ program main
 
     ! initialize microphysics before starting the timer
     call microphysics(domain, dt = 20.0)
-    if (rank==1) print*, ""
-    if (rank==1) print*, "Beginning simulation..."
+    if (rank==0) print*, ""
+    if (rank==0) print*, "Beginning simulation..."
     call MPI_Barrier(MPI_COMM_WORLD)
+    print*, "after MPI_Barrier..."
     call timer%start()
     do i=1,25
         ! print *,"Microphysics"
         ! note should this be wrapped into the domain object(?)
+        if (rank==0) print*, "microphysics1"
         call microphysics(domain, dt = 20.0, halo=1)
+        call MPI_Barrier(MPI_COMM_WORLD)
+        if (rank==0) print*, "domain%halo_send"
         call domain%halo_send()
+        if (rank==0) print*, "microphysics2"
         call microphysics(domain, dt = 20.0, subset=1)
-
+        if (rank==0) print*, "domain%halo_retrieve"
         call domain%halo_retrieve()
 
         call domain%advect(dt = 1.0)
@@ -60,12 +65,12 @@ program main
     call MPI_Barrier(MPI_COMM_WORLD)
     call timer%stop()
 
-    if (rank==1) then
+    if (rank==0) then
         print *,"Model run time:",timer%as_string('(f8.3," seconds")')
     endif
 
     ypos = (domain%jde-domain%jds)/2 + domain%jds
-    do i=1,num_ranks
+    do i=0,num_ranks-1
         call MPI_Barrier(MPI_COMM_WORLD)
         if (rank==i) then
             if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
@@ -77,6 +82,6 @@ program main
 
   end block
 
-  if (rank==1) print *,"Test passed."
+  if (rank==0) print *,"Test passed."
   call MPI_Finalize(ierr)
 end program
