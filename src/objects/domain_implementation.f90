@@ -23,7 +23,7 @@ contains
         xstep = nx/8
         call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
         call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-        do i=1,num_ranks
+        do i=0,num_ranks-1 ! ARTLESS: check this range
             if (rank==i) then
                 write(*,*) rank
                 do j=lbound(input,2),ubound(input,2),ystep
@@ -58,7 +58,7 @@ contains
         call this%w%initialize(this%get_grid_dimensions(), w_test_val)
 
         call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-        if (rank==1) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
+        if (rank==0) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
         call this%water_vapor%initialize(           this%get_grid_dimensions(),water_vapor_test_val)
         call this%potential_temperature%initialize( this%get_grid_dimensions(),potential_temperature_test_val)
         call this%cloud_water_mass%initialize(      this%get_grid_dimensions(),cloud_water_mass_test_val)
@@ -310,7 +310,7 @@ contains
         y = (ny/float(ys))
 
         if (assertions) call assert((xs*ys) == nimages, "Number of tiles does not sum to number of images")
-        if (rank==1) print*, "ximgs=",xs, "yimgs=",ys
+        if (rank==0) print*, "ximgs=",xs, "yimgs=",ys
 
     end subroutine domain_decomposition
 
@@ -357,7 +357,7 @@ contains
       this%nx = my_n(nx, this%ximg, this%ximages)
       this%ny = my_n(ny, this%yimg, this%yimages)
       this%nz = nz
-      if (rank==1) print *,"call master_initialize(this)"
+      if (rank==0) print *,"call master_initialize(this)"
       call master_initialize(this)
     end subroutine
 
