@@ -46,8 +46,7 @@
 
           ! use co_util, only : co_bcast
           use mpi_f08, only : MPI_Comm_size, MPI_COMM_WORLD, &
-                              MPI_Type_create_f90_integer,   &
-                              MPI_Datatype, MPI_Integer
+                              MPI_Datatype, MPI_Integer, MPI_INTEGER8
           use timer_interface, only : timer_t
 
 !       USE module_wrf_error
@@ -998,7 +997,7 @@
       call qr_acr_qg
       call timer%stop()
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-      if (rank==1) then
+      if (rank==0) then
           print*, "qr_acr_qg initialized:", timer%as_string()
       endif
 
@@ -1009,7 +1008,7 @@
       call timer%start()
       call qr_acr_qs
       call timer%stop()
-      if (rank==1) then
+      if (rank==0) then
           print*, "qr_acr_qs initialized:", timer%as_string()
       endif
 
@@ -1019,7 +1018,7 @@
       call timer%start()
       call freezeH2O
       call timer%stop()
-      if (rank==1) then
+      if (rank==0) then
           print*, "freezeH2O initialized:", timer%as_string()
       endif
 
@@ -1029,7 +1028,7 @@
       call timer%start()
       call qi_aut_qs
       call timer%stop()
-      if (rank==1) then
+      if (rank==0) then
           print*, "qi_aut_qs initialized:", timer%as_string()
       endif
 
@@ -3628,7 +3627,6 @@
 
 !..Local variables
       INTEGER:: rank, ierr, send_count
-      TYPE(MPI_Datatype) :: integer_8_t
       INTEGER:: i, j, k, m, n, n2
       INTEGER:: km, km_s, km_e
       DOUBLE PRECISION, DIMENSION(nbg):: vg, N_g
@@ -3648,7 +3646,7 @@
 
       good = 0
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-      if (rank==1) then
+      if (rank==0) then
           INQUIRE(FILE="qr_acr_qg.dat",EXIST=lexist)
           IF ( lexist ) THEN
             print *, "ThompMP: read qr_acr_qg.dat instead of computing"
@@ -3682,30 +3680,28 @@
           ENDIF
       endif
 
-      call MPI_Bcast(good, 1, MPI_Integer, 1, MPI_COMM_WORLD);
-
+      call MPI_Bcast(good, 1, MPI_Integer, 0, MPI_COMM_WORLD, ierr);
 
       if (good.eq.1) then
-          call MPI_Type_create_f90_integer(R8SIZE, integer_8_t, ierr)
           !! this send_count is the size of
           !! tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, tnr_racg, tnr_gacr
           send_count = ntb_g1 * ntb_g * ntb_r1 * ntb_r
-          call MPI_Bcast(tcg_racg, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tmr_racg, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tcr_gacr, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tmg_gacr, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tnr_racg, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tnr_gacr, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
+          call MPI_Bcast(tcg_racg, send_count, MPI_INTEGER8, 0, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tmr_racg, send_count, MPI_INTEGER8, 0, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tcr_gacr, send_count, MPI_INTEGER8, 0, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tmg_gacr, send_count, MPI_INTEGER8, 0, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tnr_racg, send_count, MPI_INTEGER8, 0, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tnr_gacr, send_count, MPI_INTEGER8, 0, &
+                         MPI_COMM_WORLD, ierr)
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (rank==1) print *, "ThompMP: computing qr_acr_qg"
+        if (rank==0) print *, "ThompMP: computing qr_acr_qg"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -3797,7 +3793,7 @@
 !         CALL wrf_dm_gatherv(tnr_gacr, ntb_g*ntb_g1, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( rank==1 ) THEN
+        IF ( rank==0 ) THEN
           print *, "Writing qr_acr_qg.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qg.dat",form="unformatted",err=9234)
           WRITE(63,err=9234) tcg_racg
@@ -3826,7 +3822,6 @@
 
 !..Local variables
       INTEGER:: rank, ierr, send_count
-      TYPE(MPI_Datatype) :: integer_8_t
       INTEGER:: i, j, k, m, n, n2
       INTEGER:: km, km_s, km_e
       DOUBLE PRECISION, DIMENSION(nbr):: vr, D1, N_r
@@ -3849,7 +3844,7 @@
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
 
       good = 0
-      IF ( rank == 1 ) THEN
+      IF ( rank == 0 ) THEN
         INQUIRE(FILE="qr_acr_qs.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read qr_acr_qs.dat instead of computing"
@@ -3883,7 +3878,7 @@
             !   tcr_sacr1(:,:,:,:)[i] = tcr_sacr1(:,:,:,:)
             !   tms_sacr1(:,:,:,:)[i] = tms_sacr1(:,:,:,:)
             !   tcr_sacr2(:,:,:,:)[i] = tcr_sacr2(:,:,:,:)
-            !   tms_sacr2(:,:,:,:)[i] = tms_sacr2(:,:,:,:)
+
             !   tnr_racs1(:,:,:,:)[i] = tnr_racs1(:,:,:,:)
             !   tnr_racs2(:,:,:,:)[i] = tnr_racs2(:,:,:,:)
             !   tnr_sacr1(:,:,:,:)[i] = tnr_sacr1(:,:,:,:)
@@ -3892,44 +3887,43 @@
         ENDIF
       endif
 
-      call MPI_Bcast(good, 1, MPI_Integer, 1, MPI_COMM_WORLD);
+      call MPI_Bcast(good, 1, MPI_Integer, 0, MPI_COMM_WORLD, ierr);
 
       if (good.eq.1) then
-          call MPI_Type_create_f90_integer(R8SIZE, integer_8_t, ierr)
           send_count = ntb_s * ntb_t * ntb_r1 * ntb_r
           !! this send_count is the size of
           !! tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, tcr_sacr1,
           !! tms_sacr1, tcr_sacr2, tms_sacr2, tnr_racs1, tnr_racs2,
           !! tnr_sacr1, tnr_sacr2
 
-          call MPI_Bcast(tcs_racs1, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tmr_racs1, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tcs_racs2, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tmr_racs2, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tcr_sacr1, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tms_sacr1, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tcr_sacr2, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tms_sacr2, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tnr_racs1, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tnr_racs2, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tnr_sacr1, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tnr_sacr2, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
+          call MPI_Bcast(tcs_racs1, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tmr_racs1, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tcs_racs2, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tmr_racs2, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tcr_sacr1, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tms_sacr1, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tcr_sacr2, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tms_sacr2, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tnr_racs1, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tnr_racs2, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tnr_sacr1, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tnr_sacr2, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (rank==1) print *, "ThompMP: computing qr_acr_qs"
+        if (rank==0) print *, "ThompMP: computing qr_acr_qs"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -4097,7 +4091,7 @@
 !         CALL wrf_dm_gatherv(tnr_sacr2, ntb_s*ntb_t, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( rank==1 ) THEN
+        IF ( rank==0 ) THEN
           print *, "Writing qr_acr_qs.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qs.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tcs_racs1
@@ -4134,7 +4128,6 @@
 
 !..Local variables
       INTEGER:: rank, ierr, send_count
-      TYPE(MPI_Datatype) :: integer_8_t
       INTEGER:: i, j, k, m, n, n2
       DOUBLE PRECISION, DIMENSION(nbr):: N_r, massr
       DOUBLE PRECISION, DIMENSION(nbc):: N_c, massc
@@ -4155,7 +4148,7 @@
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
 
       good = 0
-      IF ( rank == 1 ) THEN
+      IF ( rank == 0 ) THEN
         INQUIRE(FILE="freezeH2O.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read freezeH2O.dat instead of computing"
@@ -4184,29 +4177,29 @@
         ENDIF
       ENDIF
 
-      call MPI_Bcast(good, 1, MPI_Integer, 1, MPI_COMM_WORLD)
+      call MPI_Bcast(good, 1, MPI_Integer, 0, MPI_COMM_WORLD, ierr);
 
       if (good.eq.1) then
           send_count = ntb_r * ntb_r1 * 45 * ntb_IN
-          call MPI_Bcast(tpi_qrfz, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tni_qrfz, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tpg_qrfz, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tnr_qrfz, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
+          call MPI_Bcast(tpi_qrfz, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tni_qrfz, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tpg_qrfz, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tnr_qrfz, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
 
           send_count = ntb_c * nbc * 45 * ntb_IN
-          call MPI_Bcast(tpi_qcfz, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
-          call MPI_Bcast(tni_qcfz, send_count, integer_8_t, 1, &
-                         MPI_COMM_WORLD)
+          call MPI_Bcast(tpi_qcfz, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
+          call MPI_Bcast(tni_qcfz, send_count, MPI_INTEGER8, 1, &
+                         MPI_COMM_WORLD, ierr)
       endif
 
 
       IF ( good .NE. 1 ) THEN
-        if (rank==1) print *, "ThompMP: computing freezeH2O"
+        if (rank==0) print *, "ThompMP: computing freezeH2O"
 
         orho_w = 1./rho_w
 
@@ -4274,7 +4267,7 @@
         enddo
         enddo
 
-        IF ( rank == 1 ) THEN
+        IF ( rank == 0 ) THEN
           print *, "Writing freezeH2O.dat in Thompson MP init"
           OPEN(63,file="freezeH2O.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tpi_qrfz
