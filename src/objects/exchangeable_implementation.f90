@@ -62,6 +62,7 @@ contains
         north_neighbor = me + grid%ximages
         east_neighbor  = me + 1
         west_neighbor  = me - 1
+        print *, rank, ":north=",north_neighbor, "south=",south_neighbor,"east=",east_neighbor,"west=",west_neighbor
 
         n_neighbors = merge(0,1,this%south_boundary)  &
                      +merge(0,1,this%north_boundary)  &
@@ -103,10 +104,14 @@ contains
     ! each put has to be called by both? or just the send
     ! have get call the receive?? Doesnt make sense for isends
     ! do both immedielty, let implementation complete when able
-    if (.not. this%north_boundary) call this%put_north  !! ARTLESS
-    if (.not. this%south_boundary) call this%put_south
-    if (.not. this%east_boundary)  call this%put_east
-    if (.not. this%west_boundary)  call this%put_west
+    call this%put_north  !! ARTLESS
+    call this%put_south
+    call this%put_east
+    call this%put_west
+    ! if (.not. this%north_boundary) call this%put_north
+    ! if (.not. this%south_boundary) call this%put_south
+    ! if (.not. this%east_boundary)  call this%put_east
+    ! if (.not. this%west_boundary)  call this%put_west
   end subroutine
 
   module subroutine retrieve(this, no_sync)
@@ -121,7 +126,7 @@ contains
             call this%waitall
         endif
     endif
-
+    print *, "======================================="
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
     if (.not. this%east_boundary) call this%retrieve_east_halo
@@ -163,13 +168,16 @@ contains
       class(exchangeable_t), intent(inout) :: this
       type(MPI_Request) :: request
       integer :: n, nx, len, ierr
+#ifdef ARTLESS
+      integer :: rank
+#endif
       n = ubound(this%local,3)
       nx = size(this%local,1)
 
       if (assertions) then
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         write (*,*) "implementation does not support assert because it accesses [north_neighbor] shape"
-        stop
+        ! stop
         ! call assert( shape(this%halo_south_in(:nx,:,1:halo_size)[north_neighbor]) &
         !              == shape(this%local(:,:,n-halo_size+1:n)),         &
         !              "put_north: conformable halo_south_in and local " )
@@ -186,19 +194,26 @@ contains
       !dir$ pgas defer_sync
       ! this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
       len = size(this%local(:,:,n-halo_size*2+1:n-halo_size))
+#ifdef ARTLESS
+  call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+  print*, rank,": and this%north_boundary =", this%north_boundary
+  print*, rank,": north_neighbor =", north_neighbor
+#endif
       if (.not. this%north_boundary) then ! send to north_neighbor
         call MPI_Isend(this%local(:,:,n-halo_size*2+1:n-halo_size), &
-                       len, MPI_Real, north_neighbor, -1, &
+                       len, MPI_Real, north_neighbor, 7, &
                        MPI_COMM_WORLD, request, ierr)
         call this%save_request(request)
       end if
       if (.not. this%south_boundary) then ! get from south_neighbor
         call MPI_Irecv(this%halo_south_in(:nx,:,1:halo_size), len, &
-                       MPI_Real, south_neighbor, -1, MPI_COMM_WORLD, &
+                       MPI_Real, south_neighbor, 7, MPI_COMM_WORLD, &
                        request, ierr)
         call this%save_request(request)
       end if
-
+#ifdef ARTLESS
+  print *, "end of put_north in rank", rank
+#endif
   end subroutine
 
   module subroutine put_south(this)
@@ -211,7 +226,7 @@ contains
       if (assertions) then
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         write (*,*) "implementation does not support assert because it accesses [south_neighbor] shape"
-        stop
+        ! stop
         ! call assert( shape(this%halo_north_in(:nx,:,1:halo_size)[south_neighbor]) &
         !              == shape(this%local(:,:,start:start+halo_size-1)), &
         !              "put_south: conformable halo_north_in and local " )
@@ -221,13 +236,13 @@ contains
       len = size(this%halo_north_in(1:nx,:,1:halo_size))
       if (.not. this%south_boundary) then ! send to south_neighbor
         call MPI_Isend(this%local(:,:,start+halo_size:start+halo_size*2-1), &
-                       len, MPI_Real, south_neighbor, -1, &
+                       len, MPI_Real, south_neighbor, 7, &
                        MPI_COMM_WORLD, request, ierr)
         call this%save_request(request)
       end if
       if (.not. this%north_boundary) then ! get from north_neighbor
         call MPI_Irecv(this%halo_north_in(1:nx,:,1:halo_size), len, &
-                       MPI_Real, north_neighbor, -1, MPI_COMM_WORLD, &
+                       MPI_Real, north_neighbor, 7, MPI_COMM_WORLD, &
                        request, ierr)
         call this%save_request(request)
       end if
@@ -264,7 +279,7 @@ contains
       if (assertions) then
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         write (*,*) "implementation does not support assert because it accesses [east_neighbor] shape"
-        stop
+        ! stop
         ! call assert( shape(this%halo_west_in(1:halo_size,:,:ny)[east_neighbor])       &
         !              == shape(this%local(n-halo_size*2+1:n-halo_size,:,:)), &
         !              "put_east: conformable halo_west_in and local " )
@@ -276,13 +291,13 @@ contains
       len = size(this%halo_west_in(1:halo_size,:,1:ny))
       if (.not. this%east_boundary) then ! send to east_neighbor
         call MPI_Isend(this%local(n-halo_size*2+1:n-halo_size,:,:), &
-                       len, MPI_Real, east_neighbor, -1, &
+                       len, MPI_Real, east_neighbor, 7, &
                        MPI_COMM_WORLD, request, ierr)
         call this%save_request(request)
       end if
       if (.not. this%west_boundary) then ! get from west_neighbor
         call MPI_Irecv(this%halo_west_in(1:halo_size,:,1:ny), len, &
-                       MPI_Real, west_neighbor, -1, MPI_COMM_WORLD, &
+                       MPI_Real, west_neighbor, 7, MPI_COMM_WORLD, &
                        request, ierr)
         call this%save_request(request)
       end if
@@ -298,7 +313,7 @@ contains
       if (assertions) then
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         write (*,*) "implementation does not support assert because it accesses [west_neighbor] shape"
-        stop
+        ! stop
 
         ! call assert( shape(this%halo_east_in(1:halo_size,:,:ny)[west_neighbor])               &
         !              == shape(this%local(start+halo_size:start+halo_size*2-1,:,:)), &
@@ -311,13 +326,13 @@ contains
       len = size(this%halo_east_in(1:halo_size,:,1:ny))
       if (.not. this%west_boundary) then ! send to west_neighbor
         call MPI_Isend(this%local(start+halo_size:start+halo_size*2-1,:,:), &
-                       MPI_Real, west_neighbor, -1, &
+                       MPI_Real, west_neighbor, 7, &
                        MPI_COMM_WORLD, request, ierr)
         call this%save_request(request)
       end if
       if (.not. this%east_boundary) then ! get from east_neighbor
         call MPI_Irecv(this%halo_east_in(1:halo_size,:,1:ny), len, &
-                       MPI_Real, east_neighbor, -1, MPI_COMM_WORLD, &
+                       MPI_Real, east_neighbor, 7, MPI_COMM_WORLD, &
                        request, ierr)
         call this%save_request(request)
       end if
