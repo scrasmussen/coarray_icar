@@ -997,7 +997,8 @@
       call qr_acr_qg
       call timer%stop()
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-      if (rank==0) then
+      rank = rank + 1
+      if (rank==1) then
           print*, "qr_acr_qg initialized:", timer%as_string()
       endif
 
@@ -1008,7 +1009,7 @@
       call timer%start()
       call qr_acr_qs
       call timer%stop()
-      if (rank==0) then
+      if (rank==1) then
           print*, "qr_acr_qs initialized:", timer%as_string()
       endif
 
@@ -1018,7 +1019,7 @@
       call timer%start()
       call freezeH2O
       call timer%stop()
-      if (rank==0) then
+      if (rank==1) then
           print*, "freezeH2O initialized:", timer%as_string()
       endif
 
@@ -1028,7 +1029,7 @@
       call timer%start()
       call qi_aut_qs
       call timer%stop()
-      if (rank==0) then
+      if (rank==1) then
           print*, "qi_aut_qs initialized:", timer%as_string()
       endif
 
@@ -3646,7 +3647,8 @@
 
       good = 0
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-      if (rank==0) then
+      rank = rank + 1
+      if (rank==1) then
           INQUIRE(FILE="qr_acr_qg.dat",EXIST=lexist)
           IF ( lexist ) THEN
             print *, "ThompMP: read qr_acr_qg.dat instead of computing"
@@ -3701,7 +3703,7 @@
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (rank==0) print *, "ThompMP: computing qr_acr_qg"
+        if (rank==1) print *, "ThompMP: computing qr_acr_qg"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -3793,7 +3795,7 @@
 !         CALL wrf_dm_gatherv(tnr_gacr, ntb_g*ntb_g1, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( rank==0 ) THEN
+        IF ( rank==1 ) THEN
           print *, "Writing qr_acr_qg.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qg.dat",form="unformatted",err=9234)
           WRITE(63,err=9234) tcg_racg
@@ -3842,9 +3844,10 @@
     !   CALL nl_get_force_read_thompson(1,force_read_thompson)
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      rank = rank + 1
 
       good = 0
-      IF ( rank == 0 ) THEN
+      IF ( rank == 1 ) THEN
         INQUIRE(FILE="qr_acr_qs.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read qr_acr_qs.dat instead of computing"
@@ -3923,7 +3926,7 @@
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (rank==0) print *, "ThompMP: computing qr_acr_qs"
+        if (rank==1) print *, "ThompMP: computing qr_acr_qs"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -4091,7 +4094,7 @@
 !         CALL wrf_dm_gatherv(tnr_sacr2, ntb_s*ntb_t, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( rank==0 ) THEN
+        IF ( rank==1 ) THEN
           print *, "Writing qr_acr_qs.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qs.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tcs_racs1
@@ -4146,9 +4149,10 @@
     !   CALL nl_get_force_read_thompson(1,force_read_thompson)
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      rank = rank + 1
 
       good = 0
-      IF ( rank == 0 ) THEN
+      IF ( rank == 1 ) THEN
         INQUIRE(FILE="freezeH2O.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read freezeH2O.dat instead of computing"
@@ -4199,7 +4203,7 @@
 
 
       IF ( good .NE. 1 ) THEN
-        if (rank==0) print *, "ThompMP: computing freezeH2O"
+        if (rank==1) print *, "ThompMP: computing freezeH2O"
 
         orho_w = 1./rho_w
 
@@ -4267,7 +4271,7 @@
         enddo
         enddo
 
-        IF ( rank == 0 ) THEN
+        IF ( rank == 1 ) THEN
           print *, "Writing freezeH2O.dat in Thompson MP init"
           OPEN(63,file="freezeH2O.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tpi_qrfz
