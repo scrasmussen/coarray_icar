@@ -1,3 +1,4 @@
+!#define ARTLESSPRINT
 submodule(domain_interface) domain_implementation
   use mpi_f08, only : MPI_COMM_WORLD, MPI_Barrier, MPI_Comm_size, &
                       MPI_Comm_rank
@@ -23,7 +24,8 @@ contains
         xstep = nx/8
         call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
         call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-        do i=0,num_ranks-1 ! ARTLESS: check this range
+        rank = rank + 1
+        do i=1,num_ranks
             if (rank==i) then
                 write(*,*) rank
                 do j=lbound(input,2),ubound(input,2),ystep
@@ -58,7 +60,8 @@ contains
         call this%w%initialize(this%get_grid_dimensions(), w_test_val)
 
         call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-        if (rank==0) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
+        rank = rank + 1
+        if (rank==1) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
         call this%water_vapor%initialize(           this%get_grid_dimensions(),water_vapor_test_val)
         call this%potential_temperature%initialize( this%get_grid_dimensions(),potential_temperature_test_val)
         call this%cloud_water_mass%initialize(      this%get_grid_dimensions(),cloud_water_mass_test_val)
@@ -303,6 +306,7 @@ contains
         this%yimages = ys
 
         call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+        rank = rank + 1
         this%ximg = mod(rank-1,  this%ximages)+1
         this%yimg = floor(real(rank-1) / this%ximages)+1
 
@@ -310,7 +314,7 @@ contains
         y = (ny/float(ys))
 
         if (assertions) call assert((xs*ys) == nimages, "Number of tiles does not sum to number of images")
-        if (rank==0) print*, "ximgs=",xs, "yimgs=",ys
+        if (rank==1) print*, "ximgs=",xs, "yimgs=",ys
 
     end subroutine domain_decomposition
 
@@ -330,6 +334,7 @@ contains
 
       call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      rank = rank + 1
 
       open(file=file_name,newunit=my_unit,iostat=stat,status='old',action='read')
       write(error_message,*) "image ",rank," could not open file " // trim(file_name)
@@ -357,7 +362,7 @@ contains
       this%nx = my_n(nx, this%ximg, this%ximages)
       this%ny = my_n(ny, this%yimg, this%yimages)
       this%nz = nz
-      if (rank==0) print *,"call master_initialize(this)"
+      if (rank==1) print *,"call master_initialize(this)"
       call master_initialize(this)
     end subroutine
 
@@ -456,15 +461,48 @@ contains
 
     module subroutine halo_send(this)
       class(domain_t), intent(inout) :: this
+#ifdef ARTLESSPRINT
+      print *, "%%water_vapor_send"
+#endif
       call this%water_vapor%send()
-      call this%potential_temperature%send()
-      call this%cloud_water_mass%send()
-      call this%cloud_ice_mass%send()
-      call this%cloud_ice_number%send()
-      call this%rain_mass%send()
-      call this%rain_number%send()
-      call this%snow_mass%send()
-      call this%graupel_mass%send()
+      call MPI_Barrier(MPI_COMM_WORLD)
+! #ifdef ARTLESSPRINT
+!       print *, "%%potential%send"
+! #endif
+      ! call this%potential_temperature%send()
+!       call MPI_Barrier(MPI_COMM_WORLD)
+! #ifdef ARTLESSPRINT
+!       print *, "%%clout_water%send"
+! #endif
+      ! call this%cloud_water_mass%send()
+      ! call MPI_Barrier(MPI_COMM_WORLD)
+! #ifdef ARTLESSPRINT
+!       print *, "%%cloud_ice_mass%send"
+! #endif
+      ! call this%cloud_ice_mass%send()
+      ! call MPI_Barrier(MPI_COMM_WORLD)
+! #ifdef ARTLESSPRINT
+!       print *, "%%clout_ice_number%send"
+! #endif
+      ! call this%cloud_ice_number%send()
+!       call MPI_Barrier(MPI_COMM_WORLD)
+! #ifdef ARTLESSPRINT
+!       print *, "%%rain_mass%send"
+! #endif
+      ! call this%rain_mass%send()
+!       call MPI_Barrier(MPI_COMM_WORLD)
+! #ifdef ARTLESSPRINT
+!       print *, "%%rain_number%send"
+! #endif
+      ! call this%rain_number%send()
+! #ifdef ARTLESSPRINT
+!       print *, "%%snow_mass%send"
+! #endif
+      ! call this%snow_mass%send()
+! #ifdef ARTLESSPRINT
+!       print *, "%%graupel_mass%send"
+! #endif
+!       call this%graupel_mass%send()
     end subroutine
 
     module subroutine halo_retrieve(this)
