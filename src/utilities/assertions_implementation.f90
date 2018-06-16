@@ -11,6 +11,7 @@ contains
     if (present(success)) success=assertion
     if (.not.assertion) then
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      rank = rank + 1
 
       write(error_unit,*) 'Assertion "',description,'" failed on image ', rank
       if (.not. present(success)) error stop
