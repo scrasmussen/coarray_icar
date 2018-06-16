@@ -3,6 +3,10 @@ module exchangeable_interface
   use grid_interface, only : grid_t
   implicit none
 
+  type direction_t
+    integer :: north = 1, south = 2, east = 3 , west = 4
+  end type
+
   private
   public :: exchangeable_t
 
@@ -14,8 +18,16 @@ module exchangeable_interface
     real, allocatable :: halo_west_in(:,:,:)
     real, allocatable :: halo_east_in(:,:,:)
 
-    type(MPI_Request) :: request(8) ! max request size
-    integer :: num_request=0
+    type(MPI_Request) :: north_request
+    type(MPI_Request) :: south_request
+    type(MPI_Request) :: west_request
+    type(MPI_Request) :: east_request
+
+    integer :: rank
+    integer :: north_tag
+    integer :: south_tag
+    integer :: west_tag
+    integer :: east_tag
 
     logical :: north_boundary=.false.
     logical :: south_boundary=.false.
@@ -29,7 +41,6 @@ module exchangeable_interface
     procedure, public :: retrieve
     procedure, public :: exchange
     generic,   public :: initialize=>const
-    procedure, public :: waitall
     procedure, public :: save_request
 
     procedure :: put_north
@@ -70,15 +81,11 @@ module exchangeable_interface
       class(exchangeable_t), intent(inout) :: this
     end subroutine
 
-    module subroutine waitall(this)
-      implicit none
-      class(exchangeable_t), intent(inout) :: this
-    end subroutine
-
-    module subroutine save_request(this, request)
+    module subroutine save_request(this, request, direction)
       implicit none
       class(exchangeable_t), intent(inout) :: this
       type(MPI_Request), intent(in) :: request
+      integer, intent(in) :: direction
     end subroutine
 
     module subroutine put_north(this)
