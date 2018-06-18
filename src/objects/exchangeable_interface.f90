@@ -6,6 +6,9 @@ module exchangeable_interface
   type direction_t
     integer :: north = 1, south = 2, east = 3 , west = 4
   end type
+  type sendrecv_t
+    integer :: send = 0, recv = 1
+  end type
 
   private
   public :: exchangeable_t
@@ -42,6 +45,7 @@ module exchangeable_interface
     procedure, public :: exchange
     generic,   public :: initialize=>const
     procedure, public :: save_request
+    procedure, public :: get_tag
 
     procedure :: put_north
     procedure :: put_south
@@ -86,6 +90,13 @@ module exchangeable_interface
       class(exchangeable_t), intent(inout) :: this
       type(MPI_Request), intent(in) :: request
       integer, intent(in) :: direction
+    end subroutine
+
+    module subroutine get_tag(this, sendrecv, from, to, tag)
+      implicit none
+      class(exchangeable_t), intent(inout) :: this
+      integer, intent(in)  :: sendrecv, from, to
+      integer, intent(out) :: tag
     end subroutine
 
     module subroutine put_north(this)
