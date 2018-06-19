@@ -45,27 +45,20 @@ program main
 
     call timer%start()
     do i=1,2
-        ! note should this be wrapped into the domain object(?)
-        if (rank==1) print*, rank, "!!!microphysics1"
-        call microphysics(domain, dt = 20.0, halo=1)
+       ! note should this be wrapped into the domain object(?)
         call MPI_Barrier(MPI_COMM_WORLD, ierr)
-        if (rank==1) print*, rank, "!!!domain%halo_send"
+        if (rank==1) print*, rank, "!!!microphysics1"
 
-        ! print *, rank, " is rank with i = ", i
-        ! if (i == 2) call q()
-
+        call microphysics(domain, dt = 20.0, halo=1)
         call domain%halo_send()
     ! call domain%halo_retrieve()
-        print *, rank, " is rank with i = ", i
-        if (i == 2) call q()
-
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    ! print *, rank, " is rank with i = ", i
+    ! if (i == 2) call q()
         call microphysics(domain, dt = 20.0, subset=1)
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
+
         call domain%halo_retrieve()
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
         call domain%advect(dt = 1.0)
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
+        ! call MPI_Barrier(MPI_COMM_WORLD, ierr)
 ! remove end
 
         ! if (this_image()==(num_images()/2)) then
@@ -73,7 +66,7 @@ program main
         ! endif
 
     end do
-    ! call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    call MPI_Barrier(MPI_COMM_WORLD, ierr)
     call timer%stop()
 
 

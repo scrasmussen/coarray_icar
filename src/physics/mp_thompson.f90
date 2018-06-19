@@ -46,7 +46,7 @@
 
           ! use co_util, only : co_bcast
           use mpi_f08, only : MPI_Comm_size, MPI_COMM_WORLD, &
-                              MPI_Datatype, MPI_Integer, MPI_INTEGER8
+                              MPI_Datatype, MPI_Integer, MPI_REAL8
           use timer_interface, only : timer_t
 
 !       USE module_wrf_error
@@ -3687,18 +3687,19 @@
       if (good.eq.1) then
           !! this send_count is the size of
           !! tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, tnr_racg, tnr_gacr
+          !! ARTLESS
           send_count = ntb_g1 * ntb_g * ntb_r1 * ntb_r
-          call MPI_Bcast(tcg_racg, send_count, MPI_INTEGER8, 0, &
+          call MPI_Bcast(tcg_racg, send_count, MPI_REAL8, 0, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tmr_racg, send_count, MPI_INTEGER8, 0, &
+          call MPI_Bcast(tmr_racg, send_count, MPI_REAL8, 0, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tcr_gacr, send_count, MPI_INTEGER8, 0, &
+          call MPI_Bcast(tcr_gacr, send_count, MPI_REAL8, 0, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tmg_gacr, send_count, MPI_INTEGER8, 0, &
+          call MPI_Bcast(tmg_gacr, send_count, MPI_REAL8, 0, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tnr_racg, send_count, MPI_INTEGER8, 0, &
+          call MPI_Bcast(tnr_racg, send_count, MPI_REAL8, 0, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tnr_gacr, send_count, MPI_INTEGER8, 0, &
+          call MPI_Bcast(tnr_gacr, send_count, MPI_REAL8, 0, &
                          MPI_COMM_WORLD, ierr)
       endif
 
@@ -3899,29 +3900,29 @@
           !! tms_sacr1, tcr_sacr2, tms_sacr2, tnr_racs1, tnr_racs2,
           !! tnr_sacr1, tnr_sacr2
 
-          call MPI_Bcast(tcs_racs1, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tcs_racs1, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tmr_racs1, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tmr_racs1, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tcs_racs2, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tcs_racs2, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tmr_racs2, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tmr_racs2, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tcr_sacr1, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tcr_sacr1, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tms_sacr1, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tms_sacr1, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tcr_sacr2, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tcr_sacr2, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tms_sacr2, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tms_sacr2, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tnr_racs1, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tnr_racs1, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tnr_racs2, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tnr_racs2, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tnr_sacr1, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tnr_sacr1, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tnr_sacr2, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tnr_sacr2, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
       endif
 
@@ -4185,19 +4186,19 @@
 
       if (good.eq.1) then
           send_count = ntb_r * ntb_r1 * 45 * ntb_IN
-          call MPI_Bcast(tpi_qrfz, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tpi_qrfz, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tni_qrfz, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tni_qrfz, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tpg_qrfz, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tpg_qrfz, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tnr_qrfz, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tnr_qrfz, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
 
           send_count = ntb_c * nbc * 45 * ntb_IN
-          call MPI_Bcast(tpi_qcfz, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tpi_qcfz, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
-          call MPI_Bcast(tni_qcfz, send_count, MPI_INTEGER8, 1, &
+          call MPI_Bcast(tni_qcfz, send_count, MPI_REAL8, 1, &
                          MPI_COMM_WORLD, ierr)
       endif
 
