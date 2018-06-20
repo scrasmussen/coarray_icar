@@ -40,26 +40,17 @@ program main
     if (rank==1) print*, ""
     if (rank==1) print*, "Beginning simulation..."
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
-    print*, "after MPI_Barrier..."
-
 
     call timer%start()
-    do i=1,2
-       ! note should this be wrapped into the domain object(?)
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
-        if (rank==1) print*, rank, "!!!microphysics1"
-
+    do i=1,20 !200
+        ! note should this be wrapped into the domain object(?)
         call microphysics(domain, dt = 20.0, halo=1)
         call domain%halo_send()
-    ! call domain%halo_retrieve()
-    ! print *, rank, " is rank with i = ", i
-    ! if (i == 2) call q()
         call microphysics(domain, dt = 20.0, subset=1)
 
         call domain%halo_retrieve()
+
         call domain%advect(dt = 1.0)
-        ! call MPI_Barrier(MPI_COMM_WORLD, ierr)
-! remove end
 
         ! if (this_image()==(num_images()/2)) then
         !     print*, domain%accumulated_precipitation(::3,ypos)
@@ -74,30 +65,18 @@ program main
         print *,"Model run time:",timer%as_string('(f8.3," seconds")')
     endif
 
-    ! ypos = (domain%jde-domain%jds)/2 + domain%jds
-    ! do i=1,num_ranks
-    !     call MPI_Barrier(MPI_COMM_WORLD, ierr)
-    !     if (rank==i) then
-    !         if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
-    !             xpos = (domain%ite-domain%its)/2 + domain%its
-    !             print*, rank, " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
-    !         endif
-    !     endif
-    ! enddo
-
-
+    ypos = (domain%jde-domain%jds)/2 + domain%jds
+    do i=1,num_ranks
+        call MPI_Barrier(MPI_COMM_WORLD, ierr)
+        if (rank==i) then
+            if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
+                xpos = (domain%ite-domain%its)/2 + domain%its
+                print*, rank, " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
+            endif
+        endif
+    enddo
   end block
 
   if (rank==1) print *,"Test passed."
   call MPI_Finalize(ierr)
-
-
-  contains
-  subroutine q()
-    implicit none
-    integer :: ierr
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
-    call MPI_Finalize(ierr)
-    call exit
-  end subroutine
 end program
