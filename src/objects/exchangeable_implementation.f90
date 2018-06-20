@@ -1,8 +1,5 @@
-! #define ARTLESS 1
-! #define ARTLESSSEND 1
 #define ARTLESSNORTHSOUTH 1
 #define ARTLESSEASTWEST 1
-! #define ARTLESSISEND
 submodule(exchangeable_interface) exchangeable_implementation
   use mpi_f08, only : MPI_Comm_rank, MPI_Request, MPI_Barrier, &
                       MPI_STATUSES_IGNORE, MPI_COMM_WORLD, MPI_Status, &
@@ -115,36 +112,10 @@ contains
 
   module subroutine send(this)
     class(exchangeable_t), intent(inout) :: this
-    ! each put has to be called by both? or just the send
-    integer :: ierr
-    ! have get call the receive?? Doesnt make sense for isends
-    ! do both immedielty, let implementation complete when able
-
-#ifdef ARTLESSSEND
-    print *, this%rank, "      ==== SEND ====  "
-#endif
-#ifdef ARTLESSNORTHSOUTH
-    call this%put_north  !! ARTLESS
+    call this%put_north
     call this%put_south
-#endif
-    if (this%rank == 3) then
-      return
-    else if (this%rank == 4) then
-      return
-    end if
-
-#ifdef ARTLESSEASTWEST
-    call this%put_east  ! THIS WORKS :D
+    call this%put_east
     call this%put_west
-#endif
-    ! call MPI_BARRIER(MPI_COMM_WORLD,ierr) !! ARTLESS
-#ifdef ARTLESSSEND
-    print *, this%rank, "      === FIN SEND ===  "
-#endif
-    ! if (.not. this%north_boundary) call this%put_north
-    ! if (.not. this%south_boundary) call this%put_south
-    ! if (.not. this%east_boundary)  call this%put_east
-    ! if (.not. this%west_boundary)  call this%put_west
   end subroutine
 
   module subroutine retrieve(this, no_sync)
@@ -152,17 +123,11 @@ contains
     logical,               intent(in),   optional :: no_sync
     integer :: ierr
 
-#ifdef ARTLESSNORTHSOUTH
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
-#endif
-#ifdef ARTLESSEASTWEST
     if (.not. this%east_boundary) call this%retrieve_east_halo
     if (.not. this%west_boundary) call this%retrieve_west_halo
-#endif
-#ifdef ARTLESS
-    print *, "==========COMM COMPLETE=========="
-#endif
+
     if (.not. present(no_sync)) then
         call MPI_Barrier(MPI_COMM_WORLD, ierr)
     else
@@ -170,32 +135,23 @@ contains
             call MPI_Barrier(MPI_COMM_WORLD, ierr)
         endif
     endif
-
   end subroutine
 
   module subroutine exchange(this) ! ARTLESS: TODO CHANGE THIS
     class(exchangeable_t), intent(inout) :: this
     integer :: ierr
-    if (.not. this%north_boundary) call this%put_north
-    if (.not. this%south_boundary) call this%put_south
-    if (.not. this%east_boundary)  call this%put_east
-    if (.not. this%west_boundary)  call this%put_west
-
-    call MPI_Barrier(MPI_Comm_world,ierr)
+    call this%put_north
+    call this%put_south
+    call this%put_east
+    call this%put_west
 
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
     if (.not. this%east_boundary)  call this%retrieve_east_halo
     if (.not. this%west_boundary)  call this%retrieve_west_halo
-  end subroutine
 
-  ! module subroutine waitall(this)
-  !   class(exchangeable_t), intent(inout) :: this
-  !   integer :: ierr
-  !   call MPI_Waitall(this%num_request, this%request, &
-  !                            MPI_STATUSES_IGNORE, ierr)
-  !   this%num_request = 0
-  ! end subroutine
+    call MPI_Barrier(MPI_Comm_world,ierr)
+  end subroutine
 
   module subroutine save_request(this, request, direction)
     implicit none
@@ -219,13 +175,13 @@ contains
     class(exchangeable_t), intent(inout) :: this
     integer, intent(in)  :: sendrecv, from, to
     integer, intent(out) :: tag
-    ! print *, "|||", from-1, "::::",to-1
+
+    ! ARTLESS WHY DOESN"T THIS PRINT ANYTHING ? !
+    print *, "&&&&&&&&&&&&&&&&&&GET  TAG&&&&&&&&&&&&&&&&&&&&&&"
     if (sendrecv == 0) then !send
       tag = from * 10 + to
-      print *, from, " is sending to", to, "with tag", tag
     else if (sendrecv == 1) then !recv
       tag = to * 10 + from
-      print *, from, " is recieving from", to, "with tag", tag
     else
       print *, "ERROR in get_tag: sendrecv out of bounds"
       tag = -1
