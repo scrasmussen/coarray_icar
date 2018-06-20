@@ -145,7 +145,7 @@ contains
     call this%exchange_north
     call this%exchange_south
     call this%exchange_east
-    ! call this%exchange_west ! ARTLESS: not implemented yet
+    call this%exchange_west ! ARTLESS: not implemented yet
 
     ! call this%put_north
     ! call this%put_south
@@ -579,7 +579,6 @@ contains
       call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
       this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
-      ! ARTLESS EAST WORKING ON
     end subroutine
 
     module subroutine exchange_west(this)
