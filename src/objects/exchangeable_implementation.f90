@@ -143,6 +143,9 @@ contains
     integer :: ierr
 
     call this%exchange_north
+    call this%exchange_south
+    call this%exchange_east
+    ! call this%exchange_west ! ARTLESS: not implemented yet
 
     ! call this%put_north
     ! call this%put_south
@@ -479,7 +482,7 @@ contains
         if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 296", ierr
       end if
 
-      ! Wait for complete of exchange
+      ! Wait for completion of exchange
       if (.not. this%north_boundary) then ! send to north_neighbor
         call MPI_Wait(send_request, status, ierr)
       end if
@@ -523,7 +526,7 @@ contains
         if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 296", ierr
       end if
 
-      ! Wait for complete of exchange
+      ! Wait for completion of exchange
       if (.not. this%south_boundary) then ! send to north_neighbor
         call MPI_Wait(send_request, status, ierr)
       end if
@@ -538,13 +541,51 @@ contains
     end subroutine
 
     module subroutine exchange_east(this)
-        implicit none
-        class(exchangeable_t), intent(inout) :: this
+      implicit none
+      class(exchangeable_t), intent(inout) :: this
+      integer :: send_request, recv_request
+      integer :: start, n, ny, len, ierr, tag
+      integer :: status(MPI_STATUS_SIZE)
+      type(sendrecv_t) :: sr
+      start = lbound(this%local,1)
+      n = ubound(this%local,1)
+      ny = size(this%local,3)
+
+      !dir$ pgas defer_sync
+      ! this%halo_west_in(1:halo_size,:,1:ny)[east_neighbor] = this%local(n-halo_size*2+1:n-halo_size,:,:)
+      len = size(this%halo_west_in(1:halo_size,:,1:ny))
+      if (.not. this%east_boundary) then ! send to east_neighbor
+        call this%get_tag(sr%send, this%rank, east_neighbor, tag)
+        call MPI_Isend(this%local(n-halo_size*2+1:n-halo_size,:,:), &
+                       len, MPI_Real, east_neighbor-1, tag, &
+                       MPI_COMM_WORLD, send_request, ierr)
+        if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Isend***** 411", ierr
+      end if
+      if (.not. this%west_boundary) then ! get from west_neighbor
+        call this%get_tag(sr%recv, this%rank, west_neighbor, tag)
+        call MPI_Irecv(this%halo_west_in(1:halo_size,:,1:ny), len, &
+                       MPI_Real, west_neighbor-1, tag, MPI_COMM_WORLD, &
+                       recv_request, ierr)
+        if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 424", ierr
+      end if
+
+      ! Wait for completion of exchange
+      if (.not. this%east_boundary) then
+        call MPI_Wait(send_request, status, ierr)
+      end if
+      if (.not. this%west_boundary) then
+        call MPI_Wait(recv_request, status, ierr)
+      end if
+      call MPI_Barrier(MPI_COMM_WORLD, ierr)
+
+      this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
+      ! ARTLESS EAST WORKING ON
     end subroutine
 
     module subroutine exchange_west(this)
         implicit none
         class(exchangeable_t), intent(inout) :: this
+        print *, "########## EXCHANGE NOT IMPLEMENTED YET ##########"
     end subroutine
 
 end submodule
