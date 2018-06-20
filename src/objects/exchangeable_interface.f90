@@ -1,5 +1,6 @@
 module exchangeable_interface
   use grid_interface, only : grid_t
+  use mpi, only : MPI_REQUEST_NULL
   implicit none
 
   type direction_t
@@ -24,6 +25,10 @@ module exchangeable_interface
     integer :: south_request
     integer :: west_request
     integer :: east_request
+    ! integer :: north_request = MPI_REQUEST_NULL
+    ! integer :: south_request = MPI_REQUEST_NULL
+    ! integer :: west_request = MPI_REQUEST_NULL
+    ! integer :: east_request = MPI_REQUEST_NULL
 
     integer :: rank
     integer :: north_tag

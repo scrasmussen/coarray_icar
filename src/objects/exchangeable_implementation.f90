@@ -110,8 +110,10 @@ contains
     class(exchangeable_t), intent(inout) :: this
     call this%put_north
     call this%put_south
+#ifdef ARTLESSEASTWEST
     call this%put_east
     call this%put_west
+#endif
   end subroutine
 
   module subroutine retrieve(this, no_sync)
@@ -121,8 +123,11 @@ contains
 
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
+    print *, "======AFTER RETRIEVALS======="
+#ifdef ARTLESSEASTWEST
     if (.not. this%east_boundary) call this%retrieve_east_halo
     if (.not. this%west_boundary) call this%retrieve_west_halo
+#endif
 
     if (.not. present(no_sync)) then
         call MPI_Barrier(MPI_COMM_WORLD, ierr)
@@ -140,7 +145,7 @@ contains
     call this%put_south
     call this%put_east
     call this%put_west
-
+    print *, "======++THIS SHOULD NOT BE TOUCHED++++======="
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
     if (.not. this%east_boundary)  call this%retrieve_east_halo
@@ -171,8 +176,6 @@ contains
     integer, intent(in)  :: sendrecv, from, to
     integer, intent(out) :: tag
 
-    ! ARTLESS WHY DOESN"T THIS PRINT ANYTHING ? !
-    print *, "&&&&&&&&&&&&&&&&&&GET  TAG&&&&&&&&&&&&&&&&&&&&&&"
     if (sendrecv == 0) then !send
       tag = from * 10 + to
     else if (sendrecv == 1) then !recv
@@ -304,10 +307,11 @@ contains
       ! print *, "north start"
       n = ubound(this%local,3)
       nx = size(this%local,1)
+      print *, this%rank, ": has north_request", this%north_request
       call MPI_Wait(this%north_request, status, ierr)
       if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 366", ierr
       this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
-      ! print *, "retrieve_north_halo complete for north_neighbor", north_neighbor
+      print *, "retrieve_north_halo complete for north_neighbor", north_neighbor
   end subroutine
 
   module subroutine retrieve_south_halo(this)
@@ -316,10 +320,11 @@ contains
       ! print *, "south start"
       start = lbound(this%local,3)
       nx = size(this%local,1)
+      print *, this%rank, ": has south_request", this%south_request
       call MPI_Wait(this%south_request, status, ierr)
       if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 379", ierr
       this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
-      ! print *, "retrieve_south_halo complete for south_neighbor", south_neighbor
+      print *, "retrieve_south_halo complete for south_neighbor", south_neighbor
   end subroutine
 
   module subroutine put_east(this)
