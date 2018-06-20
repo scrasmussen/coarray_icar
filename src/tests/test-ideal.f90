@@ -35,7 +35,7 @@ program main
     if (this_image()==1) print*, "Beginning simulation..."
     sync all
     call timer%start()
-    do i=1,200
+    do i=1,5 ! 200
         ! print *,"Microphysics"
         ! note should this be wrapped into the domain object(?)
         call microphysics(domain, dt = 20.0, halo=1)

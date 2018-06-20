@@ -11,14 +11,9 @@ program main
   call MPI_Init(ierr)
   call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
-  print *, "  ________I AM RANK", rank, "__________"
-  print *, "-------------------------------"
   rank = rank + 1
   if (rank==1) print *,"Number of images = ", num_ranks
-  if (num_ranks == 1) then
-    call exit
-  endif
-  call exit
+
   block
     type(domain_t), save :: domain
     integer :: i,nz, ypos,xpos
@@ -47,15 +42,17 @@ program main
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
     call timer%start()
-    do i=1,20 !200
+    do i=1,1 !200
         ! note should this be wrapped into the domain object(?)
         call microphysics(domain, dt = 20.0, halo=1)
+        print *, "ARTLESS: HALO_SEND"
         call domain%halo_send()
-        call microphysics(domain, dt = 20.0, subset=1)
-
+        ! call microphysics(domain, dt = 20.0, subset=1)
+        ! print *, "ARTLESS: HALO_RETRV"
         call domain%halo_retrieve()
+        ! print *, "ARTLESS: IEVE OVER"
 
-        call domain%advect(dt = 1.0)
+        ! call domain%advect(dt = 1.0)
 
         ! if (this_image()==(num_images()/2)) then
         !     print*, domain%accumulated_precipitation(::3,ypos)
@@ -66,20 +63,20 @@ program main
     call timer%stop()
 
 
-    if (rank==1) then
-        print *,"Model run time:",timer%as_string('(f8.3," seconds")')
-    endif
+    ! if (rank==1) then
+    !     print *,"Model run time:",timer%as_string('(f8.3," seconds")')
+    ! endif
 
-    ypos = (domain%jde-domain%jds)/2 + domain%jds
-    do i=1,num_ranks
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
-        if (rank==i) then
-            if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
-                xpos = (domain%ite-domain%its)/2 + domain%its
-                print*, rank, " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
-            endif
-        endif
-    enddo
+    ! ypos = (domain%jde-domain%jds)/2 + domain%jds
+    ! do i=1,num_ranks
+    !     call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    !     if (rank==i) then
+    !         if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
+    !             xpos = (domain%ite-domain%its)/2 + domain%its
+    !             print*, rank, " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
+    !         endif
+    !     endif
+    ! enddo
   end block
 
   if (rank==1) print *,"Test passed."
