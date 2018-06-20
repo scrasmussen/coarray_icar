@@ -42,40 +42,38 @@ program main
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
     call timer%start()
-    do i=1,1 !200
+    do i=1,20 !200
         ! note should this be wrapped into the domain object(?)
         call microphysics(domain, dt = 20.0, halo=1)
         call microphysics(domain, dt = 20.0, subset=1)
         call domain%halo_exchange()
         ! call domain%halo_send()
         ! call domain%halo_retrieve()
-        ! print *, "ARTLESS: IEVE OVER"
 
-        ! call domain%advect(dt = 1.0)
+        call domain%advect(dt = 1.0)
 
         ! if (this_image()==(num_images()/2)) then
         !     print*, domain%accumulated_precipitation(::3,ypos)
         ! endif
-
     end do
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
     call timer%stop()
 
 
-    ! if (rank==1) then
-    !     print *,"Model run time:",timer%as_string('(f8.3," seconds")')
-    ! endif
+    if (rank==1) then
+        print *,"Model run time:",timer%as_string('(f8.3," seconds")')
+    endif
 
-    ! ypos = (domain%jde-domain%jds)/2 + domain%jds
-    ! do i=1,num_ranks
-    !     call MPI_Barrier(MPI_COMM_WORLD, ierr)
-    !     if (rank==i) then
-    !         if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
-    !             xpos = (domain%ite-domain%its)/2 + domain%its
-    !             print*, rank, " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
-    !         endif
-    !     endif
-    ! enddo
+    ypos = (domain%jde-domain%jds)/2 + domain%jds
+    do i=1,num_ranks
+        call MPI_Barrier(MPI_COMM_WORLD, ierr)
+        if (rank==i) then
+            if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
+                xpos = (domain%ite-domain%its)/2 + domain%its
+                print*, rank, " : ", domain%accumulated_precipitation(domain%its:domain%ite:2,ypos)
+            endif
+        endif
+    enddo
   end block
 
   if (rank==1) print *,"Test passed."
