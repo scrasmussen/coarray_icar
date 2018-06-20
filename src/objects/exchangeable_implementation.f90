@@ -1,8 +1,8 @@
-#define ARTLESS 1
-#define ARTLESSSEND 1
+! #define ARTLESS 1
+! #define ARTLESSSEND 1
 #define ARTLESSNORTHSOUTH 1
 #define ARTLESSEASTWEST 1
-#define ARTLESSISEND
+! #define ARTLESSISEND
 submodule(exchangeable_interface) exchangeable_implementation
   use mpi_f08, only : MPI_Comm_rank, MPI_Request, MPI_Barrier, &
                       MPI_STATUSES_IGNORE, MPI_COMM_WORLD, MPI_Status, &
@@ -243,7 +243,9 @@ contains
       type(MPI_Status) :: status
 
       ! ARTLESS
+#ifdef ARTLESS
       print*, this%rank-1, "BOUNDARIES NESW:", this%north_boundary,this%east_boundary,this%south_boundary,this%west_boundary
+#endif
 
 
       n = ubound(this%local,3)
