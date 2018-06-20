@@ -4,16 +4,21 @@ program main
   use assertions_interface, only : assert
   use module_mp_driver, only: microphysics
   use timer_interface, only: timer_t
-  use mpi_f08, only: MPI_COMM_WORLD, MPI_Comm_rank, MPI_Comm_size
+  use mpi, only: MPI_COMM_WORLD, MPI_Comm_rank, MPI_Comm_size
   implicit none
 
   integer :: num_ranks, rank, ierr
   call MPI_Init(ierr)
   call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
+  print *, "  ________I AM RANK", rank, "__________"
+  print *, "-------------------------------"
   rank = rank + 1
   if (rank==1) print *,"Number of images = ", num_ranks
-
+  if (num_ranks == 1) then
+    call exit
+  endif
+  call exit
   block
     type(domain_t), save :: domain
     integer :: i,nz, ypos,xpos

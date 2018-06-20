@@ -45,8 +45,8 @@
       MODULE module_mp_thompson
 
           ! use co_util, only : co_bcast
-          use mpi_f08, only : MPI_Comm_size, MPI_COMM_WORLD, &
-                              MPI_Datatype, MPI_Integer, MPI_REAL8
+          use mpi, only : MPI_Comm_size, MPI_COMM_WORLD, &
+                              MPI_Integer, MPI_REAL8
           use timer_interface, only : timer_t
 
 !       USE module_wrf_error

@@ -1,5 +1,4 @@
 module exchangeable_interface
-  use mpi_f08, only : MPI_Request
   use grid_interface, only : grid_t
   implicit none
 
@@ -21,10 +20,10 @@ module exchangeable_interface
     real, allocatable :: halo_west_in(:,:,:)
     real, allocatable :: halo_east_in(:,:,:)
 
-    type(MPI_Request) :: north_request
-    type(MPI_Request) :: south_request
-    type(MPI_Request) :: west_request
-    type(MPI_Request) :: east_request
+    integer :: north_request
+    integer :: south_request
+    integer :: west_request
+    integer :: east_request
 
     integer :: rank
     integer :: north_tag
@@ -88,7 +87,7 @@ module exchangeable_interface
     module subroutine save_request(this, request, direction)
       implicit none
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Request), intent(in) :: request
+      integer, intent(in) :: request
       integer, intent(in) :: direction
     end subroutine
 

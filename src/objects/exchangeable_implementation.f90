@@ -1,8 +1,9 @@
+#define ARTLESSISEND 1
 #define ARTLESSNORTHSOUTH 1
 #define ARTLESSEASTWEST 1
 submodule(exchangeable_interface) exchangeable_implementation
-  use mpi_f08, only : MPI_Comm_rank, MPI_Request, MPI_Barrier, &
-                      MPI_STATUSES_IGNORE, MPI_COMM_WORLD, MPI_Status, &
+  use mpi, only : MPI_Comm_rank, MPI_Barrier, &
+                      MPI_STATUSES_IGNORE, MPI_COMM_WORLD, MPI_STATUS_SIZE, &
                       MPI_Type_size, MPI_Real
   use assertions_interface, only : assert, assertions
   use grid_interface, only : grid_t
@@ -67,13 +68,8 @@ contains
         north_neighbor = me + grid%ximages
         east_neighbor  = me + 1
         west_neighbor  = me - 1
-        ! south_tag = me * 10 + south_neighbor
-        ! east_tag  = me * 10 + east_neighbor
-        ! north_tag = north_neighbor * 10 + me
-        ! west_tag  = west_neighbor * 10 + me
-        ! print *, this%rank, ":north=",north_neighbor, "south=",south_neighbor,"east=",east_neighbor,"west=",west_neighbor
-        ! print *, this%rank, ":north_tag=",north_tag, "south_tag=",south_tag,"east_tag=",east_tag,"west_tag=",west_tag
 
+        print *, this%rank, ":north=",north_neighbor, "south=",south_neighbor,"east=",east_neighbor,"west=",west_neighbor
 
         n_neighbors = merge(0,1,this%south_boundary)  &
                      +merge(0,1,this%north_boundary)  &
@@ -156,8 +152,7 @@ contains
   module subroutine save_request(this, request, direction)
     implicit none
     class(exchangeable_t), intent(inout) :: this
-    type(MPI_Request), intent(in) :: request
-    integer, intent(in) :: direction
+    integer, intent(in) :: request, direction
     type(direction_t) :: d
     if (direction == d%north) then
     this%north_request = request
@@ -191,17 +186,14 @@ contains
 
   module subroutine put_north(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Request) :: request
+      integer :: request
       integer :: n, nx, len, ierr
-      integer :: mpir, tag
+      integer :: mpir, tag, status(MPI_STATUS_SIZE)
       type(sendrecv_t) :: sr
       real :: r
-      type(MPI_Status) :: status
 
       ! ARTLESS
-#ifdef ARTLESS
       print*, this%rank-1, "BOUNDARIES NESW:", this%north_boundary,this%east_boundary,this%south_boundary,this%west_boundary
-#endif
 
 
       n = ubound(this%local,3)
@@ -228,26 +220,22 @@ contains
 
       !dir$ pgas defer_sync
       ! this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+      ! print *, "@@@@@@@@@@@@@BEFORE NORTH ISEND?RECV@@@@@@@@", this%north_boundary, this%south_boundary
       len = size(this%local(:,:,n-halo_size*2+1:n-halo_size))
-! #ifdef ARTLESSthis%rank,": and this%north_boundary =", this%north_boundary, ": north_neighbor =", north_neighbor
-! #endif
       if (.not. this%north_boundary) then ! send to north_neighbor
         len = size(this%local(:,:,n-halo_size*2+1:n-halo_size))
-#ifdef ARTLESSISEND
-        print *, "MPI_Isend:",this%rank-1,"to north",north_neighbor - 1
-#endif
         call this%get_tag(sr%send, this%rank, north_neighbor, tag)
+
+        print *, "~~~~~MPI_Isend:",this%rank-1,"to north wit tag ",tag
         call MPI_Isend(this%local(:,:,n-halo_size*2+1:n-halo_size), &
                        len, MPI_Real, north_neighbor-1, tag, &
                        MPI_COMM_WORLD, request, ierr)
         if (ierr .ne. 0) print *, this%rank-1,":*****ERROR MPI_Isend***** 285", ierr
       end if
       if (.not. this%south_boundary) then ! get from south_neighbor
-#ifdef ARTLESSISEND
-        print *, "MPI_Irecv:",this%rank-1,"gets from south",south_neighbor - 1
-#endif
         len = size(this%halo_south_in(:nx,:,1:halo_size))
         call this%get_tag(sr%recv, this%rank, south_neighbor, tag)
+        print *, "~~~~~MPI_Irecv:",this%rank-1,"from south wit tag ",tag
         call MPI_Irecv(this%halo_south_in(:nx,:,1:halo_size), len, &
                        MPI_Real, south_neighbor-1, tag, MPI_COMM_WORLD, &
                        request, ierr)
@@ -255,16 +243,13 @@ contains
         call this%save_request(request, south)
         ! call MPI_Wait(this%north_request, status, ierr)
       end if
-#ifdef ARTLESS
-  print *, "end of put_north in rank", this%rank
-#endif
-    ! call MPI_Finalize(ierr)
-    ! call exit
+
+  ! print *, "end of put_north in rank", this%rank
   end subroutine
 
   module subroutine put_south(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Request) :: request
+      integer :: request
       integer :: start, nx, len, ierr, tag
       type(sendrecv_t) :: sr
       start = lbound(this%local,3)
@@ -315,8 +300,7 @@ contains
 
   module subroutine retrieve_north_halo(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Status) :: status
-      integer :: n, nx, ierr
+      integer :: n, nx, ierr, status(MPI_STATUS_SIZE)
       ! print *, "north start"
       n = ubound(this%local,3)
       nx = size(this%local,1)
@@ -328,8 +312,7 @@ contains
 
   module subroutine retrieve_south_halo(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Status) :: status
-      integer :: start, nx, ierr
+      integer :: start, nx, ierr, status(MPI_STATUS_SIZE)
       ! print *, "south start"
       start = lbound(this%local,3)
       nx = size(this%local,1)
@@ -341,7 +324,7 @@ contains
 
   module subroutine put_east(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Request) :: request
+      integer :: request
       integer :: n, ny, len, ierr, tag
       type(sendrecv_t) :: sr
       n = ubound(this%local,1)
@@ -387,7 +370,7 @@ contains
 
   module subroutine put_west(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Request) :: request
+      integer :: request
       integer :: start, ny, len, ierr, tag
       type(sendrecv_t) :: sr
       start = lbound(this%local,1)
@@ -433,8 +416,7 @@ contains
 
   module subroutine retrieve_east_halo(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Status) :: status
-      integer :: n, ny, ierr
+      integer :: n, ny, ierr, status(MPI_STATUS_SIZE)
 
       n = ubound(this%local,1)
       ny = size(this%local,3)
@@ -445,8 +427,7 @@ contains
 
   module subroutine retrieve_west_halo(this)
       class(exchangeable_t), intent(inout) :: this
-      type(MPI_Status) :: status
-      integer :: start, ny, ierr
+      integer :: start, ny, ierr, status(MPI_STATUS_SIZE)
 
       start = lbound(this%local,1)
       ny = size(this%local,3)

@@ -1,6 +1,6 @@
 !#define ARTLESSPRINT
 submodule(domain_interface) domain_implementation
-  use mpi_f08, only : MPI_COMM_WORLD, MPI_Barrier, MPI_Comm_size, &
+  use mpi, only : MPI_COMM_WORLD, MPI_Barrier, MPI_Comm_size, &
                       MPI_Comm_rank
   use assertions_interface, only : assert,assertions
   use iso_fortran_env, only : error_unit
@@ -32,7 +32,7 @@ contains
                     write(*,*) input(::xstep,j)
                 enddo
             endif
-            call MPI_Barrier(MPI_COMM_WORLD)
+            call MPI_Barrier(MPI_COMM_WORLD, ierr)
         end do
 
     end subroutine print_in_image_order
@@ -461,11 +461,12 @@ contains
 
     module subroutine halo_send(this)
       class(domain_t), intent(inout) :: this
+      integer :: ierr
 #ifdef ARTLESSPRINT
       print *, "%%water_vapor_send"
 #endif
       call this%water_vapor%send()
-      call MPI_Barrier(MPI_COMM_WORLD)
+      call MPI_Barrier(MPI_COMM_WORLD, ierr)
 ! #ifdef ARTLESSPRINT
 !       print *, "%%potential%send"
 ! #endif
