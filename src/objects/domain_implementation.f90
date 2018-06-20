@@ -534,15 +534,14 @@ contains
       class(domain_t), intent(inout) :: this
       print *, "====HALO EXCHANGE===="
       call this%water_vapor%exchange()
-      ! call this%water_vapor%send()
-      ! call this%potential_temperature%send()
-      ! call this%cloud_water_mass%send()
-      ! call this%cloud_ice_mass%send()
-      ! call this%cloud_ice_number%send()
-      ! call this%rain_mass%send()
-      ! call this%rain_number%send()
-      ! call this%snow_mass%send()
-      ! call this%graupel_mass%send()
+      call this%potential_temperature%exchange()
+      call this%cloud_water_mass%exchange()
+      call this%cloud_ice_mass%exchange()
+      call this%cloud_ice_number%exchange()
+      call this%rain_mass%exchange()
+      call this%rain_number%exchange()
+      call this%snow_mass%exchange()
+      call this%graupel_mass%exchange()
 
       ! call this%water_vapor%retrieve()
       ! call this%potential_temperature%retrieve(no_sync=.True.)
