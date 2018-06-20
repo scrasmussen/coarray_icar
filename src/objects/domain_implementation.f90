@@ -532,7 +532,7 @@ contains
 
     module subroutine halo_exchange(this)
       class(domain_t), intent(inout) :: this
-      print *, "====HALO EXCHANGE===="
+      ! print *, "====HALO EXCHANGE===="
       call this%water_vapor%exchange()
       call this%potential_temperature%exchange()
       call this%cloud_water_mass%exchange()

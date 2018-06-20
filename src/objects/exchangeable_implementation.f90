@@ -582,9 +582,36 @@ contains
     end subroutine
 
     module subroutine exchange_west(this)
-        implicit none
-        class(exchangeable_t), intent(inout) :: this
-        print *, "########## EXCHANGE NOT IMPLEMENTED YET ##########"
+      implicit none
+      class(exchangeable_t), intent(inout) :: this
+      integer :: send_request, recv_request
+      integer :: start, n, ny, len, ierr, tag
+      type(sendrecv_t) :: sr
+      start = lbound(this%local,1)
+      ny = size(this%local,3)
+
+      !dir$ pgas defer_sync
+      ! this%halo_east_in(1:halo_size,:,1:ny)[west_neighbor] = this%local(start+halo_size:start+halo_size*2-1,:,:)
+      len = size(this%halo_east_in(1:halo_size,:,1:ny))
+
+      if (.not. this%west_boundary) then ! send to west_neighbor
+        call this%get_tag(sr%send, this%rank, west_neighbor, tag)
+        call MPI_Isend(this%local(start+halo_size:start+halo_size*2-1,:,:), &
+                       len, MPI_Real, west_neighbor-1, tag, &
+                       MPI_COMM_WORLD, send_request, ierr)
+        if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Isend***** 456", ierr
+      end if
+      if (.not. this%east_boundary) then ! get from east_neighbor
+        call this%get_tag(sr%recv, this%rank, east_neighbor, tag)
+        call MPI_Irecv(this%halo_east_in(1:halo_size,:,1:ny), len, &
+                       MPI_Real, east_neighbor-1, tag, MPI_COMM_WORLD, &
+                       recv_request, ierr)
+        if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 470", ierr
+      end if
+
+      !! ADD retrieve_east_halo
+      n = ubound(this%local,1)
+      this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
     end subroutine
 
 end submodule
