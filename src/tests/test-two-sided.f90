@@ -45,11 +45,10 @@ program main
     do i=1,1 !200
         ! note should this be wrapped into the domain object(?)
         call microphysics(domain, dt = 20.0, halo=1)
-        print *, "ARTLESS: HALO_SEND"
-        call domain%halo_send()
-        ! call microphysics(domain, dt = 20.0, subset=1)
-        ! print *, "ARTLESS: HALO_RETRV"
-        call domain%halo_retrieve()
+        call microphysics(domain, dt = 20.0, subset=1)
+        call domain%halo_exchange()
+        ! call domain%halo_send()
+        ! call domain%halo_retrieve()
         ! print *, "ARTLESS: IEVE OVER"
 
         ! call domain%advect(dt = 1.0)

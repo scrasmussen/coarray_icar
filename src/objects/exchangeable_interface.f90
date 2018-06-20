@@ -51,6 +51,10 @@ module exchangeable_interface
     procedure, public :: save_request
     procedure, public :: get_tag
 
+    procedure :: exchange_north
+    procedure :: exchange_south
+    procedure :: exchange_west
+    procedure :: exchange_east
     procedure :: put_north
     procedure :: put_south
     procedure :: put_west
@@ -140,6 +144,26 @@ module exchangeable_interface
     end subroutine
 
     module subroutine retrieve_west_halo(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine exchange_north(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine exchange_south(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine exchange_east(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine exchange_west(this)
         implicit none
         class(exchangeable_t), intent(inout) :: this
     end subroutine

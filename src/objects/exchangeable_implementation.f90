@@ -141,17 +141,20 @@ contains
   module subroutine exchange(this) ! ARTLESS: TODO CHANGE THIS
     class(exchangeable_t), intent(inout) :: this
     integer :: ierr
-    call this%put_north
-    call this%put_south
-    call this%put_east
-    call this%put_west
-    print *, "======++THIS SHOULD NOT BE TOUCHED++++======="
-    if (.not. this%north_boundary) call this%retrieve_north_halo
-    if (.not. this%south_boundary) call this%retrieve_south_halo
-    if (.not. this%east_boundary)  call this%retrieve_east_halo
-    if (.not. this%west_boundary)  call this%retrieve_west_halo
 
-    call MPI_Barrier(MPI_Comm_world,ierr)
+    call this%exchange_north
+
+    ! call this%put_north
+    ! call this%put_south
+    ! call this%put_east
+    ! call this%put_west
+    ! print *, "======++THIS SHOULD NOT BE TOUCHED++++======="
+    ! if (.not. this%north_boundary) call this%retrieve_north_halo
+    ! if (.not. this%south_boundary) call this%retrieve_south_halo
+    ! if (.not. this%east_boundary)  call this%retrieve_east_halo
+    ! if (.not. this%west_boundary)  call this%retrieve_west_halo
+
+    ! call MPI_Barrier(MPI_Comm_world,ierr)
   end subroutine
 
   module subroutine save_request(this, request, direction)
@@ -194,10 +197,6 @@ contains
       integer :: mpir, tag, status(MPI_STATUS_SIZE)
       type(sendrecv_t) :: sr
       real :: r
-
-      ! ARTLESS
-      print*, this%rank-1, "BOUNDARIES NESW:", this%north_boundary,this%east_boundary,this%south_boundary,this%west_boundary
-
 
       n = ubound(this%local,3)
       nx = size(this%local,1)
@@ -440,5 +439,75 @@ contains
       if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 496", ierr
       this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
   end subroutine
+
+    module subroutine exchange_north(this)
+      implicit none
+      class(exchangeable_t), intent(inout) :: this
+      integer :: send_request, recv_request
+      integer :: start, n, nx, len, ierr
+      integer :: mpir, tag, status(MPI_STATUS_SIZE)
+      type(sendrecv_t) :: sr
+
+      n = ubound(this%local,3)
+      nx = size(this%local,1)
+
+#ifdef ARTLESS
+      if (size(this%local(:,:,n-halo_size*2+1:n-halo_size)) .NE. &
+          size(this%halo_south_in(:nx,:,1:halo_size))) then
+        print*, "ERROR: the number of elements in send and recv arrays differs"
+      end if
+#endif
+
+      !dir$ pgas defer_sync
+      ! this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+
+      len = size(this%local(:,:,n-halo_size*2+1:n-halo_size))
+      if (.not. this%north_boundary) then ! send to north_neighbor
+        call this%get_tag(sr%send, this%rank, north_neighbor, tag)
+        print *, "~~~~~MPI_send:",this%rank-1,"to north wit tag ",tag
+        call MPI_Isend(this%local(:,:,n-halo_size*2+1:n-halo_size), &
+                       len, MPI_Real, north_neighbor-1, tag, &
+                       MPI_COMM_WORLD, send_request, ierr)
+        if (ierr .ne. 0) print *, this%rank-1,":*****ERROR MPI_Isend***** 285", ierr
+      end if
+      if (.not. this%south_boundary) then ! get from south_neighbor
+        call this%get_tag(sr%recv, this%rank, south_neighbor, tag)
+        print *, "~~~~~MPI_recv:",this%rank-1,"from south wit tag ",tag
+        call MPI_Irecv(this%halo_south_in(:nx,:,1:halo_size), len, &
+                       MPI_Real, south_neighbor-1, tag, MPI_COMM_WORLD, &
+                       recv_request, ierr)
+        if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 296", ierr
+      end if
+
+      ! Wait for complete of exchange
+      if (.not. this%north_boundary) then ! send to north_neighbor
+        call MPI_Wait(send_request, status, ierr)
+      end if
+      if (.not. this%south_boundary) then ! get from south_neighbor
+        call MPI_Wait(recv_request, status, ierr)
+      end if
+      call MPI_Barrier(MPI_COMM_WORLD, ierr)
+
+      if (.not. this%south_boundary) then ! get from south_neighbor
+        this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
+        start = lbound(this%local,3)
+        this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      end if
+    end subroutine
+
+    module subroutine exchange_south(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine exchange_east(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine exchange_west(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
 
 end submodule
