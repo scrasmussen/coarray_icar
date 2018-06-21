@@ -1,6 +1,3 @@
-#define ARTLESSISEND 1
-#define ARTLESSNORTHSOUTH 1
-#define ARTLESSEASTWEST 1
 submodule(exchangeable_interface) exchangeable_implementation
   use mpi, only : MPI_Comm_rank, MPI_Barrier, &
                       MPI_STATUSES_IGNORE, MPI_COMM_WORLD, MPI_STATUS_SIZE, &
@@ -69,7 +66,9 @@ contains
         east_neighbor  = me + 1
         west_neighbor  = me - 1
 
+#ifdef DEBUG
         print *, this%rank, ":north=",north_neighbor, "south=",south_neighbor,"east=",east_neighbor,"west=",west_neighbor
+#endif
 
         n_neighbors = merge(0,1,this%south_boundary)  &
                      +merge(0,1,this%north_boundary)  &
@@ -110,10 +109,8 @@ contains
     class(exchangeable_t), intent(inout) :: this
     call this%put_north
     call this%put_south
-#ifdef ARTLESSEASTWEST
     call this%put_east
     call this%put_west
-#endif
   end subroutine
 
   module subroutine retrieve(this, no_sync)
@@ -123,11 +120,8 @@ contains
 
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
-    print *, "======AFTER RETRIEVALS======="
-#ifdef ARTLESSEASTWEST
     if (.not. this%east_boundary) call this%retrieve_east_halo
     if (.not. this%west_boundary) call this%retrieve_west_halo
-#endif
 
     if (.not. present(no_sync)) then
         call MPI_Barrier(MPI_COMM_WORLD, ierr)
@@ -138,26 +132,16 @@ contains
     endif
   end subroutine
 
-  module subroutine exchange(this) ! ARTLESS: TODO CHANGE THIS
+  module subroutine exchange(this)
     class(exchangeable_t), intent(inout) :: this
     integer :: ierr
 
     call this%exchange_north
     call this%exchange_south
     call this%exchange_east
-    call this%exchange_west ! ARTLESS: not implemented yet
+    call this%exchange_west
 
-    ! call this%put_north
-    ! call this%put_south
-    ! call this%put_east
-    ! call this%put_west
-    ! print *, "======++THIS SHOULD NOT BE TOUCHED++++======="
-    ! if (.not. this%north_boundary) call this%retrieve_north_halo
-    ! if (.not. this%south_boundary) call this%retrieve_south_halo
-    ! if (.not. this%east_boundary)  call this%retrieve_east_halo
-    ! if (.not. this%west_boundary)  call this%retrieve_west_halo
-
-    ! call MPI_Barrier(MPI_Comm_world,ierr)
+    call MPI_Barrier(MPI_Comm_world,ierr)
   end subroutine
 
   module subroutine save_request(this, request, direction)
@@ -216,7 +200,7 @@ contains
       end if
 
 
-#ifdef ARTLESS
+#ifdef DEBUG
       if (size(this%local(:,:,n-halo_size*2+1:n-halo_size)) .NE. &
           size(this%halo_south_in(:nx,:,1:halo_size))) then
         print*, "ERROR: the number of elements in send and recv arrays differs"
@@ -225,13 +209,10 @@ contains
 
       !dir$ pgas defer_sync
       ! this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
-      ! print *, "@@@@@@@@@@@@@BEFORE NORTH ISEND?RECV@@@@@@@@", this%north_boundary, this%south_boundary
       len = size(this%local(:,:,n-halo_size*2+1:n-halo_size))
       if (.not. this%north_boundary) then ! send to north_neighbor
         len = size(this%local(:,:,n-halo_size*2+1:n-halo_size))
         call this%get_tag(sr%send, this%rank, north_neighbor, tag)
-
-        print *, "~~~~~MPI_Isend:",this%rank-1,"to north wit tag ",tag
         call MPI_Isend(this%local(:,:,n-halo_size*2+1:n-halo_size), &
                        len, MPI_Real, north_neighbor-1, tag, &
                        MPI_COMM_WORLD, request, ierr)
@@ -240,16 +221,13 @@ contains
       if (.not. this%south_boundary) then ! get from south_neighbor
         len = size(this%halo_south_in(:nx,:,1:halo_size))
         call this%get_tag(sr%recv, this%rank, south_neighbor, tag)
-        print *, "~~~~~MPI_Irecv:",this%rank-1,"from south wit tag ",tag
         call MPI_Irecv(this%halo_south_in(:nx,:,1:halo_size), len, &
                        MPI_Real, south_neighbor-1, tag, MPI_COMM_WORLD, &
                        request, ierr)
         if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 296", ierr
         call this%save_request(request, south)
-        ! call MPI_Wait(this%north_request, status, ierr)
       end if
 
-  ! print *, "end of put_north in rank", this%rank
   end subroutine
 
   module subroutine put_south(this)
@@ -273,13 +251,7 @@ contains
       !dir$ pgas defer_sync
       ! this%halo_north_in(1:nx,:,1:halo_size)[south_neighbor] = this%local(:,:,start+halo_size:start+halo_size*2-1)
       len = size(this%halo_north_in(1:nx,:,1:halo_size))
-#ifdef ARTLESS
-      print *, this%rank, ": PUT_SOUTH, len =", len
-#endif
       if (.not. this%south_boundary) then ! send to south_neighbor
-#ifdef ARTLESSISEND
-        print *, "MPI_Isend:",this%rank-1,"to south",south_neighbor - 1
-#endif
         call this%get_tag(sr%send, this%rank, south_neighbor, tag)
         call MPI_Isend(this%local(:,:,start+halo_size:start+halo_size*2-1), &
                        len, MPI_Real, south_neighbor-1, tag, &
@@ -287,9 +259,6 @@ contains
         if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Isend***** 338", ierr
       end if
       if (.not. this%north_boundary) then ! get from north_neighbor
-#ifdef ARTLESSISEND
-        print *, "MPI_Irecv:",this%rank-1,"from north",north_neighbor - 1
-#endif
         call this%get_tag(sr%recv, this%rank, north_neighbor, tag)
         call MPI_Irecv(this%halo_north_in(1:nx,:,1:halo_size), len, &
                        MPI_Real, north_neighbor-1, tag, MPI_COMM_WORLD, &
@@ -297,36 +266,28 @@ contains
         call this%save_request(request, north)
         if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 350", ierr
       end if
-
-#ifdef ARTLESS
-      print *, this%rank, ": end PUT_SOUTH"
-#endif
   end subroutine
 
   module subroutine retrieve_north_halo(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: n, nx, ierr, status(MPI_STATUS_SIZE)
-      ! print *, "north start"
+
       n = ubound(this%local,3)
       nx = size(this%local,1)
-      print *, this%rank, ": has north_request", this%north_request
       call MPI_Wait(this%north_request, status, ierr)
       if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 366", ierr
       this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
-      print *, "retrieve_north_halo complete for north_neighbor", north_neighbor
   end subroutine
 
   module subroutine retrieve_south_halo(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: start, nx, ierr, status(MPI_STATUS_SIZE)
-      ! print *, "south start"
+
       start = lbound(this%local,3)
       nx = size(this%local,1)
-      print *, this%rank, ": has south_request", this%south_request
       call MPI_Wait(this%south_request, status, ierr)
       if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 379", ierr
       this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
-      print *, "retrieve_south_halo complete for south_neighbor", south_neighbor
   end subroutine
 
   module subroutine put_east(this)
@@ -354,9 +315,6 @@ contains
       len = size(this%halo_west_in(1:halo_size,:,1:ny))
       if (.not. this%east_boundary) then ! send to east_neighbor
         call this%get_tag(sr%send, this%rank, east_neighbor, tag)
-#ifdef ARTLESSISEND
-        print *, "MPI_Isend:",this%rank-1,"to east",east_neighbor - 1, "tag", tag
-#endif
         call MPI_Isend(this%local(n-halo_size*2+1:n-halo_size,:,:), &
                        len, MPI_Real, east_neighbor-1, tag, &
                        MPI_COMM_WORLD, request, ierr)
@@ -364,9 +322,6 @@ contains
       end if
       if (.not. this%west_boundary) then ! get from west_neighbor
         call this%get_tag(sr%recv, this%rank, west_neighbor, tag)
-#ifdef ARTLESSISEND
-        print *, "MPI_Irecv:",this%rank-1,"from west",west_neighbor - 1, "tag", tag
-#endif
         call MPI_Irecv(this%halo_west_in(1:halo_size,:,1:ny), len, &
                        MPI_Real, west_neighbor-1, tag, MPI_COMM_WORLD, &
                        request, ierr)
@@ -400,9 +355,6 @@ contains
       len = size(this%halo_east_in(1:halo_size,:,1:ny))
       if (.not. this%west_boundary) then ! send to west_neighbor
         call this%get_tag(sr%send, this%rank, west_neighbor, tag)
-#ifdef ARTLESSISEND
-        print *, "MPI_Isend:",this%rank-1,"to west",west_neighbor - 1, "tag", tag
-#endif
         call MPI_Isend(this%local(start+halo_size:start+halo_size*2-1,:,:), &
                        len, MPI_Real, west_neighbor-1, tag, &
                        MPI_COMM_WORLD, request, ierr)
@@ -410,9 +362,6 @@ contains
       end if
       if (.not. this%east_boundary) then ! get from east_neighbor
         call this%get_tag(sr%recv, this%rank, east_neighbor, tag)
-#ifdef ARTLESSISEND
-        print *, "MPI_Irecv:",this%rank-1,"from east",east_neighbor - 1, "tag", tag
-#endif
         call MPI_Irecv(this%halo_east_in(1:halo_size,:,1:ny), len, &
                        MPI_Real, east_neighbor-1, tag, MPI_COMM_WORLD, &
                        request, ierr)
@@ -454,7 +403,7 @@ contains
       n = ubound(this%local,3)
       nx = size(this%local,1)
 
-#ifdef ARTLESS
+#ifdef DEBUG
       if (size(this%local(:,:,n-halo_size*2+1:n-halo_size)) .NE. &
           size(this%halo_south_in(:nx,:,1:halo_size))) then
         print*, "ERROR: the number of elements in send and recv arrays differs"
@@ -467,7 +416,6 @@ contains
       len = size(this%local(:,:,n-halo_size*2+1:n-halo_size))
       if (.not. this%north_boundary) then ! send to north_neighbor
         call this%get_tag(sr%send, this%rank, north_neighbor, tag)
-        ! print *, "~~~~~MPI_send:",this%rank-1,"to north wit tag ",tag
         call MPI_Isend(this%local(:,:,n-halo_size*2+1:n-halo_size), &
                        len, MPI_Real, north_neighbor-1, tag, &
                        MPI_COMM_WORLD, send_request, ierr)
@@ -475,7 +423,6 @@ contains
       end if
       if (.not. this%south_boundary) then ! get from south_neighbor
         call this%get_tag(sr%recv, this%rank, south_neighbor, tag)
-        ! print *, "~~~~~MPI_recv:",this%rank-1,"from south wit tag ",tag
         call MPI_Irecv(this%halo_south_in(:nx,:,1:halo_size), len, &
                        MPI_Real, south_neighbor-1, tag, MPI_COMM_WORLD, &
                        recv_request, ierr)
@@ -609,7 +556,6 @@ contains
         if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 470", ierr
       end if
 
-      !! ADD retrieve_east_halo
       n = ubound(this%local,1)
       this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
     end subroutine
