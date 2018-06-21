@@ -3683,15 +3683,12 @@
       endif
 
       call MPI_Barrier(MPI_COMM_WORLD, ierr)
-      print *, "Broadcast of good"
       call MPI_Bcast(good, 1, MPI_Integer, 0, MPI_COMM_WORLD, ierr)
 
       if (good.eq.1) then
           !! this send_count is the size of
           !! tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, tnr_racg, tnr_gacr
-          !! ARTLESS
           send_count = ntb_g1 * ntb_g * ntb_r1 * ntb_r
-          print *, "Broadcast of others with send_count = ", send_count
           call MPI_Bcast(tcg_racg, send_count, MPI_REAL8, 0, &
                          MPI_COMM_WORLD, ierr)
           call MPI_Bcast(tmr_racg, send_count, MPI_REAL8, 0, &
