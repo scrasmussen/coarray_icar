@@ -1,4 +1,3 @@
-#define ARTLESSPRINT
 submodule(domain_interface) domain_implementation
   use mpi, only : MPI_COMM_WORLD, MPI_Barrier, MPI_Comm_size, &
                       MPI_Comm_rank
@@ -462,77 +461,38 @@ contains
     module subroutine halo_send(this)
       class(domain_t), intent(inout) :: this
       integer :: ierr
-#ifdef ARTLESSPRINT
-      print *, "%%water_vapor_send"
-#endif
+
       call this%water_vapor%send()
-#ifdef ARTLESSPRINT
-      print *, "%%potential%send"
-#endif
-      call MPI_Barrier(MPI_COMM_WORLD, ierr)
       call this%potential_temperature%send()
-#ifdef ARTLESSPRINT
-      print *, "%%clout_water%send"
-#endif
-      ! call MPI_Barrier(MPI_COMM_WORLD, ierr)
       call this%cloud_water_mass%send()
-! #ifdef ARTLESSPRINT
-!       print *, "%%cloud_ice_mass%send"
-! #endif
-!       call this%cloud_ice_mass%send()
-! #ifdef ARTLESSPRINT
-!       print *, "%%clout_ice_number%send"
-! #endif
-!       call this%cloud_ice_number%send()
-! #ifdef ARTLESSPRINT
-!       print *, "%%rain_mass%send"
-! #endif
-!       call this%rain_mass%send()
-! #ifdef ARTLESSPRINT
-!       print *, "%%rain_number%send"
-! #endif
-!       call this%rain_number%send()
-! #ifdef ARTLESSPRINT
-!       print *, "%%snow_mass%send"
-! #endif
-!       call this%snow_mass%send()
-! #ifdef ARTLESSPRINT
-!       print *, "%%graupel_mass%send"
-! #endif
-!       call this%graupel_mass%send()
+      call this%cloud_ice_mass%send()
+      call this%cloud_ice_number%send()
+      call this%rain_mass%send()
+      call this%rain_number%send()
+      call this%snow_mass%send()
+      call this%graupel_mass%send()
     end subroutine
 
     module subroutine halo_retrieve(this)
       class(domain_t), intent(inout) :: this
       integer :: rank, ierr
       call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
-  print *,rank," %%%%%%1%retrive()"
+      call MPI_Barrier(MPI_COMM_WORLD, ierr)
       call this%water_vapor%retrieve()
-      call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  print *,rank," %%%%%%2%retrive()" ! ARTLESS
-      ! call this%potential_temperature%retrieve(no_sync=.False.)
       call this%potential_temperature%retrieve(no_sync=.True.)
+      call this%cloud_water_mass%retrieve(no_sync=.True.)
+      call this%cloud_ice_mass%retrieve(no_sync=.True.)
+      call this%cloud_ice_number%retrieve(no_sync=.True.)
+      call this%rain_mass%retrieve(no_sync=.True.)
+      call this%rain_number%retrieve(no_sync=.True.)
+      call this%snow_mass%retrieve(no_sync=.True.)
+      call this%graupel_mass%retrieve(no_sync=.True.)
       call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  ! print *,rank," %%%%%%3%retrive()"
-      ! call this%cloud_water_mass%retrieve(no_sync=.False.)
-      ! call this%cloud_water_mass%retrieve(no_sync=.True.)
-  ! print *,rank," %%%%%%4%retrive()"
-  !     call this%cloud_ice_mass%retrieve(no_sync=.True.)
-  ! print *,rank," %%%%%%5%retrive()"
-  !     call this%cloud_ice_number%retrieve(no_sync=.True.)
-  ! print *,rank," %%%%%%6%retrive()"
-  !     call this%rain_mass%retrieve(no_sync=.True.)
-  ! print *,rank," %%%%%%7%retrive()"
-  !     call this%rain_number%retrieve(no_sync=.True.)
-  ! print *,rank," %%%%%%8%retrive()"
-  !     call this%snow_mass%retrieve(no_sync=.True.)
-  ! print *,rank," %%%%%%9%retrive()"
-  !     call this%graupel_mass%retrieve(no_sync=.True.)
     end subroutine
 
     module subroutine halo_exchange(this)
       class(domain_t), intent(inout) :: this
-      ! print *, "====HALO EXCHANGE===="
+
       call this%water_vapor%exchange()
       call this%potential_temperature%exchange()
       call this%cloud_water_mass%exchange()
@@ -542,16 +502,6 @@ contains
       call this%rain_number%exchange()
       call this%snow_mass%exchange()
       call this%graupel_mass%exchange()
-
-      ! call this%water_vapor%retrieve()
-      ! call this%potential_temperature%retrieve(no_sync=.True.)
-      ! call this%cloud_water_mass%retrieve(no_sync=.True.)
-      ! call this%cloud_ice_mass%retrieve(no_sync=.True.)
-      ! call this%cloud_ice_number%retrieve(no_sync=.True.)
-      ! call this%rain_mass%retrieve(no_sync=.True.)
-      ! call this%rain_number%retrieve(no_sync=.True.)
-      ! call this%snow_mass%retrieve(no_sync=.True.)
-      ! call this%graupel_mass%retrieve(no_sync=.True.)
     end subroutine
 
     subroutine upwind(q, u,v,w, dt)
