@@ -107,6 +107,7 @@ contains
 
   module subroutine send(this)
     class(exchangeable_t), intent(inout) :: this
+    print *, "WARNING: send is not yet implemented"
     call this%put_north
     call this%put_south
     call this%put_east
@@ -117,7 +118,7 @@ contains
     class(exchangeable_t), intent(inout) :: this
     logical,               intent(in),   optional :: no_sync
     integer :: ierr
-
+    print *, "WARNING: retrieve is not yet implemented"
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
     if (.not. this%east_boundary) call this%retrieve_east_halo
@@ -181,9 +182,8 @@ contains
       class(exchangeable_t), intent(inout) :: this
       integer :: request
       integer :: n, nx, len, ierr
-      integer :: mpir, tag, status(MPI_STATUS_SIZE)
+      integer :: tag, status(MPI_STATUS_SIZE)
       type(sendrecv_t) :: sr
-      real :: r
 
       n = ubound(this%local,3)
       nx = size(this%local,1)
@@ -397,7 +397,7 @@ contains
       class(exchangeable_t), intent(inout) :: this
       integer :: send_request, recv_request
       integer :: start, n, nx, len, ierr
-      integer :: mpir, tag, status(MPI_STATUS_SIZE)
+      integer :: tag, status(MPI_STATUS_SIZE)
       type(sendrecv_t) :: sr
 
       n = ubound(this%local,3)
@@ -449,8 +449,8 @@ contains
       implicit none
       class(exchangeable_t), intent(inout) :: this
       integer :: send_request, recv_request
-      integer :: start, n, nx, len, ierr
-      integer :: mpir, tag, status(MPI_STATUS_SIZE)
+      integer :: start, nx, len, ierr
+      integer :: tag, status(MPI_STATUS_SIZE)
       type(sendrecv_t) :: sr
       start = lbound(this%local,3)
       nx = size(this%local,1)
