@@ -13,14 +13,16 @@ program main
   call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
   rank = rank + 1
   if (rank==1) print *,"Number of images = ", num_ranks
+  print *,"I am rank ", rank
 
   block
     type(domain_t), save :: domain
     integer :: i,nz, ypos,xpos
     type(timer_t) :: timer
 
+
     if (rank==1) print *,rank, &
-                 "domain%initialize_from_file('input-parameters.txt')"
+         "domain%initialize_from_file('input-parameters.txt')"
     call domain%initialize_from_file('input-parameters.txt')
 
     if (rank==1) then
@@ -42,16 +44,17 @@ program main
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
     call timer%start()
-    do i=1,20 !200
+    do i=1,200
+        ! print *, "!!!!!!!!!!!!!!!!!!!!i = ", i
         ! note should this be wrapped into the domain object(?)
         call microphysics(domain, dt = 20.0, halo=1)
         call microphysics(domain, dt = 20.0, subset=1)
         call domain%halo_exchange()
-        ! call domain%halo_send()
-        ! call domain%halo_retrieve()
-
+        ! ! call domain%halo_send()
+        ! ! call domain%halo_retrieve()
+        ! if (rank==1) print*, "predomain%advect"
         call domain%advect(dt = 1.0)
-
+        ! if (rank==1) print*, "postdomain%advect"
         ! if (this_image()==(num_images()/2)) then
         !     print*, domain%accumulated_precipitation(::3,ypos)
         ! endif
