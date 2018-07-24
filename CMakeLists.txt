@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.9)
 # Set the type/configuration of build to perform
 set ( CMAKE_CONFIGURATION_TYPES "Debug" "Release" "MinSizeRel" "RelWithDebInfo" )
 set ( CMAKE_BUILD_TYPE "Release"
@@ -44,12 +44,13 @@ if (NOT "${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU|Intel|Cray" )
 endif()
 
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
-  if (DISTRIBUTED)
+#[[  if (DISTRIBUTED)
     set(coarray_flags "-coarray=distributed")
   else()
     set(coarray_flags "-coarray=shared")
   endif()
-  message(STATUS "Compiling with ${coarray_flags}")
+  message(STATUS "Compiling with ${coarray_flags}") ]]
+  set(coarray_flags "")
 endif()
 
 set(CMAKE_Fortran_FLAGS_DEBUG "${coarray_flags} ${CMAKE_Fortran_FLAGS_DEBUG}")
@@ -60,15 +61,6 @@ set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${coarray_flags} ${CMAKE_Fortran_FLAGS_R
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod)
 
 include(CheckFortranSourceCompiles)
-check_fortran_source_compiles("
-  program main
-    implicit none
-    integer :: i[*]
-    i = this_image()
-  end program
-" Check_Simple_Coarray_Fortran_Source_Compiles
-  SRC_EXT ".f90")
-
 check_fortran_source_compiles("
   program main
   contains
@@ -104,6 +96,8 @@ enable_testing()
 set(test_dir "${CMAKE_BINARY_DIR}/src/tests")
 include( ProcessorCount )
 ProcessorCount(NUM_IMAGES)
+
+
 function(add_caf_test name num_caf_img test_target)
   # Function to add MPI tests.
   if(TARGET ${test_target})
@@ -142,4 +136,4 @@ function(add_caf_test name num_caf_img test_target)
   set_property(TEST ${name} PROPERTY PASS_REGULAR_EXPRESSION "Test passed.")
 endfunction(add_caf_test)
 
-add_caf_test(test-ideal 4 test-ideal)
+# add_caf_test(test-ideal 4 test-ideal)

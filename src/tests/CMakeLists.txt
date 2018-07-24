@@ -1,5 +1,6 @@
 include_directories(${CMAKE_BINARY_DIR}/mod)
 
+set_source_files_properties(test-two-sided.f90 PROPERTIES LANGUAGE Fortran)
 add_executable(test-mpi
   test-two-sided.f90
   ../objects/domain_implementation.f90
