@@ -4,15 +4,18 @@ program main
   use assertions_interface, only : assert
   use module_mp_driver, only: microphysics
   use timer_interface, only: timer_t
-  use mpi, only: MPI_COMM_WORLD, MPI_Comm_rank, MPI_Comm_size
+  use mpi, only: MPI_COMM_WORLD, MPI_MAX_PROCESSOR_NAME, MPI_Comm_rank, MPI_Comm_size
   implicit none
 
-  integer :: num_ranks, rank, ierr
+  integer :: num_ranks, rank, ierr, reslen
+  character*(MPI_MAX_PROCESSOR_NAME) name
+
   call MPI_Init(ierr)
   call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD, num_ranks, ierr)
+  call MPI_Get_processor_name(name, reslen, ierr)
   rank = rank + 1
-  if (rank==1) print *,"Number of images = ", num_ranks
+  if (rank==1) print *,"Number of images = ", num_ranks, "on machine", name
   print *,"I am rank ", rank
 
   block
@@ -40,18 +43,19 @@ program main
     ! initialize microphysics before starting the timer
     call microphysics(domain, dt = 20.0)
     if (rank==1) print*, ""
-    if (rank==1) print*, "Beginning simulation..."
+    if (rank==1) print*, "Beginning simulation...  ARTLESS" 
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
     call timer%start()
-    do i=1,200
-        ! print *, "!!!!!!!!!!!!!!!!!!!!i = ", i
+    do i=1,20 !200
+        ! if (rank==1) print *, "!!!!!!!!!!!!!!!!!!!!i = ", i
         ! note should this be wrapped into the domain object(?)
         call microphysics(domain, dt = 20.0, halo=1)
-        call microphysics(domain, dt = 20.0, subset=1)
         call domain%halo_exchange()
         ! ! call domain%halo_send()
-        ! ! call domain%halo_retrieve()
+        call microphysics(domain, dt = 20.0, subset=1)
+        call domain%halo_retrieve()
+
         ! if (rank==1) print*, "predomain%advect"
         call domain%advect(dt = 1.0)
         ! if (rank==1) print*, "postdomain%advect"
