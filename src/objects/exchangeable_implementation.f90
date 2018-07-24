@@ -168,9 +168,9 @@ contains
     integer, intent(out) :: tag
 
     if (sendrecv == 0) then !send
-      tag = from * 10 + to
+      tag = from * 10000 + to
     else if (sendrecv == 1) then !recv
-      tag = to * 10 + from
+      tag = to * 10000 + from
     else
       print *, "ERROR in get_tag: sendrecv out of bounds"
       tag = -1
@@ -467,6 +467,7 @@ contains
       end if
       if (.not. this%north_boundary) then ! get from north_neighbor
         call this%get_tag(sr%recv, this%rank, north_neighbor, tag)
+        ! print *, this%rank, ": tag =", tag, "nx=",nx,"halo_size=",halo_size,"len",len
         call MPI_Irecv(this%halo_north_in(1:nx,:,1:halo_size), len, &
                        MPI_Real, north_neighbor-1, tag, MPI_COMM_WORLD, &
                        recv_request, ierr)
