@@ -118,19 +118,20 @@ contains
     class(exchangeable_t), intent(inout) :: this
     logical,               intent(in),   optional :: no_sync
     integer :: ierr
-    print *, "WARNING: retrieve is not yet implemented"
+    ! print *, "WARNING: retrieve is not yet implemented"
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
     if (.not. this%east_boundary) call this%retrieve_east_halo
     if (.not. this%west_boundary) call this%retrieve_west_halo
 
-    if (.not. present(no_sync)) then
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
-    else
-        if (.not. no_sync) then
-            call MPI_Barrier(MPI_COMM_WORLD, ierr)
-        endif
-    endif
+    call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    ! if (.not. present(no_sync)) then
+    !     call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    ! else
+    !     if (.not. no_sync) then
+    !         call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    !     endif
+    ! endif
   end subroutine
 
   module subroutine exchange(this)
@@ -271,23 +272,35 @@ contains
   module subroutine retrieve_north_halo(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: n, nx, ierr, status(MPI_STATUS_SIZE)
-
       n = ubound(this%local,3)
       nx = size(this%local,1)
-      call MPI_Wait(this%north_request, status, ierr)
-      if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 366", ierr
-      this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
+      ! if (.not. this%south_boundary) then ! get from south_neighbor
+        this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
+        ! start = lbound(this%local,3)
+        ! this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      ! end if
+
+      ! n = ubound(this%local,3)
+      ! nx = size(this%local,1)
+      ! call MPI_Wait(this%north_request, status, ierr)
+      ! if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 366", ierr
+      ! this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
   end subroutine
 
   module subroutine retrieve_south_halo(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: start, nx, ierr, status(MPI_STATUS_SIZE)
-
       start = lbound(this%local,3)
       nx = size(this%local,1)
-      call MPI_Wait(this%south_request, status, ierr)
-      if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 379", ierr
-      this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      ! if (.not. this%north_boundary) then ! get from south_neighbor
+        this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      ! end if
+
+      ! start = lbound(this%local,3)
+      ! nx = size(this%local,1)
+      ! call MPI_Wait(this%south_request, status, ierr)
+      ! if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 379", ierr
+      ! this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
   end subroutine
 
   module subroutine put_east(this)
@@ -373,23 +386,25 @@ contains
   module subroutine retrieve_east_halo(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: n, ny, ierr, status(MPI_STATUS_SIZE)
-
       n = ubound(this%local,1)
       ny = size(this%local,3)
-      call MPI_Wait(this%east_request, status, ierr)
-      if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 484", ierr
       this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
+
+      ! call MPI_Wait(this%east_request, status, ierr)
+      ! if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 484", ierr
+      ! this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
   end subroutine
 
   module subroutine retrieve_west_halo(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: start, ny, ierr, status(MPI_STATUS_SIZE)
-
       start = lbound(this%local,1)
       ny = size(this%local,3)
-      call MPI_Wait(this%west_request, status, ierr)
-      if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 496", ierr
       this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
+
+      ! call MPI_Wait(this%west_request, status, ierr)
+      ! if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 496", ierr
+      ! this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
   end subroutine
 
     module subroutine exchange_north(this)
@@ -438,11 +453,11 @@ contains
       end if
       call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
-      if (.not. this%south_boundary) then ! get from south_neighbor
-        this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
-        start = lbound(this%local,3)
-        this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
-      end if
+      ! if (.not. this%south_boundary) then ! get from south_neighbor
+      !   this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
+      !   start = lbound(this%local,3)
+      !   this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      ! end if
     end subroutine
 
     module subroutine exchange_south(this)
@@ -483,9 +498,9 @@ contains
       end if
       call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
-      if (.not. this%north_boundary) then ! get from south_neighbor
-        this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
-      end if
+      ! if (.not. this%north_boundary) then ! get from south_neighbor
+      !   this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      ! end if
     end subroutine
 
     module subroutine exchange_east(this)
@@ -526,7 +541,7 @@ contains
       end if
       call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
-      this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
+      ! this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
     end subroutine
 
     module subroutine exchange_west(this)
@@ -557,8 +572,8 @@ contains
         if (ierr .ne. 0) print *, this%rank-1, ":*****ERROR MPI_Irecv***** 470", ierr
       end if
 
-      n = ubound(this%local,1)
-      this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
+      ! n = ubound(this%local,1)
+      ! this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
     end subroutine
 
 end submodule
