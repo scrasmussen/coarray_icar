@@ -99,7 +99,7 @@ executable := test-ideal test-initialization test-timer
 # # Swap .f90 file extensions for .o extensions
 # object_files := $(subst .f90,.o,$(build_source_files))
 
-all: test-ideal
+all: setup test-ideal
 
 tests: test-ideal test-initialization test-timer
 
@@ -233,6 +233,9 @@ $(info $$physics      = ${physics})
 	$(compile) $(comp_flags) -c $< -o $@
 
 .PHONY : clean uninstall install tests all
+
+setup:
+	mkdir -p ${BUILD}
 
 clean :
 	-rm -f  $(BUILD)/*.o $(BUILD)/*.mod $(BUILD)/*.smod $(executable)
