@@ -21,14 +21,24 @@ module exchangeable_interface
     real, allocatable :: halo_west_in(:,:,:)
     real, allocatable :: halo_east_in(:,:,:)
 
-    integer :: north_request
-    integer :: south_request
-    integer :: west_request
-    integer :: east_request
-    ! integer :: north_request = MPI_REQUEST_NULL
-    ! integer :: south_request = MPI_REQUEST_NULL
-    ! integer :: west_request = MPI_REQUEST_NULL
-    ! integer :: east_request = MPI_REQUEST_NULL
+    integer :: send_north_request
+    integer :: send_south_request
+    integer :: send_west_request
+    integer :: send_east_request
+    integer :: recv_north_request
+    integer :: recv_south_request
+    integer :: recv_west_request
+    integer :: recv_east_request
+    integer :: send_north_type = 0
+    integer :: send_south_type = 0
+    integer :: send_west_type  = 0
+    integer :: send_east_type  = 0
+    integer :: recv_north_type = 0
+    integer :: recv_south_type = 0
+    integer :: recv_west_type  = 0
+    integer :: recv_east_type  = 0
+
+
 
     integer :: rank
     integer :: north_tag
@@ -44,21 +54,23 @@ module exchangeable_interface
   contains
     private
     procedure, public :: const
-    procedure, public :: send
     procedure, public :: retrieve
     procedure, public :: exchange
     generic,   public :: initialize=>const
-    procedure, public :: save_request
     procedure, public :: get_tag
 
     procedure :: exchange_north
     procedure :: exchange_south
     procedure :: exchange_west
     procedure :: exchange_east
-    procedure :: put_north
-    procedure :: put_south
-    procedure :: put_west
-    procedure :: put_east
+    procedure :: send_north
+    procedure :: send_south
+    procedure :: send_west
+    procedure :: send_east
+    procedure :: recv_north
+    procedure :: recv_south
+    procedure :: recv_west
+    procedure :: recv_east
     procedure :: retrieve_north_halo
     procedure :: retrieve_south_halo
     procedure :: retrieve_west_halo
@@ -77,11 +89,6 @@ module exchangeable_interface
       integer,               intent(in), optional :: halo_width
     end subroutine
 
-    module subroutine send(this)
-      implicit none
-      class(exchangeable_t), intent(inout) :: this
-    end subroutine
-
     module subroutine retrieve(this, no_sync)
       implicit none
       class(exchangeable_t), intent(inout) :: this
@@ -93,28 +100,11 @@ module exchangeable_interface
       class(exchangeable_t), intent(inout) :: this
     end subroutine
 
-    module subroutine save_request(this, request, direction)
-      implicit none
-      class(exchangeable_t), intent(inout) :: this
-      integer, intent(in) :: request
-      integer, intent(in) :: direction
-    end subroutine
-
     module subroutine get_tag(this, sendrecv, from, to, tag)
       implicit none
       class(exchangeable_t), intent(inout) :: this
       integer, intent(in)  :: sendrecv, from, to
       integer, intent(out) :: tag
-    end subroutine
-
-    module subroutine put_north(this)
-        implicit none
-        class(exchangeable_t), intent(inout) :: this
-    end subroutine
-
-    module subroutine put_south(this)
-        implicit none
-        class(exchangeable_t), intent(inout) :: this
     end subroutine
 
     module subroutine retrieve_north_halo(this)
@@ -123,17 +113,6 @@ module exchangeable_interface
     end subroutine
 
     module subroutine retrieve_south_halo(this)
-        implicit none
-        class(exchangeable_t), intent(inout) :: this
-    end subroutine
-
-
-    module subroutine put_east(this)
-        implicit none
-        class(exchangeable_t), intent(inout) :: this
-    end subroutine
-
-    module subroutine put_west(this)
         implicit none
         class(exchangeable_t), intent(inout) :: this
     end subroutine
@@ -164,6 +143,46 @@ module exchangeable_interface
     end subroutine
 
     module subroutine exchange_west(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine send_north(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine send_south(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine send_east(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine send_west(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine recv_north(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine recv_south(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine recv_east(this)
+        implicit none
+        class(exchangeable_t), intent(inout) :: this
+    end subroutine
+
+    module subroutine recv_west(this)
         implicit none
         class(exchangeable_t), intent(inout) :: this
     end subroutine
