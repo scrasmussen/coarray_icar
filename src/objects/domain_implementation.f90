@@ -462,15 +462,16 @@ contains
       class(domain_t), intent(inout) :: this
       integer :: ierr
 
-      call this%water_vapor%send()
-      call this%potential_temperature%send()
-      call this%cloud_water_mass%send()
-      call this%cloud_ice_mass%send()
-      call this%cloud_ice_number%send()
-      call this%rain_mass%send()
-      call this%rain_number%send()
-      call this%snow_mass%send()
-      call this%graupel_mass%send()
+      print *, "===WARNING: SEND REMOVED==="
+      ! call this%water_vapor%send()
+      ! call this%potential_temperature%send()
+      ! call this%cloud_water_mass%send()
+      ! call this%cloud_ice_mass%send()
+      ! call this%cloud_ice_number%send()
+      ! call this%rain_mass%send()
+      ! call this%rain_number%send()
+      ! call this%snow_mass%send()
+      ! call this%graupel_mass%send()
     end subroutine
 
     module subroutine halo_retrieve(this)
