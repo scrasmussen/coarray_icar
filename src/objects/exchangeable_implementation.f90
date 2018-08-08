@@ -123,9 +123,7 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
     class(exchangeable_t), intent(inout) :: this
     logical,               intent(in),   optional :: no_sync
     integer :: ierr
-    ! print *, "WARNING: retrieve is not yet implemented"
 
-!@@@@#    ARTLESS
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
     if (.not. this%east_boundary) call this%retrieve_east_halo
@@ -282,13 +280,9 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
       integer :: tag, status(MPI_STATUS_SIZE)
       type(sendrecv_t) :: sr
       integer :: starts(3), sizes(3), subsizes(3)
-      integer :: n2, n3, n1, starts2(3) !ARTLESS
 
 
       n = ubound(this%local,3)
-      n1 = ubound(this%local,1)
-      n2 = ubound(this%local,2)
-      n3 = ubound(this%local,3)
       nx = size(this%local,1)
 
 #ifdef DEBUG
@@ -307,21 +301,14 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
       if (this%send_north_type == 0) then 
          sizes = shape(this%local(:,:,:))
          subsizes = shape(this%local(:,:,n-halo_size*2+1:n-halo_size))
-         starts = (/1-1,1-1,n-halo_size*2+1-1/)
-#ifdef ALTSTART
+         ! starts = (/1-1,1-1,n-halo_size*2+1-1/)
          starts = (/1-1,1-1,sizes(3)-halo_size*2+1-1/)
-#endif
 #ifdef DEBUG
          print *, "sendnorth307 rank:", this%rank, "sizes =", sizes, "subsizes =", subsizes, "starts =", starts, " n =", n
-         ! print *, "rank:", this%rank, "n1 = ", n1, "n2 = ", n2, "n3 = ", n3
-         ! print *, this%rank, "::SHAPE=",sizes, "SIZE=", size(this%local)
 #endif
          call MPI_Type_create_subarray(3, sizes, subsizes, &
               starts, MPI_ORDER_FORTRAN, MPI_Real, this%send_north_type, ierr)
          call MPI_Type_commit(this%send_north_type, ierr)
-#ifdef DEBUG
-         print *, "MPI_Type_create_subarray succes 307"
-#endif
       end if
       
       call MPI_Isend(this%local, &
@@ -360,12 +347,9 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
          call MPI_Type_create_subarray(3,sizes,subsizes,starts,MPI_ORDER_FORTRAN, &
               MPI_Real,this%recv_south_type,ierr)
          call MPI_Type_commit(this%recv_south_type,ierr)
-#ifdef DEBUG
-         print *, "MPI_Type_create_subarray success 345"
-#endif
       end if
 
-      ! print *, this%rank-1,":", len, "and", len2   ARTLESS
+
       call this%get_tag(sr%recv, this%rank, south_neighbor, tag)
       call MPI_Irecv(this%halo_south_in, 1, this%recv_south_type, & 
                      south_neighbor-1, tag, MPI_COMM_WORLD, &
@@ -397,19 +381,14 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
       if (this%send_south_type == 0) then 
          sizes = shape(this%local(:,:,:))
          subsizes = shape(this%local(:,:,start+halo_size:start+halo_size*2-1))
-         starts = (/1-1,1-1,start+halo_size-1/)
-#ifdef ALTSTART
+         ! starts = (/1-1,1-1,start+halo_size-1/)
          starts = (/1-1,1-1,halo_size-1/)
-#endif
 #ifdef DEBUG
          print *, "sendsouth402", this%rank, "sizes =", sizes, "subsizes =", subsizes, "starts =", starts
 #endif
          call MPI_Type_create_subarray(3, sizes, subsizes, &
               starts, MPI_ORDER_FORTRAN, MPI_Real, this%send_south_type, ierr)
          call MPI_Type_commit(this%send_south_type, ierr)
-#ifdef DEBUG
-         print *, "MPI_Type_create_subarray success 386"
-#endif
       end if
 
       call this%get_tag(sr%send, this%rank, south_neighbor, tag)
@@ -448,9 +427,6 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
          call MPI_Type_create_subarray(3,sizes,subsizes,starts,MPI_ORDER_FORTRAN, &
               MPI_Real,this%recv_north_type,ierr)
          call MPI_Type_commit(this%recv_north_type,ierr)
-#ifdef DEBUG
-         print *, "MPI_Type_create_subarray success 424"
-#endif
       end if
 
 
@@ -485,19 +461,14 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
       if (this%send_east_type == 0) then 
          sizes = shape(this%local(:,:,:))
          subsizes = shape(this%local(n-halo_size*2+1:n-halo_size,:,:))
-         starts = (/n-halo_size*2+1-1,1-1,1-1/)
-#ifdef ALTSTART
+         ! starts = (/n-halo_size*2+1-1,1-1,1-1/)
          starts = (/sizes(1)-halo_size*2+1-1,1-1,1-1/)
-#endif
 #ifdef DEBUG
          print *, "sendeast490", this%rank, "sizes =", sizes, "subsizes =", subsizes, "starts =", starts
 #endif
          call MPI_Type_create_subarray(3, sizes, subsizes, &
               starts, MPI_ORDER_FORTRAN, MPI_Real, this%send_east_type, ierr)
          call MPI_Type_commit(this%send_east_type, ierr)
-#ifdef DEBUG
-         print *, "MPI_Type_create_subarray success 465"
-#endif
       end if
 
       call this%get_tag(sr%send, this%rank, east_neighbor, tag)
@@ -539,9 +510,6 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
          call MPI_Type_create_subarray(3, sizes, subsizes, &
               starts, MPI_ORDER_FORTRAN, MPI_Real, this%recv_west_type, ierr)
          call MPI_Type_commit(this%recv_west_type, ierr)
-#ifdef DEBUG
-         print *, "MPI_Type_create_subarray success 506"
-#endif
       end if
 
 
@@ -575,10 +543,8 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
       if (this%send_west_type == 0) then 
          sizes = shape(this%local(:,:,:))
          subsizes = shape(this%local(start+halo_size:start+halo_size*2-1,:,:))
-         starts = (/start-halo_size-1,1-1,1-1/)
-#ifdef ALTSTART
+         ! starts = (/start-halo_size-1,1-1,1-1/)
          starts = (/1-1,1-1,1-1/)
-#endif
 
 #ifdef DEBUG
          print *, "sendwest490", this%rank, "sizes =", sizes, "subsizes =", subsizes, "starts =", starts
@@ -586,9 +552,6 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
          call MPI_Type_create_subarray(3, sizes, subsizes, &
               starts, MPI_ORDER_FORTRAN, MPI_Real, this%send_west_type, ierr)
          call MPI_Type_commit(this%send_west_type, ierr)
-! #ifdef DEBUG
-!          print *, "MPI_Type_create_subarray success 546"
-! #endif
       end if
 
       call this%get_tag(sr%send, this%rank, west_neighbor, tag)
@@ -627,9 +590,6 @@ print *,this%rank,":",ims,":",ime,",",kms,":",kme,",",jms,":",jme
          call MPI_Type_create_subarray(3,sizes,subsizes,starts,MPI_ORDER_FORTRAN, &
               MPI_Real,this%recv_east_type,ierr)
          call MPI_Type_commit(this%recv_east_type,ierr)
-#ifdef DEBUG
-         print *, "MPI_Type_create_subarray success 584"
-#endif
       end if
 
       call this%get_tag(sr%recv, this%rank, east_neighbor, tag)
