@@ -16,7 +16,7 @@ program main
   call MPI_Get_processor_name(name, reslen, ierr)
   rank = rank + 1
   if (rank==1) print *,"Number of images = ", num_ranks, "on machine", name
-  print *,"I am rank ", rank
+  ! print *,"I am rank ", rank
 
   block
     type(domain_t), save :: domain
@@ -47,18 +47,15 @@ program main
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
     call timer%start()
-    do i=1,20 !200
-        ! if (rank==1) print *, "!!!!!!!!!!!!!!!!!!!!i = ", i
-        ! note should this be wrapped into the domain object(?)
+    do i=1,200
         call microphysics(domain, dt = 20.0, halo=1)
         call domain%halo_exchange()
         ! ! call domain%halo_send()
         call microphysics(domain, dt = 20.0, subset=1)
         call domain%halo_retrieve()
 
-        ! if (rank==1) print*, "predomain%advect"
         call domain%advect(dt = 1.0)
-        ! if (rank==1) print*, "postdomain%advect"
+
         ! if (this_image()==(num_images()/2)) then
         !     print*, domain%accumulated_precipitation(::3,ypos)
         ! endif
