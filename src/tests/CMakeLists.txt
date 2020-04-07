@@ -1,5 +1,12 @@
 include_directories(${CMAKE_BINARY_DIR}/mod)
 
+add_library(convection STATIC
+  ../objects/convection_type_implementation.f90
+  ../objects/convection_type_interface.f90
+  ../objects/convection_exchangeable_implementation.f90
+  ../objects/convection_exchangeable_interface.f90
+  )
+
 add_executable(test-ideal
   test-ideal.f90
   ../objects/domain_implementation.f90
@@ -13,7 +20,7 @@ add_executable(test-ideal
   ../physics/mp_driver.f90
   ../physics/mp_thompson.f90
 )
-target_link_libraries(test-ideal icar_utils)
+target_link_libraries(test-ideal icar_utils convection)
 
 configure_file(input-parameters.txt ${CMAKE_BINARY_DIR}/input-parameters.txt COPYONLY)
 
