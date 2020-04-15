@@ -3,7 +3,7 @@ submodule(convection_type_interface) convection_type_implementation
 
 contains
 
-  module subroutine test()
-    print *, "in test"
-  end subroutine test
+  ! module subroutine test()
+  !   print *, "in test"
+  ! end subroutine test
 end submodule convection_type_implementation
