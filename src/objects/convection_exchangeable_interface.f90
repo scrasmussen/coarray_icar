@@ -1,14 +1,28 @@
-module convection_exchange_interface
-  use, intrinsic :: iso_fortran_env, only : event_type
+module convection_exchangeable_interface
+  ! use, intrinsic :: iso_fortran_env, only : event_type
+  use grid_interface, only : grid_t
   use convection_type_interface
   implicit none
 
   private
-  public :: convection_exchange_array_t, convection_exchange_list_t
+  public :: convection_exchangeable_array_t, convection_exchangeable_list_t
+  public :: convection_exchangeable_t
 
-  type convection_exchange_array_t
-     private
+  type convection_t
+  end type convection_t
+
+  type, extends(convection_t) :: convection_exchangeable_array_t
      type(convection_array), allocatable, public :: local(:,:,:)
+  end type convection_exchangeable_array_t
+
+  type, extends(convection_t) :: convection_exchangeable_list_t
+     type(convection_list), allocatable, public :: local(:,:,:)
+  end type convection_exchangeable_list_t
+
+
+  type convection_exchangeable_t
+     private
+     type(convection_particle), allocatable, public :: local(:,:,:)
      type(convection_particle), allocatable :: halo_south_in(:,:,:)[:]
      type(convection_particle), allocatable :: halo_north_in(:,:,:)[:]
      type(convection_particle), allocatable :: halo_west_in(:,:,:)[:]
@@ -29,28 +43,98 @@ module convection_exchange_interface
 
    contains
      private
+     procedure, public :: const
+     procedure, public :: send
+     procedure, public :: retrieve
+     procedure, public :: exchange
+     generic,   public :: initialize=>const
 
-     ! SIMILAR TO EXCHANGE_T
-     ! procedure :: const, send, retrieve, exchange, initialize procedures
-     ! put_{north,south,west,east,northeast,northwest,southeast,southwest}
-     ! retrieve_{north,south,west,east,northeast,northwest,southeast,southwest}
-     ! etc. etc.
-  end type convection_array_t
+     procedure :: put_north
+     procedure :: put_south
+     procedure :: put_west
+     procedure :: put_east
+     procedure :: retrieve_north_halo
+     procedure :: retrieve_south_halo
+     procedure :: retrieve_west_halo
+     procedure :: retrieve_east_halo
+     ! TODO
+     ! put_{northeast,northwest,southeast,southwest}
+     ! retrieve_{northeast,northwest,southeast,southwest}
+  end type convection_exchangeable_t
 
 
-  type convection_exchange_list_t
+  interface
+     module subroutine const(this, grid, initial_value, halo_width)
+       implicit none
+       class(convection_exchangeable_t), intent(inout)  :: this
+       type(grid_t),              intent(in)     :: grid
+       type(convection_particle), intent(in), optional :: initial_value
+       integer,                   intent(in), optional :: halo_width
+     end subroutine
+
+     module subroutine send(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine retrieve(this, no_sync)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       logical,               intent(in),   optional :: no_sync
+     end subroutine
+
+     module subroutine exchange(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine put_north(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine put_south(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine retrieve_north_halo(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine retrieve_south_halo(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+
+     module subroutine put_east(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine put_west(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine retrieve_east_halo(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine retrieve_west_halo(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+  end interface
+
+
+  ! type, extends(convection_exchange_t) :: convection_exchange_list_t
   !    private
-  !    type(convection_list), allocatable, public :: local
-  !    type(convection_particle), allocatable :: halo_south_in[:]
-  !    type(convection_particle), allocatable :: halo_north_in[:]
-  !    type(convection_particle), allocatable :: halo_west_in[:]
-  !    type(convection_particle), allocatable :: halo_east_in[:]
-  !    type(convection_particle), allocatable :: halo_southwest_in[:]
-  !    type(convection_particle), allocatable :: halo_southeast_in[:]
-  !    type(convection_particle), allocatable :: halo_northwest_in[:]
-  !    type(convection_particle), allocatable :: halo_northeast_in[:]
-
-
+  !    type(convection_list), allocatable, public :: local(:,:,:)
 
      ! still figuring out how these will be used
      ! event to declare if there are more particles in the linked list to move
@@ -79,7 +163,7 @@ module convection_exchange_interface
   !    ! put_{north,south,west,east,northeast,northwest,southeast,southwest}
   !    ! retrieve_{north,south,west,east,northeast,northwest,southeast,southwest}
   !    ! etc. etc.
-  end type convection_exchange_list_t
+  ! end type convection_exchange_list_t
 
 
-end module convection_exchange_interface
+end module convection_exchangeable_interface
