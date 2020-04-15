@@ -2,6 +2,8 @@ module domain_interface
   use configuration_interface, only : configuration_t
   use exchangeable_interface, only : exchangeable_t
   use grid_interface, only: grid_t
+  use convection_exchangeable_interface, only : &
+      convection_exchangeable_array_t, convection_exchangeable_t
   implicit none
 
   private
@@ -19,6 +21,8 @@ module domain_interface
     type(exchangeable_t) :: rain_number
     type(exchangeable_t) :: snow_mass
     type(exchangeable_t) :: graupel_mass
+    type(convection_exchangeable_t) :: convection_object
+    ! type(convection_exchangeable_array_t) :: convection_object
 
     ! core model variables (not advected)
     real, public, allocatable :: exner(:,:,:)
