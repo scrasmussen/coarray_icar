@@ -3,11 +3,18 @@ module convection_type_interface
   private
   public :: convection_particle, convection_array
   public :: convection_node, convection_list
+  public :: convection_particle_e, convection_array_e, &
+      convection_linked_list_e
+
+  enum, bind(C)
+     enumerator :: convection_particle_e, convection_array_e, &
+         convection_linked_list_e
+  end enum
 
   type convection_particle
      ! this will contain 5-10 scalars, remember to edit constructor
-     real :: pressure
-     real :: temp
+     real :: u, v, w
+     ! real :: pressure, temp
   end type convection_particle
   interface convection_particle
      module procedure constructor
@@ -35,10 +42,12 @@ module convection_type_interface
   !     end subroutine
   ! end interface
 contains
-  function constructor(build) result(this)
+  function constructor(build,u,v,w) result(this)
     type(convection_particle) :: this
     logical :: build
-    this%pressure = 0.0
-    this%temp = 0.0
+    real :: u, v, w
+    this%u = u
+    this%v = v
+    this%w = w
   end function constructor
 end module convection_type_interface

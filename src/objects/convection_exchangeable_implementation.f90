@@ -1,4 +1,5 @@
-submodule(exchangeable_interface) exchangeable_implementation
+submodule(convection_exchangeable_interface) &
+    convection_exchangeable_implementation
   use assertions_interface, only : assert, assertions
   use grid_interface, only : grid_t
   implicit none
@@ -7,14 +8,20 @@ submodule(exchangeable_interface) exchangeable_implementation
   integer, save, allocatable :: neighbors(:)
   integer, save :: north_neighbor, south_neighbor, halo_size
   integer, save :: east_neighbor, west_neighbor
+  integer, save :: northeast_neighbor, northwest_neighbor
+  integer, save :: southeast_neighbor, southwest_neighbor
 
 contains
+  ! function initialize_convection_array_t(this)
+  !   class(convection_exchangeable_array_t), intent(inout) :: this
+  ! end function initialize_convection_array_t
 
-  module subroutine const(this,grid,initial_value,halo_width)
-    class(exchangeable_t), intent(inout) :: this
-    type(grid_t),          intent(in)    :: grid
-    real,                  intent(in)    :: initial_value
-    integer,               intent(in), optional :: halo_width
+  module subroutine const(this,grid,initial_value,halo_width,u,v,w)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(grid_t),              intent(in)           :: grid
+    type(convection_particle), intent(in), optional :: initial_value
+    integer,                   intent(in), optional :: halo_width
+    real,                      intent(in), optional :: u,v,w
 
     integer :: n_neighbors, current
     integer :: ims,ime,kms,kme,jms,jme
@@ -43,14 +50,24 @@ contains
       kms = grid%kms
       kme = grid%kme
 
-      allocate(this%local(ims:ime,kms:kme,jms:jme), source=initial_value)
+      if (present(initial_value)) then
+        allocate(this%local(ims:ime,kms:kme,jms:jme), source=initial_value)
+      else
+        allocate(this%local(ims:ime,kms:kme,jms:jme))
+      end if
     end associate
 
-    allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
-    allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
-    allocate( this%halo_east_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
-    allocate( this%halo_west_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
-
+    if (present(initial_value)) then
+      allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
+      allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
+      allocate( this%halo_east_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
+      allocate( this%halo_west_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
+    else
+      allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
+      allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
+      allocate( this%halo_east_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
+      allocate( this%halo_west_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
+    end if
 
     ! set up the neighbors array so we can sync with our neighbors when needed
     if (.not.allocated(neighbors)) then
@@ -94,11 +111,12 @@ contains
         !      ": west", west_neighbor
       end associate
     endif
-    
+
   end subroutine
 
+
   module subroutine send(this)
-    class(exchangeable_t), intent(inout) :: this
+    class(convection_exchangeable_t), intent(inout) :: this
     if (.not. this%north_boundary) call this%put_north
     if (.not. this%south_boundary) call this%put_south
     if (.not. this%east_boundary)  call this%put_east
@@ -106,7 +124,7 @@ contains
   end subroutine
 
   module subroutine retrieve(this, no_sync)
-    class(exchangeable_t), intent(inout) :: this
+    class(convection_exchangeable_t), intent(inout) :: this
     logical,               intent(in),   optional :: no_sync
 
     if (.not. present(no_sync)) then
@@ -124,7 +142,7 @@ contains
   end subroutine
 
   module subroutine exchange(this)
-    class(exchangeable_t), intent(inout) :: this
+    class(convection_exchangeable_t), intent(inout) :: this
     if (.not. this%north_boundary) call this%put_north
     if (.not. this%south_boundary) call this%put_south
     if (.not. this%east_boundary)  call this%put_east
@@ -139,7 +157,7 @@ contains
   end subroutine
 
   module subroutine put_north(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
       integer :: n, nx
       n = ubound(this%local,3)
       nx = size(this%local,1)
@@ -155,7 +173,7 @@ contains
   end subroutine
 
   module subroutine put_south(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: start, nx
       start = lbound(this%local,3)
@@ -172,7 +190,7 @@ contains
   end subroutine
 
   module subroutine retrieve_north_halo(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: n, nx
       n = ubound(this%local,3)
@@ -182,7 +200,7 @@ contains
   end subroutine
 
   module subroutine retrieve_south_halo(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: start, nx
       start = lbound(this%local,3)
@@ -192,7 +210,7 @@ contains
   end subroutine
 
   module subroutine put_east(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
       integer :: n, ny
       n = ubound(this%local,1)
       ny = size(this%local,3)
@@ -209,12 +227,12 @@ contains
   end subroutine
 
   module subroutine put_west(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: start, ny
       start = lbound(this%local,1)
       ny = size(this%local,3)
-      ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)), 
+      ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)),
       if (assertions) then
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         call assert( shape(this%halo_east_in(1:halo_size,:,:ny)[west_neighbor])               &
@@ -227,7 +245,7 @@ contains
   end subroutine
 
   module subroutine retrieve_east_halo(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: n, ny
       n = ubound(this%local,1)
@@ -237,7 +255,7 @@ contains
   end subroutine
 
   module subroutine retrieve_west_halo(this)
-      class(exchangeable_t), intent(inout) :: this
+      class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: start, ny
       start = lbound(this%local,1)

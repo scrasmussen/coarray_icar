@@ -1,6 +1,7 @@
 submodule(domain_interface) domain_implementation
-  ! use convection_type_interface
-  use convection_type_interface, only : convection_particle
+  use convection_type_interface
+  ! use convection_type_interface, only : convection_particle
+  ! use convection_object_interface, only : convection_object
   use assertions_interface, only : assert,assertions
   use iso_fortran_env, only : error_unit
   use grid_interface, only : grid_t
@@ -63,9 +64,21 @@ contains
         call this%rain_number%initialize(           this%get_grid_dimensions(),rain_number_test_val)
         call this%snow_mass%initialize(             this%get_grid_dimensions(),snow_mass_test_val)
         call this%graupel_mass%initialize(          this%get_grid_dimensions(),graupel_mass_test_val)
-        ! call this%convection_object%initialize()
-        call this%convection_object%initialize(     this%get_grid_dimensions())
-        ! this%potential_temperature%local(1,:,:)=this%potential_temperature%local(1,:,:)-10
+
+        ! --- Convection Particle ---
+        ! call this%convection_obj%initialize(convection_particle_e) ! works
+        call this%convection_obj%initialize(convection_particle_e, &
+            u_in=u_test_val, v_in=v_test_val, w_in=w_test_val)
+
+
+        ! call this%convection_object%initialize(     this%get_grid_dimensions())
+        ! with u,v,w
+        ! call this%convection_object%initialize(     this%get_grid_dimensions() &
+        !     , u=u_test_val ,v=v_test_val, w=w_test_val)
+
+
+        ! this%
+        ! potential_temperature%local(1,:,:)=this%potential_temperature%local(1,:,:)-10
         ! Note, this can be used to create a change in water vapor at the upwind boundary so that it
         ! can be advected across the domain and permitted to interact with other species
         ! if (this_image()==1) then

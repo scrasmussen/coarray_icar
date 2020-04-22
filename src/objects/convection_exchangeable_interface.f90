@@ -14,11 +14,13 @@ module convection_exchangeable_interface
   type, extends(convection_t) :: convection_exchangeable_array_t
      type(convection_array), allocatable, public :: local(:,:,:)
   end type convection_exchangeable_array_t
+  ! interface convection_exchangeable_array_t
+  !    module procedure initialize_convection_array
+  ! end interface convection_exchangeable_array_t
 
   type, extends(convection_t) :: convection_exchangeable_list_t
      type(convection_list), allocatable, public :: local(:,:,:)
   end type convection_exchangeable_list_t
-
 
   type convection_exchangeable_t
      private
@@ -62,14 +64,19 @@ module convection_exchangeable_interface
      ! retrieve_{northeast,northwest,southeast,southwest}
   end type convection_exchangeable_t
 
+  ! type convection_object_t
+  !    private
+  !    type(convection_exchangeable_t), public :: convection_array
+  ! end type convection_object_t
 
   interface
-     module subroutine const(this, grid, initial_value, halo_width)
+     module subroutine const(this, grid, initial_value, halo_width, u, v, w)
        implicit none
        class(convection_exchangeable_t), intent(inout)  :: this
        type(grid_t),              intent(in)     :: grid
        type(convection_particle), intent(in), optional :: initial_value
        integer,                   intent(in), optional :: halo_width
+       real,                      intent(in), optional :: u,v,w
      end subroutine
 
      module subroutine send(this)
