@@ -1,6 +1,7 @@
 module convection_exchangeable_interface
   ! use, intrinsic :: iso_fortran_env, only : event_type
   use grid_interface, only : grid_t
+  use iso_c_binding, only: c_int
   use convection_type_interface
   implicit none
 
@@ -49,6 +50,7 @@ module convection_exchangeable_interface
      procedure, public :: send
      procedure, public :: retrieve
      procedure, public :: exchange
+     procedure, public :: process
      generic,   public :: initialize=>const
 
      procedure :: put_north
@@ -70,14 +72,30 @@ module convection_exchangeable_interface
   ! end type convection_object_t
 
   interface
-     module subroutine const(this, grid, initial_value, halo_width, u, v, w)
-       implicit none
-       class(convection_exchangeable_t), intent(inout)  :: this
-       type(grid_t),              intent(in)     :: grid
-       type(convection_particle), intent(in), optional :: initial_value
-       integer,                   intent(in), optional :: halo_width
-       real,                      intent(in), optional :: u,v,w
+     module subroutine process(this, temperature)
+       class(convection_exchangeable_t), intent(inout) :: this
+       real, dimension(:,:,:), intent(in) :: temperature
      end subroutine
+
+     module subroutine const(this, convection_type_enum, grid, halo_width, &
+         u_in, v_in, w_in, temperature, pressure)
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(grid_t) :: grid
+       integer, intent(in), optional :: halo_width
+       integer(c_int), intent(in) :: convection_type_enum
+       real, optional, intent(in) :: u_in,v_in,w_in
+       real, dimension(:,:,:), intent(in) :: temperature, pressure
+     end subroutine
+
+
+     ! module subroutine const(this, grid, initial_value, halo_width, u, v, w)
+     !   implicit none
+     !   class(convection_exchangeable_t), intent(inout)  :: this
+     !   type(grid_t),              intent(in)     :: grid
+     !   type(convection_particle), intent(in), optional :: initial_value
+     !   integer,                   intent(in), optional :: halo_width
+     !   real,                      intent(in), optional :: u,v,w
+     ! end subroutine
 
      module subroutine send(this)
        implicit none

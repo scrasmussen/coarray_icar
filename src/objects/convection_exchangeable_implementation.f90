@@ -16,16 +16,36 @@ contains
   !   class(convection_exchangeable_array_t), intent(inout) :: this
   ! end function initialize_convection_array_t
 
-  module subroutine const(this,grid,initial_value,halo_width,u,v,w)
+  ! constructor
+  module subroutine const(this, convection_type_enum, grid, halo_width, &
+      u_in, v_in, w_in, temperature, pressure)
+    use iso_c_binding, only: c_int
     class(convection_exchangeable_t), intent(inout) :: this
-    type(grid_t),              intent(in)           :: grid
-    type(convection_particle), intent(in), optional :: initial_value
-    integer,                   intent(in), optional :: halo_width
-    real,                      intent(in), optional :: u,v,w
+    type(grid_t) :: grid
+    integer, intent(in), optional :: halo_width
+    integer(c_int), intent(in) :: convection_type_enum
+    real, optional, intent(in) :: u_in,v_in,w_in
+    real, dimension(:,:,:), intent(in) :: temperature, pressure
 
     integer :: n_neighbors, current
-    integer :: ims,ime,kms,kme,jms,jme
-
+    integer :: ims,ime,kms,kme,jms,jme,i,j,k
+    real :: u,v,w
+    if (present(u_in)) then
+      u = u_in
+    else
+      u = 0.0
+    end if
+    if (present(v_in)) then
+      v = v_in
+    else
+      v = 0.0
+    end if
+    if (present(w_in)) then
+      w = w_in
+    else
+      w = 0.0
+    end if
+    print *, "=============++HIHI HI H IH HIHI ============="
     if (present(halo_width)) then
         halo_size = halo_width
     else
@@ -38,7 +58,6 @@ contains
     this%east_boundary  = (grid%ximg == grid%ximages)
     this%west_boundary  = (grid%ximg == 1)
 
-
     associate( halo_south => merge(0,halo_size,this%south_boundary), &
                halo_north => merge(0,halo_size,this%north_boundary), &
                halo_east  => merge(0,halo_size,this%east_boundary), &
@@ -50,25 +69,40 @@ contains
       kms = grid%kms
       kme = grid%kme
 
-      if (present(initial_value)) then
-        allocate(this%local(ims:ime,kms:kme,jms:jme), source=initial_value)
-      else
-        allocate(this%local(ims:ime,kms:kme,jms:jme))
+      allocate(this%local(ims:ime,kms:kme,jms:jme))
+      if (this_image() .eq. 1) then
+        do j=jms,jme
+          do k=kms,kme
+            do i=ims,ime
+              if (i.eq.5 .and. k.eq.5 .and. j.eq.5) then
+                print*,"ARTLESS change this to percentage once exchange working"
+                this%local(i,k,j) = convection_particle(&
+                    0.5,0.5,0.0,pressure(i,k,j), temperature(i,k,j))
+              end if
+            end do
+          end do
+        end do
+          ! this%local(i,k,j) = convection_particle(.true., &
+          !     i, j, k, 0.5, 0.5, 0.0, &
+          !     pressure(i,k,j), temperature(i,k,j))
+          ! this%local(i,k,j) = convection_particle(convection_particle_e, &
+          !     this%get_grid_dimensions(), 2, &
+          !     u_in=0.5, v_in=0.5, w_in=0.0, &
+          !     temperature=this%temperature, pressure=this%pressure)
+
+        print *, "-----", ims, ime, kms, kme, jms, jme
+        print *, "----- shape = ", shape(this%local)
       end if
     end associate
 
-    if (present(initial_value)) then
-      allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
-      allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
-      allocate( this%halo_east_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
-      allocate( this%halo_west_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
-    else
-      allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
-      allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
-      allocate( this%halo_east_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
-      allocate( this%halo_west_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
-    end if
+    allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
+    allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
+    allocate( this%halo_east_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
+    allocate( this%halo_west_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
 
+    if (this_image() .eq. 1) then
+      print *, "===--- ARTLESS NEED TO DOUBLE CHECK NEIGHBORS ---==="
+    end if
     ! set up the neighbors array so we can sync with our neighbors when needed
     if (.not.allocated(neighbors)) then
       associate(me=>this_image())
@@ -78,40 +112,43 @@ contains
         west_neighbor  = me - 1
 
         n_neighbors = merge(0,1,this%south_boundary)  &
-                     +merge(0,1,this%north_boundary)  &
-                     +merge(0,1,this%east_boundary)   &
-                     +merge(0,1,this%west_boundary)
+            +merge(0,1,this%north_boundary)  &
+            +merge(0,1,this%east_boundary)   &
+            +merge(0,1,this%west_boundary)
         n_neighbors = max(1, n_neighbors)
 
         allocate(neighbors(n_neighbors))
 
         current = 1
         if (.not. this%south_boundary) then
-            neighbors(current) = south_neighbor
-            current = current+1
+          neighbors(current) = south_neighbor
+          current = current+1
         endif
         if (.not. this%north_boundary) then
-            neighbors(current) = north_neighbor
-            current = current+1
+          neighbors(current) = north_neighbor
+          current = current+1
         endif
         if (.not. this%east_boundary) then
-            neighbors(current) = east_neighbor
-            current = current+1
+          neighbors(current) = east_neighbor
+          current = current+1
         endif
         if (.not. this%west_boundary) then
-            neighbors(current) = west_neighbor
-            current = current+1
+          neighbors(current) = west_neighbor
+          current = current+1
         endif
         ! if current = 1 then all of the boundaries were set, just store ourself as our "neighbor"
         if (current == 1) then
-            neighbors(current) = me
+          neighbors(current) = me
         endif
-        ! print *, this_image(), ": north", north_neighbor, ": east", &
-        !      east_neighbor, ": south", south_neighbor, &
-        !      ": west", west_neighbor
+        print *, this_image(), ": north", north_neighbor, ": east", &
+             east_neighbor, ": south", south_neighbor, &
+             ": west", west_neighbor
       end associate
     endif
 
+
+
+    print *, "=============++YBE YBE YBYE BYE  ============="
   end subroutine
 
 
@@ -165,7 +202,7 @@ contains
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         call assert( shape(this%halo_south_in(:nx,:,1:halo_size)[north_neighbor]) &
                      == shape(this%local(:,:,n-halo_size+1:n)),         &
-                     "put_north: conformable halo_south_in and local " )
+                     "put_north convection: conformable halo_south_in and local " )
       end if
 
       !dir$ pgas defer_sync
@@ -183,7 +220,7 @@ contains
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         call assert( shape(this%halo_north_in(:nx,:,1:halo_size)[south_neighbor]) &
                      == shape(this%local(:,:,start:start+halo_size-1)), &
-                     "put_south: conformable halo_north_in and local " )
+                     "put_south convection: conformable halo_north_in and local " )
       end if
       !dir$ pgas defer_sync
       this%halo_north_in(1:nx,:,1:halo_size)[south_neighbor] = this%local(:,:,start+halo_size:start+halo_size*2-1)
@@ -262,6 +299,13 @@ contains
       ny = size(this%local,3)
 
       this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
-  end subroutine
+    end subroutine
+
+    module subroutine process(this, temperature)
+      class(convection_exchangeable_t), intent(inout) :: this
+      real, dimension(:,:,:), intent(in) :: temperature
+      print *, "-----------aRTLESS PROCESSING -------"
+    end  subroutine
+
 
 end submodule
