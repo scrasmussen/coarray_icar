@@ -65,17 +65,6 @@ contains
         call this%snow_mass%initialize(             this%get_grid_dimensions(),snow_mass_test_val)
         call this%graupel_mass%initialize(          this%get_grid_dimensions(),graupel_mass_test_val)
 
-        ! --- Convection Particle ---
-        ! call this%convection_obj%initialize(convection_particle_e) ! works
-        call this%convection_obj%initialize(convection_particle_e, &
-            u_in=u_test_val, v_in=v_test_val, w_in=w_test_val)
-
-
-        ! call this%convection_object%initialize(     this%get_grid_dimensions())
-        ! with u,v,w
-        ! call this%convection_object%initialize(     this%get_grid_dimensions() &
-        !     , u=u_test_val ,v=v_test_val, w=w_test_val)
-
 
         ! this%
         ! potential_temperature%local(1,:,:)=this%potential_temperature%local(1,:,:)-10
@@ -162,6 +151,21 @@ contains
           this%exner       = exner_function(this%pressure)
           this%temperature = this%exner * this%potential_temperature%local
           this%water_vapor%local = sat_mr(this%temperature,this%pressure)
+
+
+
+          ! ! --- Convection Particle ---
+          ! ! call this%convection_obj%initialize(convection_particle_e) ! works
+          call this%convection_obj%initialize(convection_particle_e, &
+              this%get_grid_dimensions(), &
+              2, &
+              u_in=0.5, v_in=0.5, w_in=0.0, &
+              temperature=this%temperature, pressure=this%pressure)
+          ! ! ARTLESS NEED TO FIX THIS
+          ! this%u, this%v, this%w
+              ! u_in=u_test_val, v_in=v_test_val, w_in=w_test_val,     &
+
+
       end associate
 
     end subroutine
@@ -459,6 +463,7 @@ contains
 
     module subroutine halo_send(this)
       class(domain_t), intent(inout) :: this
+      ! call this%convection_obj%send() ARTLESS
       call this%water_vapor%send()
       call this%potential_temperature%send()
       call this%cloud_water_mass%send()
@@ -472,6 +477,7 @@ contains
 
     module subroutine halo_retrieve(this)
       class(domain_t), intent(inout) :: this
+      ! call this%convection_obj%retrieve() ! ARTLESS, should this be no_sync?
       call this%water_vapor%retrieve()
       call this%potential_temperature%retrieve(no_sync=.True.)
       call this%cloud_water_mass%retrieve(no_sync=.True.)
@@ -485,6 +491,7 @@ contains
 
     module subroutine halo_exchange(this)
       class(domain_t), intent(inout) :: this
+      ! call this%convection_obj%send() ! ARTLESS
       call this%water_vapor%send()
       call this%potential_temperature%send()
       call this%cloud_water_mass%send()
@@ -495,6 +502,7 @@ contains
       call this%snow_mass%send()
       call this%graupel_mass%send()
 
+      ! call this%convection_obj%retrieve() ! ARTLESS, should this be no_sync?
       call this%water_vapor%retrieve()
       call this%potential_temperature%retrieve(no_sync=.True.)
       call this%cloud_water_mass%retrieve(no_sync=.True.)
