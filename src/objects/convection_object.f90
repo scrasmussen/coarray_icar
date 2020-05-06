@@ -52,7 +52,7 @@ contains
     !!!
     !!! a'_z = (T' - T) / T * g
     !!!
-    T = temperature(this%particle%i, this%particle%k, this%particle%j)
+    T = temperature(this%particle%x, this%particle%y, this%particle%z)
     T_prime =this%particle%temperature
     a_prime = (T_prime - T) / T * gravity
     ! print *, "----------- variables -------------"
@@ -64,8 +64,8 @@ contains
     displacement =  0        + 0.5 * a_prime * 1 * 1
     ! print *, "~~~~~~~ displacement = ", displacement
     ! print *, " to be added to ", this%particle%k
-    this%particle%k = this%particle%k + displacement
-    print *, "k = ", this%particle%k  , "with displacement", displacement
+    this%particle%z = this%particle%z + displacement
+    print *, "z = ", this%particle%z  , "with displacement", displacement
     ! print*, " -- fin -- "
   end subroutine simple_math
 
@@ -100,39 +100,39 @@ contains
     this%convection_type = convection_type_enum
     select case (convection_type_enum)
     case(convection_particle_e)
-      ! ARTLESS :: TODO
-      ! NOW STARTING IN CENTER, FUTURE RANDOM
-      this%particle = convection_particle(.true., &
-          (grid%ims + grid%ime) / 2.0, &
-          (grid%jms + grid%jme) / 2.0, &
-          (grid%kms + grid%kme) / 2.0, &
-          u,v,w, &
-          -0.0,-0.0)
+      ! ! ARTLESS :: TODO
+      ! ! NOW STARTING IN CENTER, FUTURE RANDOM
+      ! this%particle = convection_particle(.true., &
+      !     (grid%ims + grid%ime) / 2.0, &
+      !     (grid%jms + grid%jme) / 2.0, &
+      !     (grid%kms + grid%kme) / 2.0, &
+      !     u,v,w, &
+      !     -0.0,-0.0)
 
-      ! ---- calculate pressure
-      ! ARTLESS :: better way to get cordinates
-      this%particle%temperature = temperature(floor(this%particle%i), &
-          floor(this%particle%k), &
-          floor(this%particle%j))
-      this%particle%pressure = pressure(floor(this%particle%i), &
-          floor(this%particle%k), &
-          floor(this%particle%j))
+      ! ! ---- calculate pressure
+      ! ! ARTLESS :: better way to get cordinates
+      ! this%particle%temperature = temperature(floor(this%particle%x), &
+      !     floor(this%particle%z), &
+      !     floor(this%particle%y))
+      ! this%particle%pressure = pressure(floor(this%particle%x), &
+      !     floor(this%particle%z), &
+      !     floor(this%particle%y))
 
-      ! print *, "------ RANGE ----- ", &
-      !     temperature(floor(this%particle%i), &
-      !     floor(this%particle%k), &
-      !     floor(this%particle%j)), &
-      !     temperature(ceiling(this%particle%i), &
-      !     ceiling(this%particle%k), &
-      !     ceiling(this%particle%j))
+      ! ! print *, "------ RANGE ----- ", &
+      ! !     temperature(floor(this%particle%i), &
+      ! !     floor(this%particle%k), &
+      ! !     floor(this%particle%j)), &
+      ! !     temperature(ceiling(this%particle%i), &
+      ! !     ceiling(this%particle%k), &
+      ! !     ceiling(this%particle%j))
 
-      print *, "!!! I'm add 10k to temperature !!! For Testing"
-      this%particle%temperature = this%particle%temperature + 10
+      ! print *, "!!! I'm add 10k to temperature !!! For Testing"
+      ! this%particle%temperature = this%particle%temperature + 10
 
-      ! print *, "====", temperature(5,:,5)
-      ! print *, "SHAPE OF ", shape(temperature)
-      ! print *, "ARTLESS--- TEMPERATURE ----------", this%particle%temperature
-      !     this%particle%pressure
+      ! ! print *, "====", temperature(5,:,5)
+      ! ! print *, "SHAPE OF ", shape(temperature)
+      ! ! print *, "ARTLESS--- TEMPERATURE ----------", this%particle%temperature
+      ! !     this%particle%pressure
 
     case(convection_array_e)
       ! this%array = convection_array(u,v,w)
