@@ -13,15 +13,18 @@ module convection_type_interface
   end enum
 
   type convection_particle
-     ! this will contain 5-10 scalars, remember to edit constructor
-     logical :: exist
-     real :: i, j, k
+     ! when adding element, remember about constructor
+     logical :: exists, moved
+     real :: x, y, z
      real :: u, v, w
      real :: pressure, temperature
+   contains
+     procedure :: move_particle
   end type convection_particle
   interface convection_particle
      module procedure constructor
   end interface convection_particle
+
 
   type convection_array
      type(convection_particle), allocatable :: array(:)
@@ -45,27 +48,43 @@ module convection_type_interface
   !     end subroutine
   ! end interface
 contains
-  function constructor(u,v,w,pressure,temp) result(this)
+  subroutine move_particle(from,to)
+    class(convection_particle), intent(inout) :: from
+    type(convection_particle), intent(inout)  :: to
+    if (to%moved .eqv. .true.) then
+      error stop &
+          "TO Particle has been Moved, need to combine with FROM Particle"
+    else if (to%exists .eqv. .true.) then
+      error stop "TO Particle Exists, need to move it"
+    end if
+    ! handle the from
+    from%exists = .false.
+    from%moved  = .false.
+
+    ! handle the to
+    to%exists = .true.
+    to%moved  = .true.
+    to%x = from%x; to%y = from%y; to%z = from%z
+    to%u = from%u; to%v = from%v; to%w = from%w
+    to%pressure = from%pressure
+    to%temperature = from%temperature
+  end subroutine move_particle
+
+  function constructor(x,y,z,u,v,w,pressure,temperature) result(this)
     type(convection_particle) :: this
-    real :: u, v, w, pressure, temp
+    integer :: x, y, z
+    real :: u, v, w, pressure, temperature
+    this%exists = .true.
+    this%moved = .false.
+    this%x = x
+    this%y = y
+    this%z = z
+
     this%u = u
     this%v = v
     this%w = w
-    print *, "------IN CONSTRUCTOR"
-    ! print *, "k = ", this%k
+    this%pressure = pressure
+    this%temperature = temperature + 30
+    print *, "------IN CONSTRUCTOR: currently adding 30 K to temp"
   end function constructor
-  ! function constructor(build,i,j,k,u,v,w) result(this)
-  !   type(convection_particle) :: this
-  !   logical :: build
-  !   real :: i, j, k
-  !   real :: u, v, w
-  !   this%i = i
-  !   this%j = j
-  !   this%k = k
-  !   this%u = u
-  !   this%v = v
-  !   this%w = w
-  !   ! print *, "------IN CONSTRUCTOR"
-  !   ! print *, "k = ", this%k
-  ! end function constructor
 end module convection_type_interface
