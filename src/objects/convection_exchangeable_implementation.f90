@@ -70,29 +70,23 @@ contains
       kme = grid%kme
 
       allocate(this%local(ims:ime,kms:kme,jms:jme))
-      if (this_image() .eq. 1) then
+      do i=ims,ime
         do j=jms,jme
           do k=kms,kme
-            do i=ims,ime
               if (i.eq.5 .and. k.eq.5 .and. j.eq.5) then
                 print*,"ARTLESS change this to percentage once exchange working"
-                this%local(i,k,j) = convection_particle(&
+                ! print*, "~~~~~~~~~~~~~", i, k, j, temperature(i,k,j)
+                this%local(i,k,j) = convection_particle(i,j,k, &
                     0.5,0.5,0.0,pressure(i,k,j), temperature(i,k,j))
+              else
+                this%local(i,k,j)%exists = .false.
               end if
+
             end do
           end do
         end do
-          ! this%local(i,k,j) = convection_particle(.true., &
-          !     i, j, k, 0.5, 0.5, 0.0, &
-          !     pressure(i,k,j), temperature(i,k,j))
-          ! this%local(i,k,j) = convection_particle(convection_particle_e, &
-          !     this%get_grid_dimensions(), 2, &
-          !     u_in=0.5, v_in=0.5, w_in=0.0, &
-          !     temperature=this%temperature, pressure=this%pressure)
-
         print *, "-----", ims, ime, kms, kme, jms, jme
         print *, "----- shape = ", shape(this%local)
-      end if
     end associate
 
     allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
@@ -301,11 +295,57 @@ contains
       this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
     end subroutine
 
-    module subroutine process(this, temperature)
+    module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
+        temperature)
+      implicit none
       class(convection_exchangeable_t), intent(inout) :: this
+      real,           intent(in)    :: dt
+      integer,        intent(in)    :: its,ite, jts,jte, kts,kte
       real, dimension(:,:,:), intent(in) :: temperature
-      print *, "-----------aRTLESS PROCESSING -------"
-    end  subroutine
+      real, parameter :: gravity = 9.80665
+      real, parameter :: artless_density = 1.003
+      real :: a_prime, displacement, t, t_prime
+      integer :: i,j,k, l_bound(3), dif(3), new_ijk(3)
 
+      l_bound = lbound(this%local)
+      dif  = l_bound - lbound(temperature)
+
+      do i=its,ite
+        do j=jts,jte
+          do k=kts,kte
+            associate (particle=>this%local(i,k,j))
+            if (particle%exists .eqv. .true. .and. &
+                particle%moved .eqv. .false.) then
+              T = temperature(i-dif(0), k-dif(2), j-dif(1))
+              T_prime = particle%temperature
+              a_prime = (T_prime - T) / T * gravity
+              displacement =  0    + 0.5 * a_prime * 1 * 1
+              particle%z = particle%z + displacement
+
+              print *, "z = ", particle%z  , "with displacement", displacement
+
+              ! checking to see if need to move particle
+              new_ijk = floor((/particle%x,particle%y,particle%z/))
+
+              if ( .not. all( (/i,j,k/) .eq. &
+                  new_ijk)) then
+                ! print *, "----- MOVING PARTICLE: from",(/i,j,k/), "to",new_ijk
+                call particle%move_particle( &
+                    this%local(new_ijk(1),new_ijk(3),new_ijk(2)))
+              end if
+              ! ARTLESS DIF BETWEEN TEMP IMAGES WORRISOME? maybe explained with init
+              ! print *, me, ":", temperature(i-dif(0), k-dif(2), j-dif(1))
+              ! print *, me, ":", T, "||||", this%local(i,k,j)%temperature
+            end if
+            end associate
+          end do
+        end do
+      end do
+
+      ! after moving everything need to reset movement flags to false
+      do concurrent (i=its:ite, j=jts:jte, k=kts:kte)
+        this%local(i,k,j)%moved = .false.
+      end do
+    end subroutine
 
 end submodule

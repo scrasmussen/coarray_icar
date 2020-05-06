@@ -72,8 +72,12 @@ module convection_exchangeable_interface
   ! end type convection_object_t
 
   interface
-     module subroutine process(this, temperature)
+     module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
+         temperature)
+       implicit none
        class(convection_exchangeable_t), intent(inout) :: this
+       real,           intent(in)    :: dt
+       integer,        intent(in)    :: its,ite, jts,jte, kts,kte
        real, dimension(:,:,:), intent(in) :: temperature
      end subroutine
 
