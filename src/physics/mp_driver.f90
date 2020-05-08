@@ -101,6 +101,14 @@ contains
         if (.not.initialized) call mp_init(domain)
 
         if (present(subset)) then
+          call domain%convection_obj%process(dt, & !
+              domain%its - subset, domain%ite , &
+              domain%jts - subset, domain%jte , &
+              domain%kts,          domain%kte + subset, domain%temperature)
+          ! domain%its + subset, domain%ite - subset, &
+          !     domain%jts + subset, domain%jte - subset, &
+
+
             call process_subdomain(domain, dt,                               &
                                    domain%its + subset, domain%ite - subset, &
                                    domain%jts + subset, domain%jte - subset, &
