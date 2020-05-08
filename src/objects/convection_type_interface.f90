@@ -20,6 +20,7 @@ module convection_type_interface
      real :: pressure, temperature
    contains
      procedure :: move_particle
+     procedure :: send_particle
   end type convection_particle
   interface convection_particle
      module procedure constructor
@@ -48,6 +49,12 @@ module convection_type_interface
   !     end subroutine
   ! end interface
 contains
+  subroutine send_particle(this,new_ijk)
+    class(convection_particle), intent(inout) :: this
+    integer, dimension(3), intent(in)         :: new_ijk
+    print *, "TRYING TO SEND ---------"
+  end subroutine send_particle
+
   subroutine move_particle(from,to)
     class(convection_particle), intent(inout) :: from
     type(convection_particle), intent(inout)  :: to
@@ -57,6 +64,7 @@ contains
     else if (to%exists .eqv. .true.) then
       error stop "TO Particle Exists, need to move it"
     end if
+    print *, "---MOVING PARTICLE---"
     ! handle the from
     from%exists = .false.
     from%moved  = .false.
@@ -72,7 +80,7 @@ contains
 
   function constructor(x,y,z,u,v,w,pressure,temperature) result(this)
     type(convection_particle) :: this
-    integer :: x, y, z
+    real :: x, y, z
     real :: u, v, w, pressure, temperature
     this%exists = .true.
     this%moved = .false.
@@ -84,7 +92,7 @@ contains
     this%v = v
     this%w = w
     this%pressure = pressure
-    this%temperature = temperature + 30
-    print *, "------IN CONSTRUCTOR: currently adding 30 K to temp"
+    this%temperature = temperature ! - 50
+    print *, "------IN CONSTRUCTOR: currently adding 0 K to temp"
   end function constructor
 end module convection_type_interface

@@ -158,7 +158,7 @@ contains
           ! ! call this%convection_obj%initialize(convection_particle_e) ! works
           call this%convection_obj%initialize(convection_particle_e, &
               this%get_grid_dimensions(), &
-              2, &
+              input_buf_size=8,halo_width=2, &
               u_in=0.5, v_in=0.5, w_in=0.0, &
               temperature=this%temperature, pressure=this%pressure)
           ! ! ARTLESS NEED TO FIX THIS

@@ -4,9 +4,10 @@ submodule(convection_exchangeable_interface) &
   use grid_interface, only : grid_t
   implicit none
 
+  integer, parameter :: default_buf_size=1
   integer, parameter :: default_halo_size=1
   integer, save, allocatable :: neighbors(:)
-  integer, save :: north_neighbor, south_neighbor, halo_size
+  integer, save :: north_neighbor, south_neighbor, buf_size, halo_size
   integer, save :: east_neighbor, west_neighbor
   integer, save :: northeast_neighbor, northwest_neighbor
   integer, save :: southeast_neighbor, southwest_neighbor
@@ -17,18 +18,21 @@ contains
   ! end function initialize_convection_array_t
 
   ! constructor
-  module subroutine const(this, convection_type_enum, grid, halo_width, &
-      u_in, v_in, w_in, temperature, pressure)
+  module subroutine const(this, convection_type_enum, grid, input_buf_size, &
+      halo_width, u_in, v_in, w_in, temperature, pressure)
     use iso_c_binding, only: c_int
     class(convection_exchangeable_t), intent(inout) :: this
     type(grid_t) :: grid
+    integer, intent(in), optional :: input_buf_size
     integer, intent(in), optional :: halo_width
     integer(c_int), intent(in) :: convection_type_enum
     real, optional, intent(in) :: u_in,v_in,w_in
     real, dimension(:,:,:), intent(in) :: temperature, pressure
+    real :: random_start(3)
 
     integer :: n_neighbors, current
     integer :: ims,ime,kms,kme,jms,jme,i,j,k
+    real :: x,y,z
     real :: u,v,w
     if (present(u_in)) then
       u = u_in
@@ -46,6 +50,11 @@ contains
       w = 0.0
     end if
     print *, "=============++HIHI HI H IH HIHI ============="
+    if (present(input_buf_size)) then
+        buf_size = input_buf_size
+    else
+        buf_size = default_buf_size
+    end if
     if (present(halo_width)) then
         halo_size = halo_width
     else
@@ -62,37 +71,71 @@ contains
                halo_north => merge(0,halo_size,this%north_boundary), &
                halo_east  => merge(0,halo_size,this%east_boundary), &
                halo_west  => merge(0,halo_size,this%west_boundary))
-      ims = grid%ims - halo_east
+      ims = grid%ims - halo_east  ! ARTLESS: no halos right now
       ime = grid%ime + halo_west
       jms = grid%jms - halo_south
       jme = grid%jme + halo_north
       kms = grid%kms
       kme = grid%kme
 
-      allocate(this%local(ims:ime,kms:kme,jms:jme))
-      do i=ims,ime
-        do j=jms,jme
-          do k=kms,kme
-              if (i.eq.5 .and. k.eq.5 .and. j.eq.5) then
-                print*,"ARTLESS change this to percentage once exchange working"
-                ! print*, "~~~~~~~~~~~~~", i, k, j, temperature(i,k,j)
-                this%local(i,k,j) = convection_particle(i,j,k, &
-                    0.5,0.5,0.0,pressure(i,k,j), temperature(i,k,j))
-              else
-                this%local(i,k,j)%exists = .false.
-              end if
+! -      allocate(this%local(ims:ime,kms:kme,jms:jme))
+! -      do i=ims,ime
+! -        do j=jms,jme
+! -          do k=kms,kme
+! -              if (i.eq.5 .and. k.eq.5 .and. j.eq.5) then
+! -                print*,"ARTLESS change this to percentage once exchange working"
+! -                ! print*, "~~~~~~~~~~~~~", i, k, j, temperature(i,k,j)
+! -                this%local(i,k,j) = convection_particle(i,j,k, &
+! -                    0.5,0.5,0.0,pressure(i,k,j), temperature(i,k,j))
+! -              else
+! -                this%local(i,k,j)%exists = .false.
+! -              end if
+! -
+! -            end do
+! -          end do
+! -        end do
 
-            end do
-          end do
-        end do
-        print *, "-----", ims, ime, kms, kme, jms, jme
-        print *, "----- shape = ", shape(this%local)
+
+      allocate(this%local(input_buf_size * 4))
+      call random_number(random_start)
+      if (this_image() .eq. 1) then
+        print*,"ARTLESS change this to percentage once exchange working"
+        ! pick random place in image to start
+        call random_number(random_start)
+        x = (ims+halo_east) + (random_start(1) * (ime-ims-halo_west))
+        z = kms + (random_start(3) * (kme-kms))
+        y = (jms+halo_south) + (random_start(2) * (jme-jms-halo_north))
+        print *, "BOUNDS::", ims, ime, kms, kme, jms, jme
+        print *, "HALO::", halo_north ,halo_south ,halo_east ,halo_west
+        ! print *, x,z,y
+
+        this%local(1) = convection_particle(x,y,z, 0.5,0.5,0.0,&
+            pressure(floor(x),floor(z),floor(y)), &
+            temperature(floor(x),floor(z),floor(y)))
+        ! need to set exists to false
+      end if
+
+      if (this_image() .eq. 3) then
+        print*,"ARTLESS change this to percentage once exchange working"
+        call random_number(random_start)
+        x = (ims+halo_east) + (random_start(1) * (ime-ims-halo_west))
+        z = kms + (random_start(3) * (kme-kms))
+        y = (jms+halo_south) + (random_start(2) * (jme-jms-halo_north))
+
+        this%local(1) = convection_particle(x,y,z, 0.5,0.5,0.0,&
+            pressure(floor(x),floor(y),floor(z)), &
+            temperature(floor(x),floor(y),floor(z)))
+      ! need to set exists to false
+        ! print *, "-----", ims, ime, kms, kme, jms, jme
+        ! print *, "----- shape = ", shape(this%local)
+      end if
+
     end associate
 
-    allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
-    allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*])
-    allocate( this%halo_east_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
-    allocate( this%halo_west_in( halo_size, grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*])
+    allocate( this%buf_south_in(buf_size)[*])
+    allocate( this%buf_north_in(buf_size)[*])
+    allocate( this%buf_east_in(buf_size)[*])
+    allocate( this%buf_west_in(buf_size)[*])
 
     if (this_image() .eq. 1) then
       print *, "===--- ARTLESS NEED TO DOUBLE CHECK NEIGHBORS ---==="
@@ -148,10 +191,10 @@ contains
 
   module subroutine send(this)
     class(convection_exchangeable_t), intent(inout) :: this
-    if (.not. this%north_boundary) call this%put_north
-    if (.not. this%south_boundary) call this%put_south
-    if (.not. this%east_boundary)  call this%put_east
-    if (.not. this%west_boundary)  call this%put_west
+    ! if (.not. this%north_boundary) call this%put_north
+    ! if (.not. this%south_boundary) call this%put_south
+    ! if (.not. this%east_boundary)  call this%put_east
+    ! if (.not. this%west_boundary)  call this%put_west
   end subroutine
 
   module subroutine retrieve(this, no_sync)
@@ -166,133 +209,153 @@ contains
         endif
     endif
 
-    if (.not. this%north_boundary) call this%retrieve_north_halo
-    if (.not. this%south_boundary) call this%retrieve_south_halo
-    if (.not. this%east_boundary) call this%retrieve_east_halo
-    if (.not. this%west_boundary) call this%retrieve_west_halo
+    if (.not. this%north_boundary) call this%retrieve_north_buf
+    if (.not. this%south_boundary) call this%retrieve_south_buf
+    if (.not. this%east_boundary) call this%retrieve_east_buf
+    if (.not. this%west_boundary) call this%retrieve_west_buf
   end subroutine
 
   module subroutine exchange(this)
     class(convection_exchangeable_t), intent(inout) :: this
-    if (.not. this%north_boundary) call this%put_north
-    if (.not. this%south_boundary) call this%put_south
+    ! if (.not. this%north_boundary) call this%put_north
+    ! if (.not. this%south_boundary) call this%put_south
     if (.not. this%east_boundary)  call this%put_east
     if (.not. this%west_boundary)  call this%put_west
 
     sync images( neighbors )
 
-    if (.not. this%north_boundary) call this%retrieve_north_halo
-    if (.not. this%south_boundary) call this%retrieve_south_halo
-    if (.not. this%east_boundary)  call this%retrieve_east_halo
-    if (.not. this%west_boundary)  call this%retrieve_west_halo
+    if (.not. this%north_boundary) call this%retrieve_north_buf
+    if (.not. this%south_boundary) call this%retrieve_south_buf
+    if (.not. this%east_boundary)  call this%retrieve_east_buf
+    if (.not. this%west_boundary)  call this%retrieve_west_buf
   end subroutine
 
-  module subroutine put_north(this)
+  module subroutine load_buf(this, particle)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer :: i
+    particle%exists = .false.
+    do i=1,ubound(this%buf_north_in, dim=1)
+    end do
+
+    print *, "LOADING BUF SUBROUTINE"
+  end subroutine
+
+
+  module subroutine put_north(this, particle)
       class(convection_exchangeable_t), intent(inout) :: this
+      type(convection_particle), intent(inout) :: particle
       integer :: n, nx
-      n = ubound(this%local,3)
-      nx = size(this%local,1)
-      if (assertions) then
-        !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-        call assert( shape(this%halo_south_in(:nx,:,1:halo_size)[north_neighbor]) &
-                     == shape(this%local(:,:,n-halo_size+1:n)),         &
-                     "put_north convection: conformable halo_south_in and local " )
-      end if
+      print *, "PUTTING NORTH!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      ! n = ubound(this%local,3)
+      ! nx = size(this%local,1)
+      ! if (assertions) then
+      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
+      !   call assert( shape(this%halo_south_in(:nx,:,1:halo_size)[north_neighbor]) &
+      !                == shape(this%local(:,:,n-halo_size+1:n)),         &
+      !                "put_north convection: conformable halo_south_in and local " )
+      ! end if
 
-      !dir$ pgas defer_sync
-      this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+      ! !dir$ pgas defer_sync
+      ! this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
   end subroutine
 
-  module subroutine put_south(this)
+  module subroutine put_south(this, particle)
+      class(convection_exchangeable_t), intent(inout) :: this
+      type(convection_particle), intent(inout) :: particle
+
+      integer :: start, nx
+      print *, "PUTTING SOUTH to ", south_neighbor
+      this%buf_north_in(this%north_i)[south_neighbor]%x = particle%x
+      this%north_i = this%north_i + 1
+      particle%exists=.false.
+
+      ! start = lbound(this%local,3)
+      ! nx = size(this%local,1)
+
+      ! if (assertions) then
+      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
+      !   call assert( shape(this%halo_north_in(:nx,:,1:halo_size)[south_neighbor]) &
+      !                == shape(this%local(:,:,start:start+halo_size-1)), &
+      !                "put_south convection: conformable halo_north_in and local " )
+      ! end if
+      ! !dir$ pgas defer_sync
+      ! this%halo_north_in(1:nx,:,1:halo_size)[south_neighbor] = this%local(:,:,start+halo_size:start+halo_size*2-1)
+  end subroutine
+
+  module subroutine retrieve_north_buf(this)
+      class(convection_exchangeable_t), intent(inout) :: this
+
+      integer :: n, nx
+      ! n = ubound(this%local,3)
+      ! nx = size(this%local,1)
+
+      ! this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
+  end subroutine
+
+  module subroutine retrieve_south_buf(this)
       class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: start, nx
-      start = lbound(this%local,3)
-      nx = size(this%local,1)
+      ! start = lbound(this%local,3)
+      ! nx = size(this%local,1)
 
-      if (assertions) then
-        !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-        call assert( shape(this%halo_north_in(:nx,:,1:halo_size)[south_neighbor]) &
-                     == shape(this%local(:,:,start:start+halo_size-1)), &
-                     "put_south convection: conformable halo_north_in and local " )
-      end if
-      !dir$ pgas defer_sync
-      this%halo_north_in(1:nx,:,1:halo_size)[south_neighbor] = this%local(:,:,start+halo_size:start+halo_size*2-1)
-  end subroutine
-
-  module subroutine retrieve_north_halo(this)
-      class(convection_exchangeable_t), intent(inout) :: this
-
-      integer :: n, nx
-      n = ubound(this%local,3)
-      nx = size(this%local,1)
-
-      this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
-  end subroutine
-
-  module subroutine retrieve_south_halo(this)
-      class(convection_exchangeable_t), intent(inout) :: this
-
-      integer :: start, nx
-      start = lbound(this%local,3)
-      nx = size(this%local,1)
-
-      this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      ! this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
   end subroutine
 
   module subroutine put_east(this)
       class(convection_exchangeable_t), intent(inout) :: this
       integer :: n, ny
-      n = ubound(this%local,1)
-      ny = size(this%local,3)
+      ! n = ubound(this%local,1)
+      ! ny = size(this%local,3)
 
-      if (assertions) then
-        !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-        call assert( shape(this%halo_west_in(1:halo_size,:,:ny)[east_neighbor])       &
-                     == shape(this%local(n-halo_size*2+1:n-halo_size,:,:)), &
-                     "put_east: conformable halo_west_in and local " )
-      end if
+      ! if (assertions) then
+      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
+      !   call assert( shape(this%halo_west_in(1:halo_size,:,:ny)[east_neighbor])       &
+      !                == shape(this%local(n-halo_size*2+1:n-halo_size,:,:)), &
+      !                "put_east: conformable halo_west_in and local " )
+      ! end if
 
-      !dir$ pgas defer_sync
-      this%halo_west_in(1:halo_size,:,1:ny)[east_neighbor] = this%local(n-halo_size*2+1:n-halo_size,:,:)
+      ! !dir$ pgas defer_sync
+      ! this%halo_west_in(1:halo_size,:,1:ny)[east_neighbor] = this%local(n-halo_size*2+1:n-halo_size,:,:)
   end subroutine
 
   module subroutine put_west(this)
       class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: start, ny
-      start = lbound(this%local,1)
-      ny = size(this%local,3)
-      ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)),
-      if (assertions) then
-        !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-        call assert( shape(this%halo_east_in(1:halo_size,:,:ny)[west_neighbor])               &
-                     == shape(this%local(start+halo_size:start+halo_size*2-1,:,:)), &
-                     "put_west: conformable halo_east_in and local " )
-      end if
+      ! start = lbound(this%local,1)
+      ! ny = size(this%local,3)
+      ! ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)),
+      ! if (assertions) then
+      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
+      !   call assert( shape(this%halo_east_in(1:halo_size,:,:ny)[west_neighbor])               &
+      !                == shape(this%local(start+halo_size:start+halo_size*2-1,:,:)), &
+      !                "put_west: conformable halo_east_in and local " )
+      ! end if
 
-      !dir$ pgas defer_sync
-      this%halo_east_in(1:halo_size,:,1:ny)[west_neighbor] = this%local(start+halo_size:start+halo_size*2-1,:,:)
+      ! !dir$ pgas defer_sync
+      ! this%halo_east_in(1:halo_size,:,1:ny)[west_neighbor] = this%local(start+halo_size:start+halo_size*2-1,:,:)
   end subroutine
 
-  module subroutine retrieve_east_halo(this)
+  module subroutine retrieve_east_buf(this)
       class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: n, ny
-      n = ubound(this%local,1)
-      ny = size(this%local,3)
+      ! n = ubound(this%local,1)
+      ! ny = size(this%local,3)
 
-      this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
+      ! this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
   end subroutine
 
-  module subroutine retrieve_west_halo(this)
+  module subroutine retrieve_west_buf(this)
       class(convection_exchangeable_t), intent(inout) :: this
 
       integer :: start, ny
-      start = lbound(this%local,1)
-      ny = size(this%local,3)
+      ! start = lbound(this%local,1)
+      ! ny = size(this%local,3)
 
-      this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
+      ! this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
     end subroutine
 
     module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
@@ -305,47 +368,84 @@ contains
       real, parameter :: gravity = 9.80665
       real, parameter :: artless_density = 1.003
       real :: a_prime, displacement, t, t_prime
-      integer :: i,j,k, l_bound(3), dif(3), new_ijk(3)
+      real :: ws
+      integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
+      !integer :: l_bound(3), dif(3), new_ijk(3)  ! old three dimensional
 
-      l_bound = lbound(this%local)
-      dif  = l_bound - lbound(temperature)
-
-      do i=its,ite
-        do j=jts,jte
-          do k=kts,kte
-            associate (particle=>this%local(i,k,j))
-            if (particle%exists .eqv. .true. .and. &
-                particle%moved .eqv. .false.) then
-              T = temperature(i-dif(0), k-dif(2), j-dif(1))
-              T_prime = particle%temperature
-              a_prime = (T_prime - T) / T * gravity
-              displacement =  0    + 0.5 * a_prime * 1 * 1
-              particle%z = particle%z + displacement
-
-              print *, "z = ", particle%z  , "with displacement", displacement
-
-              ! checking to see if need to move particle
-              new_ijk = floor((/particle%x,particle%y,particle%z/))
-
-              if ( .not. all( (/i,j,k/) .eq. &
-                  new_ijk)) then
-                ! print *, "----- MOVING PARTICLE: from",(/i,j,k/), "to",new_ijk
-                call particle%move_particle( &
-                    this%local(new_ijk(1),new_ijk(3),new_ijk(2)))
-              end if
-              ! ARTLESS DIF BETWEEN TEMP IMAGES WORRISOME? maybe explained with init
-              ! print *, me, ":", temperature(i-dif(0), k-dif(2), j-dif(1))
-              ! print *, me, ":", T, "||||", this%local(i,k,j)%temperature
+      ! l_bound = lbound(this%local)
+      ! dif  = l_bound - lbound(temperature)
+! -      do i=its,ite
+! -        do j=jts,jte
+! -          do k=kts,kte
+! -            associate (particle=>this%local(i,k,j))
+! -            if (particle%exists .eqv. .true. .and. &
+      me = this_image()
+      do i=1,ubound(this%local,1)
+        associate (particle=>this%local(i))
+          if (particle%exists .eqv. .true.) then
+            ! print *, "HERE"
+            if (particle%x .lt. its .or. particle%x .gt. ite .or. &
+                particle%z .lt. kts .or. particle%z .gt. kte .or. &
+                particle%y .lt. jts .or. particle%y .gt. jte) then
+              print *, "x:", its, "<", particle%x, "<", ite
+              print *, "z:", kts, "<", particle%z, "<", kte
+              print *, "y:", jts, "<", particle%y, "<", jte
+              stop "x,y,z is out of bounds"
             end if
-            end associate
-          end do
-        end do
+
+            !-----------------------------------------------------------------
+            ! Handle Buoyancy
+            !-----------------------------------------------------------------
+            ! print *, me,":xzy=", particle%x, particle%z,particle%y
+            ! ! print *, me,":",  its,ite, ":",kts,kte, ":",jts,jte
+            ! print *, me,":", shape(temperature), ":", lbound(temperature), &
+            !     ":", ubound(temperature)
+            T = temperature(floor(particle%x), floor(particle%z), &
+                floor(particle%y))
+
+            T_prime = particle%temperature
+            a_prime = (T_prime - T) / T * gravity
+            displacement =  0    + 0.5 * a_prime * 1 * 1
+            particle%z = particle%z + displacement
+
+            ! print *,me, "z = ", particle%z  , "with displacement", displacement
+            ! print *, "limits????????", ite, jte, kte
+
+            ! checking to see if need to move particle
+            new_ijk = floor((/particle%x,particle%y,particle%z/))
+            if (particle%z .gt. kte) then
+              particle%exists=.false.
+            else if (particle%z .lt. kts) then ! kts will be 1
+              particle%exists=.false.
+            end if
+
+            !-----------------------------------------------------------------
+            ! Handle Windfield
+            !-----------------------------------------------------------------
+            ws = sqrt(particle%u * particle%u + particle%v * particle%v)
+
+            particle%y = particle%y - ws
+            print *, "windspeed is", ws
+            print *, "jts  <   y    <  jte"
+            print *,  jts, particle%y, jte
+            if (particle%y .lt. jts) then
+              call this%put_south(particle)
+            else if (particle%y .gt. jte) then ! jts will be 1
+              particle%exists=.false.
+            end if
+
+            !     call this%load_buf(particle)
+            !     ! call this%put_north(particle)
+
+
+          end if
+        end associate
       end do
 
-      ! after moving everything need to reset movement flags to false
-      do concurrent (i=its:ite, j=jts:jte, k=kts:kte)
-        this%local(i,k,j)%moved = .false.
-      end do
+      ! OLD after moving everything need to reset movement flags to false
+      ! do concurrent (i=its:ite, j=jts:jte, k=kts:kte)
+      !   this%local(i,k,j)%moved = .false.
+      ! end do
     end subroutine
 
 end submodule

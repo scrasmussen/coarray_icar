@@ -25,15 +25,15 @@ module convection_exchangeable_interface
 
   type convection_exchangeable_t
      private
-     type(convection_particle), allocatable, public :: local(:,:,:)
-     type(convection_particle), allocatable :: halo_south_in(:,:,:)[:]
-     type(convection_particle), allocatable :: halo_north_in(:,:,:)[:]
-     type(convection_particle), allocatable :: halo_west_in(:,:,:)[:]
-     type(convection_particle), allocatable :: halo_east_in(:,:,:)[:]
-     type(convection_particle), allocatable :: halo_southwest_in(:,:,:)[:]
-     type(convection_particle), allocatable :: halo_southeast_in(:,:,:)[:]
-     type(convection_particle), allocatable :: halo_northwest_in(:,:,:)[:]
-     type(convection_particle), allocatable :: halo_northeast_in(:,:,:)[:]
+     type(convection_particle), allocatable, public :: local(:)
+     type(convection_particle), allocatable :: buf_south_in(:)[:]
+     type(convection_particle), allocatable :: buf_north_in(:)[:]
+     type(convection_particle), allocatable :: buf_west_in(:)[:]
+     type(convection_particle), allocatable :: buf_east_in(:)[:]
+     type(convection_particle), allocatable :: buf_southwest_in(:)[:]
+     type(convection_particle), allocatable :: buf_southeast_in(:)[:]
+     type(convection_particle), allocatable :: buf_northwest_in(:)[:]
+     type(convection_particle), allocatable :: buf_northeast_in(:)[:]
 
      logical :: north_boundary=.false.
      logical :: south_boundary=.false.
@@ -44,10 +44,17 @@ module convection_exchangeable_interface
      logical :: southeast_boundary=.false.
      logical :: southwest_boundary=.false.
 
+     integer :: north_i=0
+     integer :: south_i=0
+     integer :: east_i=0
+     integer :: west_i=0
+
+
    contains
      private
      procedure, public :: const
      procedure, public :: send
+     procedure, public :: load_buf
      procedure, public :: retrieve
      procedure, public :: exchange
      procedure, public :: process
@@ -57,10 +64,10 @@ module convection_exchangeable_interface
      procedure :: put_south
      procedure :: put_west
      procedure :: put_east
-     procedure :: retrieve_north_halo
-     procedure :: retrieve_south_halo
-     procedure :: retrieve_west_halo
-     procedure :: retrieve_east_halo
+     procedure :: retrieve_north_buf
+     procedure :: retrieve_south_buf
+     procedure :: retrieve_west_buf
+     procedure :: retrieve_east_buf
      ! TODO
      ! put_{northeast,northwest,southeast,southwest}
      ! retrieve_{northeast,northwest,southeast,southwest}
@@ -81,10 +88,11 @@ module convection_exchangeable_interface
        real, dimension(:,:,:), intent(in) :: temperature
      end subroutine
 
-     module subroutine const(this, convection_type_enum, grid, halo_width, &
-         u_in, v_in, w_in, temperature, pressure)
+     module subroutine const(this, convection_type_enum, grid, input_buf_size, &
+         halo_width, u_in, v_in, w_in, temperature, pressure)
        class(convection_exchangeable_t), intent(inout) :: this
        type(grid_t) :: grid
+       integer, intent(in), optional :: input_buf_size
        integer, intent(in), optional :: halo_width
        integer(c_int), intent(in) :: convection_type_enum
        real, optional, intent(in) :: u_in,v_in,w_in
@@ -92,18 +100,24 @@ module convection_exchangeable_interface
      end subroutine
 
 
-     ! module subroutine const(this, grid, initial_value, halo_width, u, v, w)
+     ! module subroutine const(this, grid, initial_value, buf_width, u, v, w)
      !   implicit none
      !   class(convection_exchangeable_t), intent(inout)  :: this
      !   type(grid_t),              intent(in)     :: grid
      !   type(convection_particle), intent(in), optional :: initial_value
-     !   integer,                   intent(in), optional :: halo_width
+     !   integer,                   intent(in), optional :: buf_width
      !   real,                      intent(in), optional :: u,v,w
      ! end subroutine
 
      module subroutine send(this)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
+     end subroutine
+
+     module subroutine load_buf(this, particle)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
      end subroutine
 
      module subroutine retrieve(this, no_sync)
@@ -117,22 +131,24 @@ module convection_exchangeable_interface
        class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
 
-     module subroutine put_north(this)
+     module subroutine put_north(this, particle)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+     end subroutine
+
+     module subroutine put_south(this, particle)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+     end subroutine
+
+     module subroutine retrieve_north_buf(this)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
 
-     module subroutine put_south(this)
-       implicit none
-       class(convection_exchangeable_t), intent(inout) :: this
-     end subroutine
-
-     module subroutine retrieve_north_halo(this)
-       implicit none
-       class(convection_exchangeable_t), intent(inout) :: this
-     end subroutine
-
-     module subroutine retrieve_south_halo(this)
+     module subroutine retrieve_south_buf(this)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
@@ -148,12 +164,12 @@ module convection_exchangeable_interface
        class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
 
-     module subroutine retrieve_east_halo(this)
+     module subroutine retrieve_east_buf(this)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
 
-     module subroutine retrieve_west_halo(this)
+     module subroutine retrieve_west_buf(this)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
