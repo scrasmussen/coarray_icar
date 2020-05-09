@@ -49,7 +49,7 @@ contains
     else
       w = 0.0
     end if
-    print *, "=============++HIHI HI H IH HIHI ============="
+
     if (present(input_buf_size)) then
         buf_size = input_buf_size
     else
@@ -71,20 +71,19 @@ contains
                halo_north => merge(0,halo_size,this%north_boundary), &
                halo_east  => merge(0,halo_size,this%east_boundary), &
                halo_west  => merge(0,halo_size,this%west_boundary))
-      ims = grid%ims - halo_east  ! ARTLESS: no halos right now
+      ims = grid%ims - halo_east
       ime = grid%ime + halo_west
       jms = grid%jms - halo_south
       jme = grid%jme + halo_north
       kms = grid%kms
       kme = grid%kme
 
+      ! --------- this is old code from when particle arrays are used
 ! -      allocate(this%local(ims:ime,kms:kme,jms:jme))
 ! -      do i=ims,ime
 ! -        do j=jms,jme
 ! -          do k=kms,kme
 ! -              if (i.eq.5 .and. k.eq.5 .and. j.eq.5) then
-! -                print*,"ARTLESS change this to percentage once exchange working"
-! -                ! print*, "~~~~~~~~~~~~~", i, k, j, temperature(i,k,j)
 ! -                this%local(i,k,j) = convection_particle(i,j,k, &
 ! -                    0.5,0.5,0.0,pressure(i,k,j), temperature(i,k,j))
 ! -              else
@@ -184,10 +183,6 @@ contains
             this%south_boundary, this%east_boundary, this%west_boundary
       end associate
     endif
-
-
-
-    print *, "=============++YBE YBE YBYE BYE  ============="
   end subroutine
 
 
@@ -336,24 +331,14 @@ contains
       integer,        intent(in)    :: its,ite, jts,jte, kts,kte
       real, dimension(:,:,:), intent(in) :: temperature
       real, parameter :: gravity = 9.80665
-      real, parameter :: artless_density = 1.003
       real :: a_prime, displacement, t, t_prime
       real :: ws
       integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
-      !integer :: l_bound(3), dif(3), new_ijk(3)  ! old three dimensional
 
-      ! l_bound = lbound(this%local)
-      ! dif  = l_bound - lbound(temperature)
-! -      do i=its,ite
-! -        do j=jts,jte
-! -          do k=kts,kte
-! -            associate (particle=>this%local(i,k,j))
-! -            if (particle%exists .eqv. .true. .and. &
       me = this_image()
       do i=1,ubound(this%local,1)
         associate (particle=>this%local(i))
           if (particle%exists .eqv. .true.) then
-            ! print *, "HERE"
             if (particle%x .lt. its .or. particle%x .gt. ite .or. &
                 particle%z .lt. kts .or. particle%z .gt. kte .or. &
                 particle%y .lt. jts .or. particle%y .gt. jte) then
@@ -366,10 +351,6 @@ contains
             !-----------------------------------------------------------------
             ! Handle Buoyancy
             !-----------------------------------------------------------------
-            ! print *, me,":xzy=", particle%x, particle%z,particle%y
-            ! ! print *, me,":",  its,ite, ":",kts,kte, ":",jts,jte
-            ! print *, me,":", shape(temperature), ":", lbound(temperature), &
-            !     ":", ubound(temperature)
             T = temperature(floor(particle%x), floor(particle%z), &
                 floor(particle%y))
 
@@ -381,8 +362,6 @@ contains
             ! print *,me, "z = ", particle%z  , "with displacement", displacement
             ! print *, "limits????????", ite, jte, kte
 
-            ! checking to see if need to move particle
-            new_ijk = floor((/particle%x,particle%y,particle%z/))
             if (particle%z .gt. kte) then
               particle%exists=.false.
             else if (particle%z .lt. kts) then ! kts will be 1
@@ -392,25 +371,26 @@ contains
             !-----------------------------------------------------------------
             ! Handle Windfield
             !-----------------------------------------------------------------
+            ! ARTLESS, this is fake math right now
             ws = sqrt(particle%u * particle%u + particle%v * particle%v)
-
             particle%y = particle%y + ws
-            print *, "me = ", me
-            print *, "windspeed is", ws
-            print *, "jts  <   y    <  jte"
-            print *,  jts, particle%y, jte
-            if (particle%y .lt. jts) then
+
+
+            if (particle%y .lt. jts) then      ! "jts  <   y    <  jte"
               call this%put_south(particle)
             else if (particle%y .gt. jte) then ! jts will be 1
               call this%put_north(particle)
+            else if (particle%x .lt. its) then ! "its  <   x    <  ite"
+              call this%put_east(particle)
+            else if (particle%x .gt. ite) then
+              call this%put_west(particle)
             end if
-
-
           end if
         end associate
       end do
 
-      ! OLD after moving everything need to reset movement flags to false
+      ! Only needed if array of particles
+      ! after moving everything need to reset movement flags to false
       ! do concurrent (i=its:ite, j=jts:jte, k=kts:kte)
       !   this%local(i,k,j)%moved = .false.
       ! end do

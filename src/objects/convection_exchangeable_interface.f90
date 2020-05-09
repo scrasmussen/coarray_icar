@@ -96,16 +96,6 @@ module convection_exchangeable_interface
        real, dimension(:,:,:), intent(in) :: temperature, pressure
      end subroutine
 
-
-     ! module subroutine const(this, grid, initial_value, buf_width, u, v, w)
-     !   implicit none
-     !   class(convection_exchangeable_t), intent(inout)  :: this
-     !   type(grid_t),              intent(in)     :: grid
-     !   type(convection_particle), intent(in), optional :: initial_value
-     !   integer,                   intent(in), optional :: buf_width
-     !   real,                      intent(in), optional :: u,v,w
-     ! end subroutine
-
      module subroutine send(this)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
@@ -159,40 +149,4 @@ module convection_exchangeable_interface
      end subroutine
 
   end interface
-
-
-  ! type, extends(convection_exchange_t) :: convection_exchange_list_t
-  !    private
-  !    type(convection_list), allocatable, public :: local(:,:,:)
-
-     ! still figuring out how these will be used
-     ! event to declare if there are more particles in the linked list to move
-     ! type(event_type) :: halo_south_type[*]
-     ! type(event_type) :: halo_north_type[*]
-     ! type(event_type) :: halo_west_type[*]
-     ! type(event_type) :: halo_east_type[*]
-     ! type(event_type) :: halo_southwest_type[*]
-     ! type(event_type) :: halo_southeast_type[*]
-     ! type(event_type) :: halo_northwest_type[*]
-     ! type(event_type) :: halo_northeast_type[*]
-
-  !    logical :: north_boundary=.false.
-  !    logical :: south_boundary=.false.
-  !    logical :: east_boundary=.false.
-  !    logical :: west_boundary=.false.
-  !    logical :: northeast_boundary=.false.
-  !    logical :: northwest_boundary=.false.
-  !    logical :: southeast_boundary=.false.
-  !    logical :: southwest_boundary=.false.
-
-  !  contains
-  !    private
-  !    ! SIMILAR TO EXCHANGE_T
-  !    ! procedure :: const, send, retrieve, exchange, initialize procedures
-  !    ! put_{north,south,west,east,northeast,northwest,southeast,southwest}
-  !    ! retrieve_{north,south,west,east,northeast,northwest,southeast,southwest}
-  !    ! etc. etc.
-  ! end type convection_exchange_list_t
-
-
 end module convection_exchangeable_interface
