@@ -64,10 +64,7 @@ module convection_exchangeable_interface
      procedure :: put_south
      procedure :: put_west
      procedure :: put_east
-     procedure :: retrieve_north_buf
-     procedure :: retrieve_south_buf
-     procedure :: retrieve_west_buf
-     procedure :: retrieve_east_buf
+     procedure :: retrieve_buf
      ! TODO
      ! put_{northeast,northwest,southeast,southwest}
      ! retrieve_{northeast,northwest,southeast,southwest}
@@ -120,6 +117,12 @@ module convection_exchangeable_interface
        type(convection_particle), intent(inout) :: particle
      end subroutine
 
+     module subroutine retrieve_buf(this, buf)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: buf(:)[*]
+     end subroutine
+
      module subroutine retrieve(this, no_sync)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
@@ -143,35 +146,16 @@ module convection_exchangeable_interface
        type(convection_particle), intent(inout) :: particle
      end subroutine
 
-     module subroutine retrieve_north_buf(this)
+     module subroutine put_east(this, particle)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
      end subroutine
 
-     module subroutine retrieve_south_buf(this)
+     module subroutine put_west(this, particle)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
-     end subroutine
-
-
-     module subroutine put_east(this)
-       implicit none
-       class(convection_exchangeable_t), intent(inout) :: this
-     end subroutine
-
-     module subroutine put_west(this)
-       implicit none
-       class(convection_exchangeable_t), intent(inout) :: this
-     end subroutine
-
-     module subroutine retrieve_east_buf(this)
-       implicit none
-       class(convection_exchangeable_t), intent(inout) :: this
-     end subroutine
-
-     module subroutine retrieve_west_buf(this)
-       implicit none
-       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
      end subroutine
 
   end interface

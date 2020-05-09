@@ -211,25 +211,33 @@ contains
         endif
     endif
 
-    if (.not. this%north_boundary) call this%retrieve_north_buf
-    if (.not. this%south_boundary) call this%retrieve_south_buf
-    if (.not. this%east_boundary) call this%retrieve_east_buf
-    if (.not. this%west_boundary) call this%retrieve_west_buf
+    if (.not. this%north_boundary) call this%retrieve_buf(this%buf_north_in)
+    if (.not. this%south_boundary) call this%retrieve_buf(this%buf_south_in)
+    if (.not. this%east_boundary) call this%retrieve_buf(this%buf_east_in)
+    if (.not. this%west_boundary) call this%retrieve_buf(this%buf_west_in)
+    this%north_i = 1
+    this%south_i = 1
+    this%east_i  = 1
+    this%west_i  = 1
   end subroutine
 
   module subroutine exchange(this)
     class(convection_exchangeable_t), intent(inout) :: this
     ! if (.not. this%north_boundary) call this%put_north
     ! if (.not. this%south_boundary) call this%put_south
-    if (.not. this%east_boundary)  call this%put_east
-    if (.not. this%west_boundary)  call this%put_west
+    ! if (.not. this%east_boundary)  call this%put_east
+    ! if (.not. this%west_boundary)  call this%put_west
 
     sync images( neighbors )
 
-    if (.not. this%north_boundary) call this%retrieve_north_buf
-    if (.not. this%south_boundary) call this%retrieve_south_buf
-    if (.not. this%east_boundary)  call this%retrieve_east_buf
-    if (.not. this%west_boundary)  call this%retrieve_west_buf
+    if (.not. this%north_boundary) call this%retrieve_buf(this%buf_north_in)
+    if (.not. this%south_boundary) call this%retrieve_buf(this%buf_south_in)
+    if (.not. this%east_boundary) call this%retrieve_buf(this%buf_east_in)
+    if (.not. this%west_boundary) call this%retrieve_buf(this%buf_west_in)
+    this%north_i = 1
+    this%south_i = 1
+    this%east_i  = 1
+    this%west_i  = 1
   end subroutine
 
   module subroutine load_buf(this, particle)
@@ -243,135 +251,82 @@ contains
     print *, "LOADING BUF SUBROUTINE"
   end subroutine
 
+  module subroutine retrieve_buf(this, buf)
+    implicit none
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: buf(:)[*]
+    integer :: i, n, local_i, local_n
+    n = ubound(buf, dim=1)
+    local_n = ubound(this%local, dim=1)
+    do i=1,n
+      associate (particle=>buf(i))
+        if (particle%exists .eqv. .true.) then
+          do local_i=1,local_n
+            if (this%local(local_i)%exists .eqv. .false.) then
+              call particle%move_to(this%local(local_i))
+              exit
+            end if
+          end do
+        end if
+      end associate
+    end do
+  end subroutine
 
   module subroutine put_north(this, particle)
       class(convection_exchangeable_t), intent(inout) :: this
       type(convection_particle), intent(inout) :: particle
-      integer :: n, nx
 
-      if (this%north_boundary) return
-      print *, "PUTTING NORTH!!!!!!!!!!!!!!!!!!!!!!!!!!", "and ", this%north_i
-      ! this%buf_north_in(this%north_i)[south_neighbor] = particle
+      if (this%north_boundary) then
+        particle%exists = .false.
+        return
+      end if
+
       this%buf_south_in(this%south_i)[north_neighbor] = particle
       particle%exists=.false.
-
-
-      ! n = ubound(this%local,3)
-      ! nx = size(this%local,1)
-      ! if (assertions) then
-      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-      !   call assert( shape(this%halo_south_in(:nx,:,1:halo_size)[north_neighbor]) &
-      !                == shape(this%local(:,:,n-halo_size+1:n)),         &
-      !                "put_north convection: conformable halo_south_in and local " )
-      ! end if
-
-      ! !dir$ pgas defer_sync
-      ! this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+      this%south_i = this%south_i + 1
   end subroutine
 
   module subroutine put_south(this, particle)
       class(convection_exchangeable_t), intent(inout) :: this
       type(convection_particle), intent(inout) :: particle
 
-      integer :: start, nx
-      print *, "PUTTING SOUTH to ", south_neighbor, "and ", this%north_i
-      particle%exists=.false.
+      if (this%south_boundary) then
+        particle%exists = .false.
+        return
+      end if
+
       this%buf_north_in(this%north_i)[south_neighbor] = particle
-      ! this%north_i = this%north_i + 1
-
-
-      ! start = lbound(this%local,3)
-      ! nx = size(this%local,1)
-
-      ! if (assertions) then
-      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-      !   call assert( shape(this%halo_north_in(:nx,:,1:halo_size)[south_neighbor]) &
-      !                == shape(this%local(:,:,start:start+halo_size-1)), &
-      !                "put_south convection: conformable halo_north_in and local " )
-      ! end if
-      ! !dir$ pgas defer_sync
-      ! this%halo_north_in(1:nx,:,1:halo_size)[south_neighbor] = this%local(:,:,start+halo_size:start+halo_size*2-1)
+      particle%exists=.false.
+      this%north_i = this%north_i + 1
   end subroutine
 
-  module subroutine retrieve_north_buf(this)
+  module subroutine put_east(this, particle)
       class(convection_exchangeable_t), intent(inout) :: this
+      type(convection_particle), intent(inout) :: particle
 
-      integer :: n, nx
-      ! n = ubound(this%local,3)
-      ! nx = size(this%local,1)
+      if (this%east_boundary) then
+        particle%exists = .false.
+        return
+      end if
 
-      ! this%local(:,:,n-halo_size+1:n) = this%halo_north_in(:nx,:,1:halo_size)
+      this%buf_west_in(this%west_i)[east_neighbor] = particle
+      particle%exists=.false.
+      this%west_i = this%west_i + 1
   end subroutine
 
-  module subroutine retrieve_south_buf(this)
+  module subroutine put_west(this, particle)
       class(convection_exchangeable_t), intent(inout) :: this
-      integer :: i,n
-      n = ubound(this%buf_south_in, dim=1)
-      do i=1,n
-        if (this%buf_south_in(i)%exists .eqv. .true.) then
-          print* , "RETRIEVE SOUTH BUF--"
-          this%buf_south_in(i)%exists=.false.
-        end if
-      end do
+      type(convection_particle), intent(inout) :: particle
 
+      if (this%west_boundary) then
+        particle%exists = .false.
+        return
+      end if
 
-      ! this%buf_south_in(this%south_i) = particle
+      this%buf_east_in(this%east_i)[west_neighbor] = particle
+      particle%exists=.false.
+      this%east_i = this%east_i + 1
   end subroutine
-
-  module subroutine put_east(this)
-      class(convection_exchangeable_t), intent(inout) :: this
-      integer :: n, ny
-      ! n = ubound(this%local,1)
-      ! ny = size(this%local,3)
-
-      ! if (assertions) then
-      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-      !   call assert( shape(this%halo_west_in(1:halo_size,:,:ny)[east_neighbor])       &
-      !                == shape(this%local(n-halo_size*2+1:n-halo_size,:,:)), &
-      !                "put_east: conformable halo_west_in and local " )
-      ! end if
-
-      ! !dir$ pgas defer_sync
-      ! this%halo_west_in(1:halo_size,:,1:ny)[east_neighbor] = this%local(n-halo_size*2+1:n-halo_size,:,:)
-  end subroutine
-
-  module subroutine put_west(this)
-      class(convection_exchangeable_t), intent(inout) :: this
-
-      integer :: start, ny
-      ! start = lbound(this%local,1)
-      ! ny = size(this%local,3)
-      ! ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)),
-      ! if (assertions) then
-      !   !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
-      !   call assert( shape(this%halo_east_in(1:halo_size,:,:ny)[west_neighbor])               &
-      !                == shape(this%local(start+halo_size:start+halo_size*2-1,:,:)), &
-      !                "put_west: conformable halo_east_in and local " )
-      ! end if
-
-      ! !dir$ pgas defer_sync
-      ! this%halo_east_in(1:halo_size,:,1:ny)[west_neighbor] = this%local(start+halo_size:start+halo_size*2-1,:,:)
-  end subroutine
-
-  module subroutine retrieve_east_buf(this)
-      class(convection_exchangeable_t), intent(inout) :: this
-
-      integer :: n, ny
-      ! n = ubound(this%local,1)
-      ! ny = size(this%local,3)
-
-      ! this%local(n-halo_size+1:n,:,:) = this%halo_east_in(1:halo_size,:,1:ny)
-  end subroutine
-
-  module subroutine retrieve_west_buf(this)
-      class(convection_exchangeable_t), intent(inout) :: this
-
-      integer :: start, ny
-      ! start = lbound(this%local,1)
-      ! ny = size(this%local,3)
-
-      ! this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
-    end subroutine
 
     module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
         temperature)
@@ -440,6 +395,7 @@ contains
             ws = sqrt(particle%u * particle%u + particle%v * particle%v)
 
             particle%y = particle%y + ws
+            print *, "me = ", me
             print *, "windspeed is", ws
             print *, "jts  <   y    <  jte"
             print *,  jts, particle%y, jte
@@ -448,9 +404,6 @@ contains
             else if (particle%y .gt. jte) then ! jts will be 1
               call this%put_north(particle)
             end if
-
-            !     call this%load_buf(particle)
-            !     ! call this%put_north(particle)
 
 
           end if
