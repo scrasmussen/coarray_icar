@@ -588,6 +588,7 @@ contains
           open(unit=me, file=filename, status='old', position='append')
         else
           open(unit=me, file=filename, status='new')
+          write(me,*) this%nx_global, this%nz, this%ny_global
         end if
         close(me)
       end if
