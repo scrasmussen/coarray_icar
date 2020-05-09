@@ -44,10 +44,10 @@ module convection_exchangeable_interface
      logical :: southeast_boundary=.false.
      logical :: southwest_boundary=.false.
 
-     integer :: north_i=0
-     integer :: south_i=0
-     integer :: east_i=0
-     integer :: west_i=0
+     integer :: north_i=1
+     integer :: south_i=1
+     integer :: east_i=1
+     integer :: west_i=1
 
 
    contains

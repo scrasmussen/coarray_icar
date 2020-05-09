@@ -131,7 +131,7 @@ contains
       end if
 
     end associate
-
+    print *, "ALLOCATING BUFFERS OF SIZE", buf_size
     allocate( this%buf_south_in(buf_size)[*])
     allocate( this%buf_north_in(buf_size)[*])
     allocate( this%buf_east_in(buf_size)[*])
@@ -180,6 +180,8 @@ contains
         print *, this_image(), ": north", north_neighbor, ": east", &
              east_neighbor, ": south", south_neighbor, &
              ": west", west_neighbor
+        print *, this_image(), ": boundry", this%north_boundary, &
+            this%south_boundary, this%east_boundary, this%west_boundary
       end associate
     endif
 
@@ -246,7 +248,14 @@ contains
       class(convection_exchangeable_t), intent(inout) :: this
       type(convection_particle), intent(inout) :: particle
       integer :: n, nx
-      print *, "PUTTING NORTH!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
+      if (this%north_boundary) return
+      print *, "PUTTING NORTH!!!!!!!!!!!!!!!!!!!!!!!!!!", "and ", this%north_i
+      ! this%buf_north_in(this%north_i)[south_neighbor] = particle
+      this%buf_south_in(this%south_i)[north_neighbor] = particle
+      particle%exists=.false.
+
+
       ! n = ubound(this%local,3)
       ! nx = size(this%local,1)
       ! if (assertions) then
@@ -265,10 +274,11 @@ contains
       type(convection_particle), intent(inout) :: particle
 
       integer :: start, nx
-      print *, "PUTTING SOUTH to ", south_neighbor
-      this%buf_north_in(this%north_i)[south_neighbor]%x = particle%x
-      this%north_i = this%north_i + 1
+      print *, "PUTTING SOUTH to ", south_neighbor, "and ", this%north_i
       particle%exists=.false.
+      this%buf_north_in(this%north_i)[south_neighbor] = particle
+      ! this%north_i = this%north_i + 1
+
 
       ! start = lbound(this%local,3)
       ! nx = size(this%local,1)
@@ -295,12 +305,17 @@ contains
 
   module subroutine retrieve_south_buf(this)
       class(convection_exchangeable_t), intent(inout) :: this
+      integer :: i,n
+      n = ubound(this%buf_south_in, dim=1)
+      do i=1,n
+        if (this%buf_south_in(i)%exists .eqv. .true.) then
+          print* , "RETRIEVE SOUTH BUF--"
+          this%buf_south_in(i)%exists=.false.
+        end if
+      end do
 
-      integer :: start, nx
-      ! start = lbound(this%local,3)
-      ! nx = size(this%local,1)
 
-      ! this%local(:,:,start:start+halo_size-1) = this%halo_south_in(:nx,:,1:halo_size)
+      ! this%buf_south_in(this%south_i) = particle
   end subroutine
 
   module subroutine put_east(this)
@@ -424,14 +439,14 @@ contains
             !-----------------------------------------------------------------
             ws = sqrt(particle%u * particle%u + particle%v * particle%v)
 
-            particle%y = particle%y - ws
+            particle%y = particle%y + ws
             print *, "windspeed is", ws
             print *, "jts  <   y    <  jte"
             print *,  jts, particle%y, jte
             if (particle%y .lt. jts) then
               call this%put_south(particle)
             else if (particle%y .gt. jte) then ! jts will be 1
-              particle%exists=.false.
+              call this%put_north(particle)
             end if
 
             !     call this%load_buf(particle)
