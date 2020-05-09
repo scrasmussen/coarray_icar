@@ -477,7 +477,7 @@ contains
 
     module subroutine halo_retrieve(this)
       class(domain_t), intent(inout) :: this
-      ! call this%convection_obj%retrieve() ! ARTLESS, should this be no_sync?
+      call this%convection_obj%retrieve() ! ARTLESS, should this be no_sync?
       call this%water_vapor%retrieve()
       call this%potential_temperature%retrieve(no_sync=.True.)
       call this%cloud_water_mass%retrieve(no_sync=.True.)
@@ -570,4 +570,48 @@ contains
         end associate
 
     end subroutine
+
+    module subroutine report_convection(this, step)
+      implicit none
+      class(domain_t), intent(inout) :: this
+      integer, intent(in) :: step
+      character(len=32) :: filename, format_string
+      integer :: me, i, image
+      logical :: exist
+      me = this_image()
+
+      ! handle opening of file
+      write (filename,"(A10)") "output.txt"
+      if (me .eq. 1 .and. step .eq. 0) then
+        inquire(file=filename, exist=exist)
+        if (exist) then
+          open(unit=me, file=filename, status='old', position='append')
+        else
+          open(unit=me, file=filename, status='new')
+        end if
+        close(me)
+      end if
+
+      ! write to file
+      do image = 1,num_images()
+        sync all
+        if (image .eq. me) then
+          open(unit=me, file=filename, status='old', position='append')
+          if (me .eq. 1) then
+            write(me,*) "step=",step
+          end if
+
+          do i=1,ubound(this%convection_obj%local,1)
+            if (this%convection_obj%local(i)%exists .eqv. .true.) then
+              write(me,*) me, this%convection_obj%local(i)
+            end if
+          end do
+          close(me)
+        end if
+        sync all
+      end do
+
+
+    end subroutine
+
 end submodule

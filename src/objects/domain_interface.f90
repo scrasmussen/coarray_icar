@@ -65,6 +65,7 @@ module domain_interface
     procedure :: halo_exchange
     procedure :: enforce_limits
     procedure :: domain_decomposition
+    procedure :: report_convection
    !generic :: read(formatted)=>initialize_from_file
    !procedure, private :: initialize_with_configuration
    !procedure :: update_boundary
@@ -133,6 +134,11 @@ module domain_interface
       character(len=*), intent(in) :: file_name
     end subroutine
 
+    module subroutine report_convection(this, step)
+      implicit none
+      class(domain_t), intent(inout) :: this
+      integer, intent(in) :: step
+    end subroutine
   end interface
 
 end module
