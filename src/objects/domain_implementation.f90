@@ -597,17 +597,15 @@ contains
       do image = 1,num_images()
         sync all
         if (image .eq. me) then
-          open(unit=me, file=filename, status='old', position='append')
-          if (me .eq. 1) then
-            write(me,*) "step=",step
-          end if
 
+          open(unit=me, file=filename, status='old', position='append')
           do i=1,ubound(this%convection_obj%local,1)
             if (this%convection_obj%local(i)%exists .eqv. .true.) then
-              write(me,*) me, this%convection_obj%local(i)
+              write(me,*) me, step, this%convection_obj%local(i)
             end if
           end do
           close(me)
+
         end if
         sync all
       end do
