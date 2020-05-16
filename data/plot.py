@@ -21,19 +21,8 @@ header = ['image','time step','exists','moved', 'x', 'y', 'z', 'u', 'v', 'w', \
           'density', 'temperature']
 particles = pd.read_csv(f, sep='\s+',header=None, names=header)
 
-
 num_t = particles['time step'].max()
 field = np.zeros((nx,nz,ny,num_t))
-
-fig = plt.figure()
-ax = plt.axes(projection='3d')
-# ax = fig.add_subplot(111,projection='3d')
-ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
-ax.set_xlabel="x axis"
-ax.set_ylabel="y axis"
-ax.set_zlabel="z axis"
-
-
 print("ARTLESS: remove this once real data is produced")
 new_temp = [i+x for i,x in enumerate(particles['temperature'])]
 particles['temperature'] = new_temp
@@ -41,11 +30,29 @@ particles['temperature'] = new_temp
 print("ARTLESS: fix normalization")
 norm = matplotlib.colors.Normalize(vmin=particles['temperature'].min()-10,
                                    vmax=particles['temperature'].max())
-
-
 # ---- Set up colors ----
 cmap = plt.cm.Greens
 cmap_c = cmap(norm(particles.temperature.values))
+
+
+
+
+# fig = plt.figure()
+# ax = plt.axes(projection='3d')
+# fig, (ax,ax2) = plt.subplots(2)
+
+fig = plt.figure(figsize=plt.figaspect(0.5))
+
+# ax = fig.add_subplot(2,1,1,projection='3d')  # THIS WORKS!!!!!!!!
+ax = fig.add_subplot(1,2,1,projection='3d')
+# ax.plot3D()
+ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
+ax.set_xlabel="x axis"
+ax.set_ylabel="y axis"
+ax.set_zlabel="z axis"
+
+
+
 
 # ---- 3d plots ----
 # ax.plot3D(particles['x'],particles['y'],particles['z'],
@@ -61,10 +68,46 @@ def plotlines():
 # ---- 3d plots ----
 plotlines()
 t = 0
+
+
+
+
+temp = fig.add_subplot(2,2,2)
+density = fig.add_subplot(2,2,4)
+
+temp_min = particles.temperature.min()
+temp_max = particles.temperature.max()
+density_min = particles.density.min()
+density_max = particles.density.max()
+
+if (temp_min > temp_max-10):
+    temp_min -= 5
+    temp_max += 5
+if (density_min > density_max-10):
+    density_min -= 5
+    density_max += 5
+temp_min = 0
+density_min = 0
+
+temp.set_ylim(temp_min, temp_max)
+density.set_ylim(density_min-10, density_max)
+
+def updateBarGraphs(ps,i):
+    p = ['particle 1']
+    temp.bar(p,ps.iloc[i].temperature, width=0.5, label='Temp',
+            color='#3CB371')
+    density.bar(p,ps.iloc[i].density, width=0.5,  label='Density',
+            color='#6495ED') #cornflowerblue
+
 def updateFig(*args):
     global t, old
     if (t == num_t):
         plt.cla()
+        temp.cla()
+        density.cla()
+        temp.set_ylim(temp_min, temp_max)
+        density.set_ylim(density_min-10, density_max)
+
         ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
         plotlines()
         t = 0
@@ -72,6 +115,8 @@ def updateFig(*args):
         old.remove()
         x,y,z = particles.iloc[t-1][['x','y','z']]
         im = ax.scatter3D(x,y,z, marker='.', color=cmap_c[t-1])
+
+    updateBarGraphs(particles,t)
     x,y,z = particles.iloc[t][['x','y','z']]
     old = ax.scatter3D(x,y,z, marker='o', color=cmap_c[t])
 
