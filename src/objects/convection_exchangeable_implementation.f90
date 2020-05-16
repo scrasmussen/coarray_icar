@@ -67,6 +67,23 @@ contains
     this%east_boundary  = (grid%ximg == grid%ximages)
     this%west_boundary  = (grid%ximg == 1)
 
+    if (this%north_boundary) then
+      this%northeast_boundary = .true.
+      this%northwest_boundary = .true.
+    end if
+    if (this%south_boundary) then
+      this%southeast_boundary = .true.
+      this%southwest_boundary = .true.
+    end if
+    if (this%east_boundary) then
+      this%northeast_boundary = .true.
+      this%southeast_boundary = .true.
+    end if
+    if (this%west_boundary) then
+      this%northwest_boundary = .true.
+      this%southwest_boundary = .true.
+    end if
+
     associate( halo_south => merge(0,halo_size,this%south_boundary), &
                halo_north => merge(0,halo_size,this%north_boundary), &
                halo_east  => merge(0,halo_size,this%east_boundary), &
@@ -131,10 +148,14 @@ contains
 
     end associate
     print *, "ALLOCATING BUFFERS OF SIZE", buf_size
-    allocate( this%buf_south_in(buf_size)[*])
     allocate( this%buf_north_in(buf_size)[*])
+    allocate( this%buf_south_in(buf_size)[*])
     allocate( this%buf_east_in(buf_size)[*])
     allocate( this%buf_west_in(buf_size)[*])
+    allocate( this%buf_northeast_in(buf_size)[*])
+    allocate( this%buf_northwest_in(buf_size)[*])
+    allocate( this%buf_southeast_in(buf_size)[*])
+    allocate( this%buf_southwest_in(buf_size)[*])
 
     if (this_image() .eq. 1) then
       print *, "===--- ARTLESS NEED TO DOUBLE CHECK NEIGHBORS ---==="
@@ -142,10 +163,14 @@ contains
     ! set up the neighbors array so we can sync with our neighbors when needed
     if (.not.allocated(neighbors)) then
       associate(me=>this_image())
-        south_neighbor = me - grid%ximages
         north_neighbor = me + grid%ximages
+        south_neighbor = me - grid%ximages
         east_neighbor  = me + 1
         west_neighbor  = me - 1
+        northeast_neighbor = me + grid%ximages + 1
+        northwest_neighbor = me + grid%ximages - 1
+        southeast_neighbor = me - grid%ximages + 1
+        southwest_neighbor = me - grid%ximages - 1
 
         n_neighbors = merge(0,1,this%south_boundary)  &
             +merge(0,1,this%north_boundary)  &
@@ -179,8 +204,11 @@ contains
         print *, this_image(), ": north", north_neighbor, ": east", &
              east_neighbor, ": south", south_neighbor, &
              ": west", west_neighbor
-        print *, this_image(), ": boundry", this%north_boundary, &
+        print *, this_image(), ": boundry         ", this%north_boundary, &
             this%south_boundary, this%east_boundary, this%west_boundary
+        print *, this_image(), ": diagonal boundry", this%northeast_boundary, &
+            this%northwest_boundary, this%southeast_boundary, &
+            this%southwest_boundary
       end associate
     endif
   end subroutine
@@ -323,7 +351,64 @@ contains
       this%east_i = this%east_i + 1
   end subroutine
 
-    module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
+  module subroutine put_northeast(this, particle)
+      class(convection_exchangeable_t), intent(inout) :: this
+      type(convection_particle), intent(inout) :: particle
+
+      if (this%northeast_boundary) then
+        particle%exists = .false.
+        return
+      end if
+
+      this%buf_southwest_in(this%southwest_i)[northeast_neighbor] = particle
+      particle%exists=.false.
+      this%southwest_i = this%southwest_i + 1
+  end subroutine
+
+  module subroutine put_northwest(this, particle)
+      class(convection_exchangeable_t), intent(inout) :: this
+      type(convection_particle), intent(inout) :: particle
+
+      if (this%northwest_boundary) then
+        particle%exists = .false.
+        return
+      end if
+
+      this%buf_southeast_in(this%southeast_i)[northwest_neighbor] = particle
+      particle%exists=.false.
+      this%southeast_i = this%southeast_i + 1
+  end subroutine
+
+  module subroutine put_southeast(this, particle)
+      class(convection_exchangeable_t), intent(inout) :: this
+      type(convection_particle), intent(inout) :: particle
+
+      if (this%southeast_boundary) then
+        particle%exists = .false.
+        return
+      end if
+
+      this%buf_northwest_in(this%northwest_i)[southeast_neighbor] = particle
+      particle%exists=.false.
+      this%northwest_i = this%northwest_i + 1
+  end subroutine
+
+  module subroutine put_southwest(this, particle)
+      class(convection_exchangeable_t), intent(inout) :: this
+      type(convection_particle), intent(inout) :: particle
+
+      if (this%southwest_boundary) then
+        particle%exists = .false.
+        return
+      end if
+
+      this%buf_northeast_in(this%northeast_i)[southwest_neighbor] = particle
+      particle%exists=.false.
+      this%northeast_i = this%northeast_i + 1
+  end subroutine
+
+
+  module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
         temperature)
       implicit none
       class(convection_exchangeable_t), intent(inout) :: this

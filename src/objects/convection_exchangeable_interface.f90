@@ -26,14 +26,14 @@ module convection_exchangeable_interface
   type convection_exchangeable_t
      private
      type(convection_particle), allocatable, public :: local(:)
-     type(convection_particle), allocatable :: buf_south_in(:)[:]
      type(convection_particle), allocatable :: buf_north_in(:)[:]
-     type(convection_particle), allocatable :: buf_west_in(:)[:]
+     type(convection_particle), allocatable :: buf_south_in(:)[:]
      type(convection_particle), allocatable :: buf_east_in(:)[:]
-     type(convection_particle), allocatable :: buf_southwest_in(:)[:]
-     type(convection_particle), allocatable :: buf_southeast_in(:)[:]
-     type(convection_particle), allocatable :: buf_northwest_in(:)[:]
+     type(convection_particle), allocatable :: buf_west_in(:)[:]
      type(convection_particle), allocatable :: buf_northeast_in(:)[:]
+     type(convection_particle), allocatable :: buf_northwest_in(:)[:]
+     type(convection_particle), allocatable :: buf_southeast_in(:)[:]
+     type(convection_particle), allocatable :: buf_southwest_in(:)[:]
 
      logical :: north_boundary=.false.
      logical :: south_boundary=.false.
@@ -48,6 +48,10 @@ module convection_exchangeable_interface
      integer :: south_i=1
      integer :: east_i=1
      integer :: west_i=1
+     integer :: northeast_i=1
+     integer :: northwest_i=1
+     integer :: southeast_i=1
+     integer :: southwest_i=1
 
 
    contains
@@ -62,12 +66,13 @@ module convection_exchangeable_interface
 
      procedure :: put_north
      procedure :: put_south
-     procedure :: put_west
      procedure :: put_east
+     procedure :: put_west
+     procedure :: put_northeast
+     procedure :: put_northwest
+     procedure :: put_southeast
+     procedure :: put_southwest
      procedure :: retrieve_buf
-     ! TODO
-     ! put_{northeast,northwest,southeast,southwest}
-     ! retrieve_{northeast,northwest,southeast,southwest}
   end type convection_exchangeable_t
 
   ! type convection_object_t
@@ -148,5 +153,32 @@ module convection_exchangeable_interface
        type(convection_particle), intent(inout) :: particle
      end subroutine
 
+     module subroutine put_northeast(this, particle)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+     end subroutine
+
+     module subroutine put_northwest(this, particle)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+     end subroutine
+
+     module subroutine put_southeast(this, particle)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+     end subroutine
+
+     module subroutine put_southwest(this, particle)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+     end subroutine
+
   end interface
+
+
+
 end module convection_exchangeable_interface
