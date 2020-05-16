@@ -238,10 +238,23 @@ contains
     if (.not. this%south_boundary) call this%retrieve_buf(this%buf_south_in)
     if (.not. this%east_boundary) call this%retrieve_buf(this%buf_east_in)
     if (.not. this%west_boundary) call this%retrieve_buf(this%buf_west_in)
+    if (.not. this%northeast_boundary) &
+        call this%retrieve_buf(this%buf_northeast_in)
+    if (.not. this%northwest_boundary) &
+        call this%retrieve_buf(this%buf_northwest_in)
+    if (.not. this%southeast_boundary) &
+        call this%retrieve_buf(this%buf_southeast_in)
+    if (.not. this%southwest_boundary) &
+        call this%retrieve_buf(this%buf_southwest_in)
+
     this%north_i = 1
     this%south_i = 1
     this%east_i  = 1
     this%west_i  = 1
+    this%northeast_i = 1
+    this%northwest_i = 1
+    this%southeast_i = 1
+    this%southwest_i = 1
   end subroutine
 
   module subroutine exchange(this)
@@ -257,10 +270,23 @@ contains
     if (.not. this%south_boundary) call this%retrieve_buf(this%buf_south_in)
     if (.not. this%east_boundary) call this%retrieve_buf(this%buf_east_in)
     if (.not. this%west_boundary) call this%retrieve_buf(this%buf_west_in)
+    if (.not. this%northeast_boundary) &
+        call this%retrieve_buf(this%buf_northeast_in)
+    if (.not. this%northwest_boundary) &
+        call this%retrieve_buf(this%buf_northwest_in)
+    if (.not. this%southeast_boundary) &
+        call this%retrieve_buf(this%buf_southeast_in)
+    if (.not. this%southwest_boundary) &
+        call this%retrieve_buf(this%buf_southwest_in)
+
     this%north_i = 1
     this%south_i = 1
     this%east_i  = 1
     this%west_i  = 1
+    this%northeast_i = 1
+    this%northwest_i = 1
+    this%southeast_i = 1
+    this%southwest_i = 1
   end subroutine
 
   module subroutine load_buf(this, particle)
