@@ -15,6 +15,7 @@ f = open(sys.argv[1])
 l = f.readline()
 dims = [int(n) for n in l.split()]
 nx = dims[0]; nz = dims[1]; ny = dims[2]
+ximages = dims[3]; yimages = dims[4]
 
 header = ['image','time step','exists','moved', 'x', 'y', 'z', 'u', 'v', 'w', \
           'density', 'temperature']
@@ -26,6 +27,7 @@ field = np.zeros((nx,nz,ny,num_t))
 
 fig = plt.figure()
 ax = plt.axes(projection='3d')
+# ax = fig.add_subplot(111,projection='3d')
 ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
 ax.set_xlabel="x axis"
 ax.set_ylabel="y axis"
@@ -49,12 +51,22 @@ cmap_c = cmap(norm(particles.temperature.values))
 # ax.plot3D(particles['x'],particles['y'],particles['z'],
 # normalized = particles['temperature'] / particles['temperature'].max()
 
+# --- plot image lines ---
+def plotlines():
+    for i in range (1,ximages):
+        ax.plot(xs=[(i*nx)/ximages,(i*nx)/ximages], ys=[0,ny], color='black')
+    for i in range (1,yimages):
+        ax.plot(xs=[0,nx], ys=[(i*ny)/yimages,(i*ny)/yimages], color='black')
+
+# ---- 3d plots ----
+plotlines()
 t = 0
 def updateFig(*args):
     global t, old
     if (t == num_t):
         plt.cla()
         ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
+        plotlines()
         t = 0
     if (t != 0):
         old.remove()
