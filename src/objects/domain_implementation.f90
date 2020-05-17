@@ -588,7 +588,8 @@ contains
           open(unit=me, file=filename, status='old', position='append')
         else
           open(unit=me, file=filename, status='new')
-          write(me,*) this%nx_global, this%nz, this%ny_global
+          write(me,*) this%nx_global, this%nz, this%ny_global, this%ximages, &
+              this%yimages
         end if
         close(me)
       end if
