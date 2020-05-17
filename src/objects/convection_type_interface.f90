@@ -18,8 +18,9 @@ module convection_type_interface
      real :: x, y, z
      real :: u, v, w
      real :: pressure, temperature
+     real :: velocity
    contains
-     procedure :: move_particle
+     procedure :: move_to
      procedure :: send_particle
   end type convection_particle
   interface convection_particle
@@ -55,16 +56,17 @@ contains
     print *, "TRYING TO SEND ---------"
   end subroutine send_particle
 
-  subroutine move_particle(from,to)
+  subroutine move_to(from,to)
     class(convection_particle), intent(inout) :: from
     type(convection_particle), intent(inout)  :: to
-    if (to%moved .eqv. .true.) then
-      error stop &
-          "TO Particle has been Moved, need to combine with FROM Particle"
-    else if (to%exists .eqv. .true.) then
-      error stop "TO Particle Exists, need to move it"
-    end if
-    print *, "---MOVING PARTICLE---"
+    ! Logic for array of particles
+    ! if (to%moved .eqv. .true.) then
+    !   error stop &
+    !       "TO Particle has been Moved, need to combine with FROM Particle"
+    ! else if (to%exists .eqv. .true.) then
+    !   error stop "TO Particle Exists, need to move it"
+    ! end if
+
     ! handle the from
     from%exists = .false.
     from%moved  = .false.
@@ -76,7 +78,7 @@ contains
     to%u = from%u; to%v = from%v; to%w = from%w
     to%pressure = from%pressure
     to%temperature = from%temperature
-  end subroutine move_particle
+  end subroutine move_to
 
   function constructor(x,y,z,u,v,w,pressure,temperature) result(this)
     type(convection_particle) :: this
@@ -93,6 +95,7 @@ contains
     this%w = w
     this%pressure = pressure
     this%temperature = temperature ! - 50
+    this%velocity = 0
     print *, "------IN CONSTRUCTOR: currently adding 0 K to temp"
   end function constructor
 end module convection_type_interface
