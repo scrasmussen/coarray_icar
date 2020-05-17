@@ -450,6 +450,7 @@ contains
       do i=1,ubound(this%local,1)
         associate (particle=>this%local(i))
           if (particle%exists .eqv. .true.) then
+            ! Check if particle is out of bounds
             if (particle%x .lt. its .or. particle%x .gt. ite .or. &
                 particle%z .lt. kts .or. particle%z .gt. kte .or. &
                 particle%y .lt. jts .or. particle%y .gt. jte) then
@@ -462,16 +463,29 @@ contains
             !-----------------------------------------------------------------
             ! Handle Buoyancy
             !-----------------------------------------------------------------
+            ! Buoyancy (B), Temperature (T), Surrounding Tmperature (T')
+            ! B = (T - T') / T'
+            ! acceleration'_z = B * g                                    (11)
+            !-----------------------------------------------------------------
+            ! acceleration in terms of potential temperature             (13)
+            ! theta = T(p_0 / p') ^ (R_d / c_p)
+            ! acceleration'_z = B * g = (theta' - theta) / theta * gravity
+            !-----------------------------------------------------------------
+            ! displacement (s), velocity (u)
+            ! s = u*t + 1/2 a*t^2
+            !-----------------------------------------------------------------
             T = temperature(floor(particle%x), floor(particle%z), &
                 floor(particle%y))
 
             T_prime = particle%temperature
             a_prime = (T_prime - T) / T * gravity
-            displacement =  0    + 0.5 * a_prime * 1 * 1
-            particle%z = particle%z + displacement
 
-            ! print *,me, "z = ", particle%z  , "with displacement", displacement
-            ! print *, "limits????????", ite, jte, kte
+            ! time step is 1 so t and t^2 go away
+            displacement = particle%velocity + 0.5 * a_prime
+            particle%z = particle%z + displacement
+            particle%velocity = displacement
+
+            ! print *,me, "z = ", particle%z  , "with displacement",displacement
 
             if (particle%z .gt. kte) then
               particle%exists=.false.
@@ -484,17 +498,32 @@ contains
             !-----------------------------------------------------------------
             ! ARTLESS, this is fake math right now
             ws = sqrt(particle%u * particle%u + particle%v * particle%v)
-            particle%y = particle%y + ws
-
+            ! u: zonal velocity, wind towards the east
+            particle%x = particle%x + particle%u
+            ! v: meridional velocity, wind towards north
+            particle%y = particle%y + particle%v
+            ! w: tangential velocity: ARTLESS
 
             if (particle%y .lt. jts) then      ! "jts  <   y    <  jte"
-              call this%put_south(particle)
+              if (particle%x .lt. its) then
+                call this%put_southwest(particle)
+              else if (particle%x .gt. ite) then
+                call this%put_southeast(particle)
+              else
+                call this%put_south(particle)
+              end if
             else if (particle%y .gt. jte) then ! jts will be 1
-              call this%put_north(particle)
+              if (particle%x .lt. its) then
+                call this%put_northwest(particle)
+              else if (particle%x .gt. ite) then
+                call this%put_northeast(particle)
+              else
+                call this%put_north(particle)
+              endif
             else if (particle%x .lt. its) then ! "its  <   x    <  ite"
-              call this%put_east(particle)
+              call this%put_west(particle)      ! need to double check this!
             else if (particle%x .gt. ite) then
-              call this%put_west(particle)
+              call this%put_east(particle)
             end if
           end if
         end associate
