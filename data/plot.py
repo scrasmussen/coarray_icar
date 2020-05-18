@@ -17,12 +17,14 @@ dims = [int(n) for n in l.split()]
 nx = dims[0]; nz = dims[1]; ny = dims[2]
 ximages = dims[3]; yimages = dims[4]
 
-header = ['image','time step','exists','moved', 'x', 'y', 'z', 'u', 'v', 'w', \
-          'density', 'temperature']
-particles = pd.read_csv(f, sep='\s+',header=None, names=header)
+header = ['image','timestep','identifier', 'exists','moved', 'x', 'y', 'z',
+          'u', 'v', 'w', 'density', 'temperature', 'velocity']
 
-num_t = particles['time step'].max()
+particles = pd.read_csv(f, sep='\s+',header=None, names=header)
+num_t = particles['timestep'].max()
+num_particles = list(particles.identifier.unique())
 field = np.zeros((nx,nz,ny,num_t))
+
 print("ARTLESS: remove this once real data is produced")
 new_temp = [i+x for i,x in enumerate(particles['temperature'])]
 particles['temperature'] = new_temp
@@ -34,63 +36,39 @@ norm = matplotlib.colors.Normalize(vmin=particles['temperature'].min()-10,
 cmap = plt.cm.Greens
 cmap_c = cmap(norm(particles.temperature.values))
 
-
-
-
-# fig = plt.figure()
-# ax = plt.axes(projection='3d')
-# fig, (ax,ax2) = plt.subplots(2)
-
 fig = plt.figure(figsize=plt.figaspect(0.5))
 
-# ax = fig.add_subplot(2,1,1,projection='3d')  # THIS WORKS!!!!!!!!
 ax = fig.add_subplot(1,2,1,projection='3d')
-# ax.plot3D()
 ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
 ax.set_xlabel="x axis"
 ax.set_ylabel="y axis"
 ax.set_zlabel="z axis"
 
-
-
-
-# ---- 3d plots ----
-# ax.plot3D(particles['x'],particles['y'],particles['z'],
-# normalized = particles['temperature'] / particles['temperature'].max()
-
 # --- plot image lines ---
-def plotlines():
+def plot_image_lines():
     for i in range (1,ximages):
         ax.plot(xs=[(i*nx)/ximages,(i*nx)/ximages], ys=[0,ny], color='black')
     for i in range (1,yimages):
         ax.plot(xs=[0,nx], ys=[(i*ny)/yimages,(i*ny)/yimages], color='black')
 
 # ---- 3d plots ----
-plotlines()
-t = 0
-
-
-
-
+plot_image_lines()
 temp = fig.add_subplot(2,2,2)
 density = fig.add_subplot(2,2,4)
-
-temp_min = particles.temperature.min()
 temp_max = particles.temperature.max()
-density_min = particles.density.min()
 density_max = particles.density.max()
+temp_max += 10
 
-if (temp_min > temp_max-10):
-    temp_min -= 5
-    temp_max += 5
-if (density_min > density_max-10):
-    density_min -= 5
-    density_max += 5
-temp_min = 0
-density_min = 0
+t = 0
+up = particles.identifier.unique()
+q = particles
 
-temp.set_ylim(temp_min, temp_max)
-density.set_ylim(density_min-10, density_max)
+def set_graph_lim():
+    temp.set_xlim(0,num_t)
+    temp.set_ylim(0,temp_max)
+    density.set_xlim(0,num_t)
+    density.set_ylim(0,density_max)
+set_graph_lim()
 
 def updateBarGraphs(ps,i):
     p = ['particle 1']
@@ -98,31 +76,46 @@ def updateBarGraphs(ps,i):
             color='#3CB371')
     density.bar(p,ps.iloc[i].density, width=0.5,  label='Density',
             color='#6495ED') #cornflowerblue
-
+old = []
 def updateFig(*args):
     global t, old
+
+    temp.cla()
+    density.cla()
+    set_graph_lim()
     if (t == num_t):
-        plt.cla()
-        temp.cla()
-        density.cla()
-        temp.set_ylim(temp_min, temp_max)
-        density.set_ylim(density_min-10, density_max)
-
+        ax.cla()
         ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
-        plotlines()
+        plot_image_lines()
         t = 0
-    if (t != 0):
-        old.remove()
-        x,y,z = particles.iloc[t-1][['x','y','z']]
-        im = ax.scatter3D(x,y,z, marker='.', color=cmap_c[t-1])
 
-    updateBarGraphs(particles,t)
-    x,y,z = particles.iloc[t][['x','y','z']]
-    old = ax.scatter3D(x,y,z, marker='o', color=cmap_c[t])
+    for id in up:
+        p = particles[ (particles.identifier == id) &
+                       (particles.timestep == t) ]
+        p_less_than = particles[ (particles.identifier == id) &
+                                 (particles.timestep <= t) ]
+        p_density = p_less_than.density
+        p_temp    = p_less_than.temperature
+        p_time    = p_less_than.timestep
+
+        temp.plot(p_time, p_temp, color='black')
+        density.plot(p_time, p_density, color='black')
+        if not p.empty:
+            old = ax.scatter3D(p.x, p.y, p.z, marker='o', edgecolor='black',
+                               color=cmap_c[t])
+        else:
+            temp.plot(p_time[-1:], p_temp[-1:], color='black', marker='x')
+            density.plot(p_time[-1:], p_density[-1:], color='black',
+                         marker='x')
+
 
     t += 1
     return old
 
+        # temp.bar(p,ps.iloc[i].temperature, width=0.5, label='Temp',
+            #          color='#3CB371')
+            # density.bar(p,ps.iloc[i].density, width=0.5,  label='Density',
+            #             color='#6495ED') #cornflowerblue
 
 # --- animation ----
 frame_delay_ms=100
