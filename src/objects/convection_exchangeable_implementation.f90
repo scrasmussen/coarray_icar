@@ -1,6 +1,7 @@
 submodule(convection_exchangeable_interface) &
     convection_exchangeable_implementation
   use assertions_interface, only : assert, assertions
+
   use grid_interface, only : grid_t
   implicit none
 
@@ -18,11 +19,13 @@ contains
   ! end function initialize_convection_array_t
 
   ! constructor
-  module subroutine const(this, convection_type_enum, grid, input_buf_size, &
+  module subroutine const(this, convection_type_enum, grid,ims,ime,kms,kme,jms,&
+      jme, input_buf_size, &
       halo_width, u_in, v_in, w_in, temperature, pressure)
     use iso_c_binding, only: c_int
     class(convection_exchangeable_t), intent(inout) :: this
     type(grid_t) :: grid
+    integer, intent(in) :: ims,ime,kms,kme,jms,jme
     integer, intent(in), optional :: input_buf_size
     integer, intent(in), optional :: halo_width
     integer(c_int), intent(in) :: convection_type_enum
@@ -30,10 +33,12 @@ contains
     real, dimension(:,:,:), intent(in) :: temperature, pressure
     real :: random_start(3)
 
-    integer :: n_neighbors, current
-    integer :: ims,ime,kms,kme,jms,jme,i,j,k
+
+    integer :: n_neighbors, current, id_range, particle_id, i, j, k, me
+    integer :: create, num_create
     real :: x,y,z
     real :: u,v,w
+    me = this_image()
     if (present(u_in)) then
       u = u_in
     else
@@ -88,12 +93,32 @@ contains
                halo_north => merge(0,halo_size,this%north_boundary), &
                halo_east  => merge(0,halo_size,this%east_boundary), &
                halo_west  => merge(0,halo_size,this%west_boundary))
-      ims = grid%ims - halo_east
-      ime = grid%ime + halo_west
-      jms = grid%jms - halo_south
-      jme = grid%jme + halo_north
-      kms = grid%kms
-      kme = grid%kme
+      ! ARTLESS:: removing ims, ime, etc, trying to get proper range
+      ! ims = grid%ims - halo_east
+      ! ime = grid%ime + halo_west
+      ! jms = grid%jms - halo_south
+      ! jme = grid%jme + halo_north
+      ! kms = grid%kms
+      ! kme = grid%kme
+
+
+      ! ids,ide, jds,jde, kds,kde, & ! for the entire model domain    (d)
+      ! ims,ime, jms,jme, kms,kme, & ! for the memory in these arrays (m)
+      ! its,ite, jts,jte, kts,kte    ! for the data tile to process   (t)
+
+      ! print *, "----------------------------------"
+      ! print *, "me = ", this_image()
+      ! ! model domain
+      ! print *, "ids,ide, jds,jde, kds,kde"
+      ! print *, grid%ids,grid%ide, grid%jds,grid%jde, grid%kds,grid%kde
+      ! ! memory in arrays
+      ! print *, "ims,ime, jms,jme, kms,kme"
+      ! print *, grid%ims,grid%ime, grid%jms,grid%jme, grid%kms,grid%kme
+      ! ! data tile to process
+      ! print *, "its,ite, jts,jte, kts,kte"
+      ! print *, grid%its,grid%ite, grid%jts,grid%jte, grid%kts,grid%kte
+      ! print *, "----------------------------------"
+
 
       ! --------- this is old code from when particle arrays are used
 ! -      allocate(this%local(ims:ime,kms:kme,jms:jme))
@@ -109,42 +134,72 @@ contains
 ! -
 ! -            end do
 ! -          end do
-! -        end do
+      ! -        end do
 
 
       allocate(this%local(input_buf_size * 4))
-      call random_number(random_start)
-      if (this_image() .eq. 1) then
-        print*,"ARTLESS change this to percentage once exchange working"
-        ! pick random place in image to start
-        call random_number(random_start)
-        x = (ims+halo_east) + (random_start(1) * (ime-ims-halo_west))
-        z = kms + (random_start(3) * (kme-kms))
-        y = (jms+halo_south) + (random_start(2) * (jme-jms-halo_north))
-        print *, "BOUNDS::", ims, ime, kms, kme, jms, jme
-        print *, "HALO::", halo_north ,halo_south ,halo_east ,halo_west
-        ! print *, x,z,y
 
-        this%local(1) = convection_particle(x,y,z, 0.5,0.5,0.0,&
+      num_create = 1
+      if (me == 1) print*, "Creating", num_create, "parcels per image"
+
+      do create=1,num_create
+        call random_number(random_start)
+        x = (ims) + (random_start(1) * (ime-ims))
+        z = kms   + (random_start(3) * (kme-kms))
+        y = (jms) + (random_start(2) * (jme-jms))
+        ! x=4; y=2; z=3
+        ! print *, "BOUNDS::", ims, ime, kms, kme, jms, jme, "CREATED::", x,z,y, " ON IMAGE", this_image()
+        call this%create_particle_id()
+        ! print *, me, ": particle_id = ", this%particle_id_count
+
+
+        this%local(create) = convection_particle( &
+            this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
             pressure(floor(x),floor(z),floor(y)), &
             temperature(floor(x),floor(z),floor(y)))
-        ! need to set exists to false
-      end if
+      end do
 
-      if (this_image() .eq. 3) then
-        print*,"ARTLESS change this to percentage once exchange working"
-        call random_number(random_start)
-        x = (ims+halo_east) + (random_start(1) * (ime-ims-halo_west))
-        z = kms + (random_start(3) * (kme-kms))
-        y = (jms+halo_south) + (random_start(2) * (jme-jms-halo_north))
+      ! call random_number(random_start)
+      ! if (this_image() .eq. 1) then
+      !   print*,"ARTLESS change this to percentage once exchange working"
+      !   ! pick random place in image to start
+      !   call random_number(random_start)
+      !   x = (ims) + (random_start(1) * (ime-ims))
+      !   z = kms   + (random_start(3) * (kme-kms))
+      !   y = (jms) + (random_start(2) * (jme-jms))
+      !   ! x = (ims+halo_east) + (random_start(1) * (ime-ims-halo_west))
+      !   ! z = kms + (random_start(3) * (kme-kms))
+      !   ! y = (jms+halo_south) + (random_start(2) * (jme-jms-halo_north))
+      !   print *, "BOUNDS::", ims, ime, kms, kme, jms, jme
+      !   ! print *, "HALO::", halo_north ,halo_south ,halo_east ,halo_west
+      !   print *, "CREATED::", x,z,y, " ON IMAGE", this_image()
+      !   call this%create_particle_id()
+      !   this%local(1) = convection_particle( &
+      !       this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
+      !       pressure(floor(x),floor(z),floor(y)), &
+      !       temperature(floor(x),floor(z),floor(y)))
+      !   ! need to set exists to false
+      ! end if
 
-        this%local(1) = convection_particle(x,y,z, 0.5,0.5,0.0,&
-            pressure(floor(x),floor(y),floor(z)), &
-            temperature(floor(x),floor(y),floor(z)))
-      ! need to set exists to false
-        ! print *, "-----", ims, ime, kms, kme, jms, jme
-        ! print *, "----- shape = ", shape(this%local)
-      end if
+      ! if (this_image() .eq. 3) then
+      !   print*,"ARTLESS change this to percentage once exchange working"
+      !   call random_number(random_start)
+      !   x = ims + (random_start(1) * (ime-ims))
+      !   z = kms + (random_start(3) * (kme-kms))
+      !   y = jms + (random_start(2) * (jme-jms))
+      !   print *, "BOUNDS::", ims, ime, kms, kme, jms, jme
+      !   ! print *, "HALO::", halo_north ,halo_south ,halo_east ,halo_west
+      !   print *, "CREATED::", x,z,y, " ON IMAGE", this_image()
+
+      !   call this%create_particle_id()
+      !   this%local(1) = convection_particle( &
+      !       this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
+      !       pressure(floor(x),floor(y),floor(z)), &
+      !       temperature(floor(x),floor(y),floor(z)))
+      ! ! need to set exists to false
+      !   ! print *, "-----", ims, ime, kms, kme, jms, jme
+      !   ! print *, "----- shape = ", shape(this%local)
+      ! end if
 
     end associate
     print *, "ALLOCATING BUFFERS OF SIZE", buf_size
@@ -435,25 +490,32 @@ contains
 
 
   module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
-        temperature)
+        temperature, dz)
       implicit none
       class(convection_exchangeable_t), intent(inout) :: this
-      real,           intent(in)    :: dt
+      real,           intent(in)    :: dt, dz
       integer,        intent(in)    :: its,ite, jts,jte, kts,kte
       real, dimension(:,:,:), intent(in) :: temperature
-      real, parameter :: gravity = 9.80665
-      real :: a_prime, displacement, t, t_prime
-      real :: ws
+      real, parameter :: gravity = 9.80665, Gamma = 0.01
+      real :: a_prime, z_displacement, t, t_prime, buoyancy
+      real :: ws, fake_wind_correction, delta_z, rcp
       integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
+      real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
+      real :: alt_pressure3, alt_pressure4
 
       me = this_image()
+
       do i=1,ubound(this%local,1)
         associate (particle=>this%local(i))
           if (particle%exists .eqv. .true.) then
             ! Check if particle is out of bounds
-            if (particle%x .lt. its .or. particle%x .gt. ite .or. &
-                particle%z .lt. kts .or. particle%z .gt. kte .or. &
-                particle%y .lt. jts .or. particle%y .gt. jte) then
+            if (floor(particle%x) .lt. its .or. &
+                floor(particle%x) .gt. ite .or. &
+                floor(particle%z) .lt. kts .or. &
+                floor(particle%z) .gt. kte .or. &
+                floor(particle%y) .lt. jts .or. &
+                floor(particle%y) .gt. jte) then
+              print *, "particle", particle%particle_id, "on image", me
               print *, "x:", its, "<", particle%x, "<", ite
               print *, "z:", kts, "<", particle%z, "<", kte
               print *, "y:", jts, "<", particle%y, "<", jte
@@ -464,28 +526,117 @@ contains
             ! Handle Buoyancy
             !-----------------------------------------------------------------
             ! Buoyancy (B), Temperature (T), Surrounding Tmperature (T')
-            ! B = (T - T') / T'
+            ! B = (T - T') / T'                                         (4.12)
             ! acceleration'_z = B * g                                    (11)
             !-----------------------------------------------------------------
             ! acceleration in terms of potential temperature             (13)
             ! theta = T(p_0 / p') ^ (R_d / c_p)
             ! acceleration'_z = B * g = (theta' - theta) / theta * gravity
             !-----------------------------------------------------------------
-            ! displacement (s), velocity (u)
+            ! displacement (s), initial velocity (u), final velocity (v)
+            ! v = u + a * t
             ! s = u*t + 1/2 a*t^2
             !-----------------------------------------------------------------
-            T = temperature(floor(particle%x), floor(particle%z), &
+            ! orig: properites of air parcel are prime
+            ! new: properites of environment are prime
+            T = particle%temperature
+            T_prime = temperature(floor(particle%x), floor(particle%z), &
                 floor(particle%y))
 
-            T_prime = particle%temperature
-            a_prime = (T_prime - T) / T * gravity
+            ! 4.12 in Rogers and Yao, simple for now
+            buoyancy = (T - T_prime) / T_prime
+            a_prime = buoyancy * gravity
 
             ! time step is 1 so t and t^2 go away
-            displacement = particle%velocity + 0.5 * a_prime
-            particle%z = particle%z + displacement
-            particle%velocity = displacement
+            z_displacement = particle%velocity + 0.5 * a_prime
+            ! number from dz_interface, currently always 500
+            delta_z = z_displacement / dz
+            particle%z = particle%z + delta_z
+            particle%velocity = z_displacement
 
-            ! print *,me, "z = ", particle%z  , "with displacement",displacement
+
+
+            ! print *, ":::::ARTLESS:::::"
+            ! print *, "z_displacement = ", z_displacement
+            ! print *, "temp     =" ,particle%temperature
+            ! print *, "potential temp     =" ,particle%potential_temp
+            ! print *, "pressure =" ,particle%pressure
+
+            rcp = 0.286
+
+            ! OLD
+            !-----------------------------------------------------------------
+            ! ! barometric formula for an adiabatic atmosphere
+            ! ! p(h) = p_0 * (1 + Gamma / T_0 * h) ^ -g/R_s*Gamma
+            ! new_pressure = particle%pressure * (1 + Gamma / )
+            !-----------------------------------------------------------------
+            ! dp = - g / (R_s * T) * p * dh
+            ! R_s is specific gas constant 287
+
+
+            !-----------------------------------------------------------------
+            ! p = p_0 * e^( ((9.81/287.058)*dz) / t_mean )
+            !-----------------------------------------------------------------
+            p0 = particle%pressure
+            particle%pressure = p0 - z_displacement * &
+                gravity / (287.05 * particle%temperature) * p0
+
+
+            ! ! barometric formula for an adiabatic atmosphere
+            ! exponent = gravity / (287.05 * Gamma)
+            ! alt_pressure = p0 * (1 - Gamma * particle%z / T)
+
+            ! ! Exner
+            ! ! T/potential =
+            ! associate(po=>100000, Rd=>287.058, cp=>1003.5)
+            !   alt_pressure2= p0 / ((particle%potential_temp / T)**(cp/Rd))
+            ! end associate
+
+
+
+            !-----------------------------------------------------------------
+            ! Update the parcel temperature for dry air
+            ! Gamma is the dry adiabatic lapse rate
+            ! Temperature is reduced T - Gamma * delta_z  (3.8)
+            particle%temperature = particle%temperature - Gamma * z_displacement
+
+
+
+            ! this is close to the potential temp given by the Exner func
+            ! particle%potential_temp = particle%temperature * &
+            !     (p0 / particle%pressure) ** (0.286)
+            ! print *, "new potential temp", particle%potential_temp
+
+            ! potential_temp from exner
+            associate(po=>100000, Rd=>287.058, cp=>1003.5)
+              particle%potential_temp = particle%temperature / &
+                  ((particle%pressure / p0) ** (Rd/cp))
+            end associate
+
+            ! Equaion Ethan gave me, same as pressure
+            ! alt_pressure = p0 * exp( -((9.81/287.058)*z_displacement) / &
+            !     particle%temperature)
+            ! alt_pressure4 = (p0 * (-Gamma * z_displacement)) / (-0.286*T)
+
+
+
+
+            !-----------------------------------------------------------------
+            ! Better update
+            ! T_0 + gamma U dt - Gamma_s U d t
+            ! T_0 is initial temperature
+            ! Gamma_s is the pseudoadiabaitc lapse rate
+            ! gamme is the ambient lapse rate
+
+
+            !-----------------------------------------------------------------
+            ! WANTED: LCL, lifted condensation level:
+            ! approximation: h_LCL = 125(T-T_d)
+            ! T_d = dew-point Temperature
+
+
+
+            ! print *,me,"z = ",particle%z,"with z_displacement",z_displacement
 
             if (particle%z .gt. kte) then
               particle%exists=.false.
@@ -496,36 +647,52 @@ contains
             !-----------------------------------------------------------------
             ! Handle Windfield
             !-----------------------------------------------------------------
-            ! ARTLESS, this is fake math right now
-            ws = sqrt(particle%u * particle%u + particle%v * particle%v)
+            ! ! ARTLESS, this fake math right now
+            ! ws = sqrt(particle%u * particle%u + particle%v * particle%v)
+            ! ARTLESS below might be correctish math
             ! u: zonal velocity, wind towards the east
-            particle%x = particle%x + particle%u
+            ! dz: 500, supposes all dz_interface values are the same
+            fake_wind_correction = (1.0 / dz)
+            particle%x = particle%x + (particle%u * fake_wind_correction)
             ! v: meridional velocity, wind towards north
-            particle%y = particle%y + particle%v
+            particle%y = particle%y + (particle%v * fake_wind_correction)
             ! w: tangential velocity: ARTLESS
 
-            if (particle%y .lt. jts) then      ! "jts  <   y    <  jte"
-              if (particle%x .lt. its) then
-                call this%put_southwest(particle)
-              else if (particle%x .gt. ite) then
-                call this%put_southeast(particle)
-              else
-                call this%put_south(particle)
+            associate (x => floor(particle%x), y => floor(particle%y), &
+                z => floor(particle%z))
+              if (x .lt. its .or. x .gt. ite .or. &
+                  z .lt. kts .or. z .gt. kte .or. &
+                  y .lt. jts .or. y .gt. jte) then
+                print *, "PUTTING", particle%x, particle%z,  particle%y, &
+                    "FROM", this_image(), "REMINDER!!! FAKE WIND"
+                print *, its,ite, kts, kte, jts, jte
+                print *, "------"
               end if
-            else if (particle%y .gt. jte) then ! jts will be 1
-              if (particle%x .lt. its) then
-                call this%put_northwest(particle)
-              else if (particle%x .gt. ite) then
-                call this%put_northeast(particle)
-              else
-                call this%put_north(particle)
-              endif
-            else if (particle%x .lt. its) then ! "its  <   x    <  ite"
-              call this%put_west(particle)      ! need to double check this!
-            else if (particle%x .gt. ite) then
-              call this%put_east(particle)
-            end if
-          end if
+
+              if (y .lt. jts) then      ! "jts  <   y    <  jte"
+                if (x .lt. its) then
+                  call this%put_southwest(particle)
+                else if (x .gt. ite) then
+                  call this%put_southeast(particle)
+                else
+                  call this%put_south(particle)
+                end if
+              else if (y .gt. jte) then ! jts will be 1
+                if (x .lt. its) then
+                  call this%put_northwest(particle)
+                else if (x .gt. ite) then
+                  call this%put_northeast(particle)
+                else
+                  call this%put_north(particle)
+                endif
+              else if (x .lt. its) then ! "its  <   x    <  ite"
+                call this%put_west(particle)      ! need to double check this!
+              else if (x .gt. ite) then
+                call this%put_east(particle)
+              end if
+            end associate
+
+        end if
         end associate
       end do
 
@@ -536,4 +703,16 @@ contains
       ! end do
     end subroutine
 
+    module subroutine create_particle_id(this)
+      use iso_fortran_env, only : int32
+      implicit none
+      class(convection_exchangeable_t), intent(inout) :: this
+      integer :: id_range, h
+      if (this%particle_id_count .eq. -1) then
+        id_range = huge(int32) / num_images()
+        this%particle_id_count = (this_image()-1) * id_range
+      else
+        this%particle_id_count = this%particle_id_count + 1
+      end if
+    end subroutine
 end submodule

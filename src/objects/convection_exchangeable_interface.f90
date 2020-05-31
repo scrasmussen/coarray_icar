@@ -53,6 +53,7 @@ module convection_exchangeable_interface
      integer :: southeast_i=1
      integer :: southwest_i=1
 
+     integer :: particle_id_count=-1
 
    contains
      private
@@ -73,6 +74,7 @@ module convection_exchangeable_interface
      procedure :: put_southeast
      procedure :: put_southwest
      procedure :: retrieve_buf
+     procedure :: create_particle_id
   end type convection_exchangeable_t
 
   ! type convection_object_t
@@ -82,18 +84,20 @@ module convection_exchangeable_interface
 
   interface
      module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
-         temperature)
+         temperature, dz)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
-       real,           intent(in)    :: dt
+       real,           intent(in)    :: dt, dz
        integer,        intent(in)    :: its,ite, jts,jte, kts,kte
        real, dimension(:,:,:), intent(in) :: temperature
      end subroutine
 
-     module subroutine const(this, convection_type_enum, grid, input_buf_size, &
+     module subroutine const(this, convection_type_enum, grid, ims,ime,kms,kme,&
+         jms,jme, input_buf_size, &
          halo_width, u_in, v_in, w_in, temperature, pressure)
        class(convection_exchangeable_t), intent(inout) :: this
        type(grid_t) :: grid
+       integer, intent(in) :: ims,ime,kms,kme,jms,jme
        integer, intent(in), optional :: input_buf_size
        integer, intent(in), optional :: halo_width
        integer(c_int), intent(in) :: convection_type_enum
@@ -175,6 +179,11 @@ module convection_exchangeable_interface
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
        type(convection_particle), intent(inout) :: particle
+     end subroutine
+
+     module subroutine create_particle_id(this)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
 
   end interface

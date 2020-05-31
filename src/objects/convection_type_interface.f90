@@ -14,10 +14,13 @@ module convection_type_interface
 
   type convection_particle
      ! when adding element, remember about constructor
+     integer :: particle_id
      logical :: exists, moved
      real :: x, y, z
+     ! real :: xd, yd, zd  ! ARTLESS these are really the domain xyz
      real :: u, v, w
-     real :: pressure, temperature
+     real :: k ! Amontons's law
+     real :: pressure, temperature, potential_temp
      real :: velocity
    contains
      procedure :: move_to
@@ -80,10 +83,14 @@ contains
     to%temperature = from%temperature
   end subroutine move_to
 
-  function constructor(x,y,z,u,v,w,pressure,temperature) result(this)
+  function constructor(particle_id,x,y,z,u,v,w,pressure,temperature) &
+      result(this)
     type(convection_particle) :: this
+    integer :: particle_id
     real :: x, y, z
     real :: u, v, w, pressure, temperature
+    real :: exner
+    this%particle_id = particle_id
     this%exists = .true.
     this%moved = .false.
     this%x = x
@@ -94,8 +101,21 @@ contains
     this%v = v
     this%w = w
     this%pressure = pressure
-    this%temperature = temperature ! - 50
+    this%temperature = temperature + 10
+
+
+    ! Amontons's law
+    this%k = pressure / temperature
+
+
+    associate(po=>100000, Rd=>287.058, cp=>1003.5)
+      exner = (pressure / po) ** (Rd/cp)
+    end associate
+    this%potential_temp = temperature / exner
     this%velocity = 0
+
+
+
     print *, "------IN CONSTRUCTOR: currently adding 0 K to temp"
   end function constructor
 end module convection_type_interface
