@@ -19,12 +19,15 @@ nx = dims[0]; nz = dims[1]; ny = dims[2]
 ximages = dims[3]; yimages = dims[4]
 
 header = ['image','timestep','identifier', 'exists','moved', 'x', 'y', 'z',
-          'u', 'v', 'w', 'density', 'temperature', 'velocity']
+          'u', 'v', 'w', 'k', 'pressure','temperature', 'potential_temperature',
+          'velocity', 'water_vapor']
 
 particles = pd.read_csv(f, sep='\s+',header=None, names=header)
 num_t = particles['timestep'].max()
 num_particles = list(particles.identifier.unique())
 up = particles.identifier.unique()
+
+
 
 print("ARTLESS: remove this once real data is produced")
 new_temp = [i+x for i,x in enumerate(particles['temperature'])]
@@ -87,11 +90,23 @@ def plot_image_lines():
 
 # ---- 3d plots ----
 temp        = fig.add_subplot(2,2,2)
-density     = fig.add_subplot(2,2,4)
 temp_max    = particles.temperature.max()
-density_max = particles.density.max()
 temp_max    *= 1.02
-density_max *= 1.1
+
+
+# --- set up third graph ---
+# choose type
+plot_water_vapor = True
+plot_density = False
+if (plot_density):
+    third_graph_title = "density"
+if (plot_water_vapor):
+    third_graph_title = "water vapor"
+
+third_graph_entity = third_graph_title.replace(' ', '_')
+third_graph = fig.add_subplot(2,2,4)
+third_graph_max = particles[third_graph_entity].max()
+third_graph_max *= 1.1
 
 
 # --- set graph limits ---
@@ -99,17 +114,22 @@ def set_graph_lim():
     temp.set_title("temperature")
     temp.set_xlim(0,num_t)
     temp.set_ylim(0,temp_max)
-    density.set_title("density", y=-0.3)
-    density.set_xlim(0,num_t)
-    density.set_ylim(0,density_max)
+    third_graph.set_title(third_graph_title, y=-0.3)
+    third_graph.set_xlim(0,num_t)
+    third_graph.set_ylim(0,third_graph_max)
 
 # --- function that gets run every animation timestep ---
 def updateFig(*args):
     global t, old
 
     temp.cla()
-    density.cla()
+    third_graph.cla()
     set_graph_lim()
+    clear_3D_graph = True
+    if (clear_3D_graph):
+        ax.cla()
+        ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
+        plot_image_lines()
     if (t == num_t):
         ax.cla()
         ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
@@ -119,11 +139,12 @@ def updateFig(*args):
     for id in up:
         p_less_than = particles[ (particles.identifier == id) &
                                  (particles.timestep < t) ]
-        p_density = p_less_than.density
         p_temp    = p_less_than.temperature
         p_time    = p_less_than.timestep
         temp.plot(p_time, p_temp, color='black')
-        density.plot(p_time, p_density, color='black')
+
+        p_third_graph = p_less_than[third_graph_entity]
+        third_graph.plot(p_time, p_third_graph, color='black')
 
         p = particles[ (particles.identifier == id) &
                        (particles.timestep == t) ]
@@ -132,7 +153,7 @@ def updateFig(*args):
                                color=cmap_c[t])
         else:
             temp.plot(p_time[-1:], p_temp[-1:], color='black', marker='x')
-            density.plot(p_time[-1:], p_density[-1:], color='black',
+            third_graph.plot(p_time[-1:], p_third_graph[-1:], color='black',
                          marker='x')
 
     t += 1
@@ -144,6 +165,7 @@ def updateFig(*args):
 plot_image_lines()
 set_graph_lim()
 frame_delay_ms=100
+frame_delay_ms=80
 t = 0
 ani = animation.FuncAnimation(fig, updateFig, interval=frame_delay_ms,
                               frames=num_t-1,repeat=True)
