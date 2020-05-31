@@ -47,6 +47,30 @@ ax.set_xlabel="x axis"
 ax.set_ylabel="y axis"
 ax.set_zlabel="z axis"
 
+# --- plot hill lines ---
+def hill_contour(hillX,hillY):
+    hillZ = np.full_like(hillX,0.0)
+    ids = 1
+    jds = 1
+    ide = nx
+    jde = ny
+    dz_value = 500
+    surface_z = 0
+    n_hills = 1.0
+    hill_height = 1000.0
+
+    hillZ = (np.sin((hillX-ids)/((ide-ids)/n_hills)*2*3.14159-3.14159/2)+1)/2 *\
+            (np.sin((hillY-jds)/((jde-jds)/n_hills)*2*3.14159-3.14159/2)+1)/2
+    hillZ = ((hillZ * hill_height ) + (surface_z + dz_value / 2.0)) / dz_value
+    return hillZ
+
+fineness=1
+hillx = np.linspace(1,nx,nx*fineness)
+hilly = np.linspace(1,ny,ny*fineness)
+hillX,hillY = np.meshgrid(hillx,hilly)
+hillZ = hill_contour(hillX,hillY)
+
+
 # --- plot image lines ---
 def plot_image_lines():
     ax.set_title("Particle Movement", y=1.05)
@@ -57,6 +81,9 @@ def plot_image_lines():
         ax.plot(xs=[(i*nx)/ximages,(i*nx)/ximages], ys=[0,ny], color='black')
     for i in range (1,yimages):
         ax.plot(xs=[0,nx], ys=[(i*ny)/yimages,(i*ny)/yimages], color='black')
+    ax.contour3D(hillX,hillY,hillZ, cmap='binary')
+
+
 
 # ---- 3d plots ----
 temp        = fig.add_subplot(2,2,2)
