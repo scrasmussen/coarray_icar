@@ -88,10 +88,12 @@ def plot_image_lines():
 
 
 
-# ---- 3d plots ----
-temp        = fig.add_subplot(2,2,2)
-temp_max    = particles.temperature.max()
-temp_max    *= 1.02
+# --- set up third graph ---
+second_graph_title  = 'temperature'
+second_graph_entity = second_graph_title.replace(' ', '_')
+second_graph        = fig.add_subplot(2,2,2)
+second_graph_max    = particles[second_graph_entity].max()
+second_graph_max   *= 1.1
 
 
 # --- set up third graph ---
@@ -111,9 +113,9 @@ third_graph_max *= 1.1
 
 # --- set graph limits ---
 def set_graph_lim():
-    temp.set_title("temperature")
-    temp.set_xlim(0,num_t)
-    temp.set_ylim(0,temp_max)
+    second_graph.set_title(second_graph_title)
+    second_graph.set_xlim(0,num_t)
+    second_graph.set_ylim(0,second_graph_max)
     third_graph.set_title(third_graph_title, y=-0.3)
     third_graph.set_xlim(0,num_t)
     third_graph.set_ylim(0,third_graph_max)
@@ -122,7 +124,7 @@ def set_graph_lim():
 def updateFig(*args):
     global t, old
 
-    temp.cla()
+    second_graph.cla()
     third_graph.cla()
     set_graph_lim()
     clear_3D_graph = True
@@ -139,11 +141,11 @@ def updateFig(*args):
     for id in up:
         p_less_than = particles[ (particles.identifier == id) &
                                  (particles.timestep < t) ]
-        p_temp    = p_less_than.temperature
-        p_time    = p_less_than.timestep
-        temp.plot(p_time, p_temp, color='black')
+        p_time = p_less_than.timestep
 
-        p_third_graph = p_less_than[third_graph_entity]
+        p_second_graph = p_less_than[second_graph_entity]
+        second_graph.plot(p_time, p_second_graph, color='black')
+        p_third_graph  = p_less_than[third_graph_entity]
         third_graph.plot(p_time, p_third_graph, color='black')
 
         p = particles[ (particles.identifier == id) &
@@ -152,7 +154,7 @@ def updateFig(*args):
             old = ax.scatter3D(p.x, p.y, p.z, marker='o', edgecolor='black',
                                color=cmap_c[t])
         else:
-            temp.plot(p_time[-1:], p_temp[-1:], color='black', marker='x')
+            second_graph.plot(p_time[-1:], p_second_graph[-1:], color='black', marker='x')
             third_graph.plot(p_time[-1:], p_third_graph[-1:], color='black',
                          marker='x')
 
