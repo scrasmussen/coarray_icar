@@ -43,6 +43,11 @@ module convection_exchangeable_interface
      logical :: northwest_boundary=.false.
      logical :: southeast_boundary=.false.
      logical :: southwest_boundary=.false.
+     logical :: wrapped_north=.false.
+     logical :: wrapped_south=.false.
+     logical :: wrapped_east=.false.
+     logical :: wrapped_west=.false.
+
 
      integer :: north_i=1
      integer :: south_i=1
@@ -94,7 +99,7 @@ module convection_exchangeable_interface
 
      module subroutine const(this, convection_type_enum, grid, ims,ime,kms,kme,&
          jms,jme, input_buf_size, &
-         halo_width, u_in, v_in, w_in, temperature, pressure)
+         halo_width, u_in, v_in, w_in, temperature, pressure, water_vapor)
        class(convection_exchangeable_t), intent(inout) :: this
        type(grid_t) :: grid
        integer, intent(in) :: ims,ime,kms,kme,jms,jme
@@ -102,7 +107,7 @@ module convection_exchangeable_interface
        integer, intent(in), optional :: halo_width
        integer(c_int), intent(in) :: convection_type_enum
        real, optional, intent(in) :: u_in,v_in,w_in
-       real, dimension(:,:,:), intent(in) :: temperature, pressure
+       real, dimension(:,:,:), intent(in) :: temperature, pressure, water_vapor
      end subroutine
 
      module subroutine send(this)
