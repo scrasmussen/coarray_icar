@@ -12,6 +12,14 @@ if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
 
 
+frame_delay_ms=10
+frame_delay_ms=25
+frame_delay_ms=50
+frame_delay_ms=100
+frame_delay_ms=200
+# frame_delay_ms=300
+
+
 #
 turn_off_graphs=True
 # turn_off_graphs=False
@@ -35,10 +43,10 @@ if (f.name == 'four-200-time-step.txt'):
           'velocity','water_vapor']
 
 particles = pd.read_csv(f, sep='\s+',header=None, names=header)
+# sys.exit()
 num_t = particles['timestep'].max()
 num_particles = list(particles.identifier.unique())
 unique_particles = particles.identifier.unique()
-
 
 print("ARTLESS: fix normalization")
 norm = matplotlib.colors.Normalize(vmin=particles['temperature'].min()-10,
@@ -213,18 +221,13 @@ def updateFig(*args):
 # - setup graphs
 plot_image_lines()
 set_graph_lim()
-# frame_delay_ms=100
-# frame_delay_ms=200
-frame_delay_ms=25
-frame_delay_ms=10
-
 
 gif    = True
 gif    = False
 repeat = False if gif else True
 
 # num_t = 4
-
+# ax.view_init(0, 0)
 
 t = 0
 ani = animation.FuncAnimation(fig, updateFig, interval=frame_delay_ms,
@@ -232,7 +235,7 @@ ani = animation.FuncAnimation(fig, updateFig, interval=frame_delay_ms,
 
 if (gif):
     print("Gif!")
-    ani.save('./test2.gif', writer='imagemagick', fps=None) # fps was 5
+    ani.save('./test.gif', writer='imagemagick', fps=None) # fps was 5
 else:
     plt.show()
 

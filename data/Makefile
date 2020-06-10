@@ -16,6 +16,15 @@ input=four-4-200-time-step-mixing_ratio-2.txt
 # input=four-200-time-step.txt # no mixing ratio
 
 
+
+input=four-1-100-steps-out-of-bounds.txt
+input=four-1-200-steps-looks-good.txt
+input=two-2-200-test.txt
+input=four-2-200-test.txt
+input=two-400-200-test.txt
+input=four-400-1000-test.txt
+
+
 all: build
 
 build:
