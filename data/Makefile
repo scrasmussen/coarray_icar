@@ -23,7 +23,10 @@ input=two-2-200-test.txt
 input=four-2-200-test.txt
 input=two-400-200-test.txt
 input=four-400-1000-test.txt
-
+# input=four-wrapped-100-100.txt
+# input=four-wrapped-1000-100ts.txt
+# input=four-wrapped-100-100ts.txt
+input=four-wrapped-1000-100ts.txt
 
 all: build
 

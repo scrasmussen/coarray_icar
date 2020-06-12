@@ -33,6 +33,10 @@ dims = [int(n) for n in l.split()]
 nx = dims[0]; nz = dims[1]; ny = dims[2]
 ximages = dims[3]; yimages = dims[4]
 
+nx += 1
+ny += 1
+nz += 1
+
 header = ['image','timestep','identifier', 'exists','moved', 'x', 'y', 'z',
           'u', 'v', 'w', 'k', 'pressure','temperature', 'potential_temperature',
           'velocity', 'water_vapor','mixing_ratio']
@@ -60,7 +64,7 @@ if not turn_off_graphs:
     ax = fig.add_subplot(1,2,1,projection='3d')
 else:
     ax = fig.add_subplot(1,1,1,projection='3d')
-ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
+ax.set_xlim(1,nx); ax.set_ylim(1,ny); ax.set_zlim(1,nz)
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 ax.zaxis.set_major_locator(MaxNLocator(integer=True))
@@ -164,7 +168,7 @@ def updateFig(*args):
 
     if (t == num_t):
         ax.cla()
-        ax.set_xlim(0,nx); ax.set_ylim(0,ny); ax.set_zlim(0,nz)
+        ax.set_xlim(1,nx); ax.set_ylim(1,ny); ax.set_zlim(1,nz)
         plot_image_lines()
         t = 0
     else:
