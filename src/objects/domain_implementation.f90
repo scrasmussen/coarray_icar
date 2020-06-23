@@ -109,7 +109,8 @@ contains
           surface_z            => 0.0,              &   ! elevation of the first model level [m]
           dz_value             => 500.0,            &   ! thickness of each model gridcell   [m]
           sealevel_pressure    => 100000.0,         &   ! pressure at sea level              [Pa]
-          hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
+          hill_height          => 0.0,           &   ! height of the ideal hill(s)        [m]
+          ! hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
           n_hills              => 1.0,              &   ! number of hills across the domain  []
           ids=>this%ids, ide=>this%ide,             &
           jds=>this%jds, jde=>this%jde,             &
@@ -130,6 +131,11 @@ contains
           allocate(this%dz_mass                  (ims:ime, kms:kme, jms:jme), source=dz_value)
 
           ! this is a simple sine function for a hill... not the best test case but it's easy
+          ! print *, this_image(), jms, jme, ims, ime
+          ! print *, "JDS =", jde, ide, kms
+          ! print *, "jde, jds", jde, jds
+          ! sync all
+          ! call exit
           do j=jms,jme
               do i=ims,ime
                   sine_curve = (sin((i-ids)/real((ide-ids) / n_hills) * 2*3.14159 - 3.14159/2) + 1) / 2  &
@@ -153,18 +159,35 @@ contains
           this%water_vapor%local = sat_mr(this%temperature,this%pressure)
 
 
+          ! print *, "----------------------------------"
+          ! print *, "me = ", this_image()
+          ! model domain
+          ! print *, "ids,ide, jds,jde, kds,kde"
+          ! print *, this_image(),"d",this%ids,this%ide, this%jds,this%jde, this%kds,this%kde
+          ! memory in arrays
+          ! print *, "ims,ime, jms,jme, kms,kme"
+          ! print *, this_image(),"m",this%ims,this%ime, this%jms,this%jme, this%kms,this%kme
+          ! ! data tile to process
+          ! ! print *, "its,ite, jts,jte, kts,kte"
+          ! ! print *, this_image(),"t",this%its,this%ite, this%jts,this%jte, this%kts,this%kte
+          ! print *, "----------------------------------"
+          ! print *, "---------TEMPERATURE------------------"
+          ! ! print *, this%temperature
+
+          ! print *, "-------WINWINWINIW-------------------"
 
           ! ! --- Convection Particle ---
           ! ! call this%convection_obj%initialize(convection_particle_e) ! works
           call this%convection_obj%initialize(convection_particle_e, &
               this%get_grid_dimensions(), &
+              ims,ime,kms,kme,jms,jme, &
               input_buf_size=8,halo_width=2, &
               u_in=0.5, v_in=0.5, w_in=0.0, &
-              temperature=this%temperature, pressure=this%pressure)
+              temperature=this%temperature, pressure=this%pressure, &
+              water_vapor=this%water_vapor%local)
           ! ! ARTLESS NEED TO FIX THIS
           ! this%u, this%v, this%w
               ! u_in=u_test_val, v_in=v_test_val, w_in=w_test_val,     &
-
 
       end associate
 
@@ -196,7 +219,7 @@ contains
         ! from http://www.dtic.mil/dtic/tr/fulltext/u2/778316.pdf
         !   Lowe, P.R. and J.M. Ficke., 1974: THE COMPUTATION OF SATURATION VAPOR PRESSURE
         !       Environmental Prediction Research Facility, Technical Paper No. 4-74
-        ! which references:
+       ! which references:
         !   Murray, F. W., 1967: On the computation of saturation vapor pressure.
         !       Journal of Applied Meteorology, Vol. 6, pp. 203-204.
         ! Also notes a 6th order polynomial and look up table as viable options.
@@ -598,10 +621,13 @@ contains
       do image = 1,num_images()
         sync all
         if (image .eq. me) then
-
           open(unit=me, file=filename, status='old', position='append')
           do i=1,ubound(this%convection_obj%local,1)
+            ! print *, me, ":", this%convection_obj%local(i)%exists, i
+
             if (this%convection_obj%local(i)%exists .eqv. .true.) then
+              ! print *, me, ": PRINTING at",step, "particle", &
+              !     this%convection_obj%local(i)%particle_id
               write(me,*) me, step, this%convection_obj%local(i)
             end if
           end do
