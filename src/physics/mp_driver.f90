@@ -1,5 +1,4 @@
 module module_mp_driver
-
     use domain_interface,   only: domain_t
     use module_mp_thompson, only: thompson_init, mp_gt_driver
 
@@ -101,13 +100,9 @@ contains
         if (.not.initialized) call mp_init(domain)
 
         if (present(subset)) then
-          call domain%convection_obj%process(dt, & !
-              domain%its - subset, domain%ite , &
-              domain%jts - subset, domain%jte , &
-              domain%kts,          domain%kte + subset, domain%temperature)
-          ! domain%its + subset, domain%ite - subset, &
-          !     domain%jts + subset, domain%jte - subset, &
-
+          call domain%convection_obj%process( &
+              domain%nx_global, domain%ny_global, domain%get_grid_dimensions(),&
+              dt, domain%dz_interface(1,1,1), domain%temperature)
 
             call process_subdomain(domain, dt,                               &
                                    domain%its + subset, domain%ite - subset, &
