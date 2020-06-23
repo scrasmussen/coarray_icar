@@ -7,9 +7,9 @@ contains
     character(len=*), intent(in) :: description
     logical, intent(out), optional :: success
     if (present(success)) success=assertion
-    if (.not.assertion) then
-      write(error_unit,*) 'Assertion "',description,'" failed on image ',this_image()
-      if (.not. present(success)) error stop  
-    end if
+    ! if (.not.assertion) then
+    !   write(error_unit,*) 'Assertion "',description,'" failed on image ',this_image()
+    !   if (.not. present(success)) error stop
+    ! end if
   end subroutine
 end submodule
