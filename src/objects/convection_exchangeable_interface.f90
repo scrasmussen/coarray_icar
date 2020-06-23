@@ -88,21 +88,22 @@ module convection_exchangeable_interface
   ! end type convection_object_t
 
   interface
-     module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
-         temperature, dz)
+     module subroutine process(this, nx_global, ny_global, grid, &
+         dt, dz, temperature)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
-       real,           intent(in)    :: dt, dz
-       integer,        intent(in)    :: its,ite, jts,jte, kts,kte
+       integer, intent(in) :: nx_global, ny_global
+       real, intent(in)    :: dt, dz
+       type(grid_t), intent(in) :: grid
        real, dimension(:,:,:), intent(in) :: temperature
      end subroutine
 
-     module subroutine const(this, convection_type_enum, grid, ims,ime,kms,kme,&
-         jms,jme, input_buf_size, &
+     module subroutine const(this, convection_type_enum, grid, tims,time,tkms,tkme,&
+         tjms,tjme, input_buf_size, &
          halo_width, u_in, v_in, w_in, temperature, pressure, water_vapor)
        class(convection_exchangeable_t), intent(inout) :: this
        type(grid_t) :: grid
-       integer, intent(in) :: ims,ime,kms,kme,jms,jme
+       integer, intent(in) :: tims,time,tkms,tkme,tjms,tjme
        integer, intent(in), optional :: input_buf_size
        integer, intent(in), optional :: halo_width
        integer(c_int), intent(in) :: convection_type_enum

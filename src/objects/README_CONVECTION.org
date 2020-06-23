@@ -2,6 +2,8 @@
 
 * Convection Object
 all allocatable types
+** convection particle
+most basic unit: contains variables and methods
 ** convection exchangeable array
 *** LOCAL: array of convection particle arrays
 *** HALO: array of convection particles
@@ -10,8 +12,13 @@ all allocatable types
 *** HALO: array of convection particles
 
 * TODO
-- [ ] `convection_exchangeable_implementation.f90`: add northeast/west  neighbors when initializing
-- [ ] `convection_exchangeable_{implementation,interface}.f90`: {put,retrieve}_north{west,east} etc. both interface and implementation
+- [ ] convection_exchangealbe_implementation.f90 ~ 340,
+       check ARTLESS TEMP DIF BETWEEN IMAGES WORRISOME
+- [X] check the bounds in `convection_exchangeable_implementation.f90`: process subroutine
+      , I don't need, shouldn't process the halo region for particles
+      , this should be handled in the setup
+- [X] `convection_exchangeable_implementation.f90`: add northeast/west  neighbors when initializing
+- [X] `convection_exchangeable_{implementation,interface}.f90`: {put,retrieve}_north{west,east} etc. both interface and implementation
 
 - [ ] look at previous particle tracking templates
 - [ ] more organized lagrangian convection parameterization.

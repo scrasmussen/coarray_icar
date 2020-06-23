@@ -12,6 +12,12 @@ submodule(convection_exchangeable_interface) &
   integer, save :: east_neighbor, west_neighbor
   integer, save :: northeast_neighbor, northwest_neighbor
   integer, save :: southeast_neighbor, southwest_neighbor
+  logical, parameter :: wrap_neighbors = .true.
+  logical, parameter :: advection = .true.
+  logical, parameter :: caf_comm_message = .false.
+  logical, parameter :: particle_create_message = .false.
+  integer, parameter :: particles_per_image = 400
+
 
 contains
   ! function initialize_convection_array_t(this)
@@ -19,13 +25,14 @@ contains
   ! end function initialize_convection_array_t
 
   ! constructor
-  module subroutine const(this, convection_type_enum, grid,ims,ime,kms,kme,jms,&
-      jme, input_buf_size, &
+  module subroutine const(this, convection_type_enum, grid,tims,time,tkms,tkme,tjms,&
+      tjme, input_buf_size, &
       halo_width, u_in, v_in, w_in, temperature, pressure, water_vapor)
     use iso_c_binding, only: c_int
     class(convection_exchangeable_t), intent(inout) :: this
     type(grid_t) :: grid
-    integer, intent(in) :: ims,ime,kms,kme,jms,jme
+    integer, intent(in) :: tims,time,tkms,tkme,tjms,tjme
+    integer :: ims,ime,kms,kme,jms,jme
     integer, intent(in), optional :: input_buf_size
     integer, intent(in), optional :: halo_width
     integer(c_int), intent(in) :: convection_type_enum
@@ -33,13 +40,28 @@ contains
     real, dimension(:,:,:), intent(in) :: temperature, pressure, water_vapor
     real :: random_start(3)
 
-    logical :: wrap_neighbors
     integer :: n_images
     integer :: n_neighbors, current, id_range, particle_id, i, j, k, me
-    integer :: create, num_create
+    integer :: create
+    real :: north_adjust, east_adjust
     real :: x,y,z,fx,fy,fz,t0,wv0
     real :: u,v,w
+
     me = this_image()
+
+    if (particle_create_message .eqv. .true.) then
+      sync all
+      print *, me,":grid = ", grid
+      sync all
+    end if
+
+    ims = grid%ims
+    ime = grid%ime
+    kms = grid%kms
+    kme = grid%kme
+    jms = grid%jms
+    jme = grid%jme
+
     if (present(u_in)) then
       u = u_in
     else
@@ -90,124 +112,65 @@ contains
       this%southwest_boundary = .true.
     end if
 
-    associate( halo_south => merge(0,halo_size,this%south_boundary), &
-               halo_north => merge(0,halo_size,this%north_boundary), &
-               halo_east  => merge(0,halo_size,this%east_boundary), &
-               halo_west  => merge(0,halo_size,this%west_boundary))
-      ! ARTLESS:: removing ims, ime, etc, trying to get proper range
-      ! ims = grid%ims - halo_east
-      ! ime = grid%ime + halo_west
-      ! jms = grid%jms - halo_south
-      ! jme = grid%jme + halo_north
-      ! kms = grid%kms
-      ! kme = grid%kme
+    ! ids,ide, jds,jde, kds,kde, & ! for the entire model domain    (d)
+    ! ims,ime, jms,jme, kms,kme, & ! for the memory in these arrays (m)
+    ! its,ite, jts,jte, kts,kte    ! for the data tile to process   (t)
+    ! ARTLESS:: removing ims, ime, etc, trying to get proper range
 
+    allocate(this%local(particles_per_image * 4))
 
-      ! ids,ide, jds,jde, kds,kde, & ! for the entire model domain    (d)
-      ! ims,ime, jms,jme, kms,kme, & ! for the memory in these arrays (m)
-      ! its,ite, jts,jte, kts,kte    ! for the data tile to process   (t)
+    if (particle_create_message .eqv. .true.) then
+      if (me == 1) then
+        print*, "Creating", particles_per_image, "parcels per image"
+        print*, "buffer based on particles_per_image value not input_buf_size"
+      end if
+    end if
 
-      ! print *, "----------------------------------"
-      ! print *, "me = ", this_image()
-      ! ! model domain
-      ! print *, "ids,ide, jds,jde, kds,kde"
-      ! print *, grid%ids,grid%ide, grid%jds,grid%jde, grid%kds,grid%kde
-      ! ! memory in arrays
-      ! print *, "ims,ime, jms,jme, kms,kme"
-      ! print *, grid%ims,grid%ime, grid%jms,grid%jme, grid%kms,grid%kme
-      ! ! data tile to process
-      ! print *, "its,ite, jts,jte, kts,kte"
-      ! print *, grid%its,grid%ite, grid%jts,grid%jte, grid%kts,grid%kte
-      ! print *, "----------------------------------"
+    do create=1,particles_per_image
+      call random_number(random_start)
+      north_adjust = 0.99
+      east_adjust = 0.99
+      x = ims + (random_start(1) * (ime+east_adjust-ims))
+      z = kms + (random_start(3) * (kme-kms))
+      y = jms + (random_start(2) * (jme+north_adjust-jms))
 
+      if (particle_create_message .eqv. .true.) then
+        print *, "BOUNDS::", ims, ime, kms, kme, jms, jme, &
+            "CREATED::", x,z,y, " ON IMAGE", this_image()
+      end if
+      call this%create_particle_id()
+      ! print *, me, ": particle_id = ", this%particle_id_count
 
-      ! --------- this is old code from when particle arrays are used
-! -      allocate(this%local(ims:ime,kms:kme,jms:jme))
-! -      do i=ims,ime
-! -        do j=jms,jme
-! -          do k=kms,kme
-! -              if (i.eq.5 .and. k.eq.5 .and. j.eq.5) then
-! -                this%local(i,k,j) = convection_particle(i,j,k, &
-! -                    0.5,0.5,0.0,pressure(i,k,j), temperature(i,k,j))
-! -              else
-! -                this%local(i,k,j)%exists = .false.
-! -              end if
-! -
-! -            end do
-! -          end do
-      ! -        end do
+      fx = floor(x)
+      fy = floor(y)
+      fz = floor(z)
+      t0 = temperature(fx,fz,fy)
 
-
-      allocate(this%local(input_buf_size * 4))
-
-      num_create = 4
-      if (me == 1) print*, "Creating", num_create, "parcels per image"
-
-      do create=1,num_create
+      ! sometimes we create a particle that will grab an out of bounds
+      ! temperature, this fixes that
+      do while (t0 .eq. 0)
         call random_number(random_start)
-        x = (ims) + (random_start(1) * (ime-ims))
-        z = kms   + (random_start(3) * (kme-kms))
-        y = (jms) + (random_start(2) * (jme-jms))
-        ! x=4; y=2; z=3
-        ! print *, "BOUNDS::", ims, ime, kms, kme, jms, jme, "CREATED::", x,z,y, " ON IMAGE", this_image()
-        call this%create_particle_id()
-        ! print *, me, ": particle_id = ", this%particle_id_count
+        x = ims + (random_start(1) * (ime+east_adjust-ims))
+        z = kms + (random_start(3) * (kme-kms))
+        y = jms + (random_start(2) * (jme+north_adjust-jms))
         fx = floor(x)
         fy = floor(y)
         fz = floor(z)
         t0 = temperature(fx,fz,fy)
-        wv0 = water_vapor(fx,fz,fy)
-
-        this%local(create) = convection_particle( &
-            this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
-            pressure(fx,fz,fy), &
-            t0, wv0, e_sat_mr(t0,wv0))
       end do
 
-      ! call random_number(random_start)
-      ! if (this_image() .eq. 1) then
-      !   print*,"ARTLESS change this to percentage once exchange working"
-      !   ! pick random place in image to start
-      !   call random_number(random_start)
-      !   x = (ims) + (random_start(1) * (ime-ims))
-      !   z = kms   + (random_start(3) * (kme-kms))
-      !   y = (jms) + (random_start(2) * (jme-jms))
-      !   ! x = (ims+halo_east) + (random_start(1) * (ime-ims-halo_west))
-      !   ! z = kms + (random_start(3) * (kme-kms))
-      !   ! y = (jms+halo_south) + (random_start(2) * (jme-jms-halo_north))
-      !   print *, "BOUNDS::", ims, ime, kms, kme, jms, jme
-      !   ! print *, "HALO::", halo_north ,halo_south ,halo_east ,halo_west
-      !   print *, "CREATED::", x,z,y, " ON IMAGE", this_image()
-      !   call this%create_particle_id()
-      !   this%local(1) = convection_particle( &
-      !       this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
-      !       pressure(floor(x),floor(z),floor(y)), &
-      !       temperature(floor(x),floor(z),floor(y)))
-      !   ! need to set exists to false
-      ! end if
 
-      ! if (this_image() .eq. 3) then
-      !   print*,"ARTLESS change this to percentage once exchange working"
-      !   call random_number(random_start)
-      !   x = ims + (random_start(1) * (ime-ims))
-      !   z = kms + (random_start(3) * (kme-kms))
-      !   y = jms + (random_start(2) * (jme-jms))
-      !   print *, "BOUNDS::", ims, ime, kms, kme, jms, jme
-      !   ! print *, "HALO::", halo_north ,halo_south ,halo_east ,halo_west
-      !   print *, "CREATED::", x,z,y, " ON IMAGE", this_image()
+      wv0 = water_vapor(fx,fz,fy)
 
-      !   call this%create_particle_id()
-      !   this%local(1) = convection_particle( &
-      !       this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
-      !       pressure(floor(x),floor(y),floor(z)), &
-      !       temperature(floor(x),floor(y),floor(z)))
-      ! ! need to set exists to false
-      !   ! print *, "-----", ims, ime, kms, kme, jms, jme
-      !   ! print *, "----- shape = ", shape(this%local)
-      ! end if
+      this%local(create) = convection_particle( &
+          this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
+          pressure(fx,fz,fy), &
+          t0, wv0, wv0 / e_sat_mr(t0,wv0))
+    end do
 
-    end associate
-    print *, "ALLOCATING BUFFERS OF SIZE", buf_size
+    if (particle_create_message .eqv. .true.) then
+      print *, "ALLOCATING BUFFERS OF SIZE", buf_size
+    end if
     allocate( this%buf_north_in(buf_size)[*])
     allocate( this%buf_south_in(buf_size)[*])
     allocate( this%buf_east_in(buf_size)[*])
@@ -217,9 +180,9 @@ contains
     allocate( this%buf_southeast_in(buf_size)[*])
     allocate( this%buf_southwest_in(buf_size)[*])
 
-    if (this_image() .eq. 1) then
-      print *, "===--- ARTLESS NEED TO DOUBLE CHECK NEIGHBORS ---==="
-    end if
+    ! if (this_image() .eq. 1) then
+    !   print *, "===--- ARTLESS NEED TO DOUBLE CHECK NEIGHBORS ---==="
+    ! end if
     ! set up the neighbors array so we can sync with our neighbors when needed
     if (.not.allocated(neighbors)) then
       associate(me=>this_image())
@@ -263,9 +226,44 @@ contains
         endif
 
         ! Wrap boundaries: so particles in the xy direction don't disappear
-        wrap_neighbors = .true.
+        associate(nx => grid%ximages, ny => grid%yimages, &
+            nimages => grid%ximages * grid%yimages)
         if (wrap_neighbors .eqv. .true.) then
           n_images = num_images()
+          ! --- handle diagonals
+          if (this%north_boundary .eqv. .true.) then
+            northeast_neighbor = modulo( (me+nx+1)-nimages, (nx+1))
+            if (northeast_neighbor .eq. 0) northeast_neighbor = 1
+            northwest_neighbor = (me+nx-1)-nimages
+            if (northwest_neighbor .eq. 0) northwest_neighbor = nx
+          else  if (this%east_boundary .eqv. .true.) then
+            northeast_neighbor = me + 1
+          else  if (this%west_boundary .eqv. .true.) then
+            northwest_neighbor = me + nx * 2 - 1
+          end if
+
+          if (this%south_boundary .eqv. .true.) then
+            southeast_neighbor = me + nimages - nx + 1
+            if (southeast_neighbor > nimages) then
+              southeast_neighbor = southeast_neighbor - nx
+            end if
+            southwest_neighbor = me + nimages - nx - 1
+            if (modulo(southwest_neighbor,nx) == 0) then
+              southwest_neighbor = nimages
+            end if
+            ! southwest_neighbor = - 2
+          else  if (this%east_boundary .eqv. .true.) then
+            southeast_neighbor = me - nx * 2 + 1
+          else  if (this%west_boundary .eqv. .true.) then
+            southwest_neighbor = me - 1
+            ! southwest_neighbor = - 1
+          end if
+          ! this%northeast_boundary = .false.
+          ! this%northwest_boundary = .false.
+          ! this%southeast_boundary = .false.
+          ! this%southwest_boundary = .false.
+
+          ! --- handle up/down/left/right
           if (this%north_boundary .eqv. .true.) then
             north_neighbor = north_neighbor - n_images
             this%north_boundary = .false.
@@ -287,32 +285,42 @@ contains
             this%wrapped_west = .true.
           end if
         end if
+        end associate
+
+
 
         ! if (this_image() .eq. 1) then
         !   print *, "grid x y ", grid%ximages, grid%yimages
         ! end if
         ! call flush()
         ! sync all
-        ! print *, this_image(), ": north", north_neighbor, ": east", &
-        !      east_neighbor, ": south", south_neighbor, &
-        !      ": west", west_neighbor
+        ! ! print *, this_image(), ": w", west_neighbor, ": n", &
+        ! !      north_neighbor, ": e", east_neighbor, &
+        ! !      ": s", south_neighbor
         ! call flush()
         ! sync all
-        ! if (this_image() .eq. 1) then
-        !   print *, "                               n s e w"
-        ! end if
+        ! print *, this_image(), ": nw", northwest_neighbor, ": ne", &
+        !      northeast_neighbor, ": se", southeast_neighbor, &
+        !      ": sw", southwest_neighbor
         ! call flush()
         ! sync all
-        ! print *, this_image(), ": boundry         ", this%north_boundary, &
-        !     this%south_boundary, this%east_boundary, this%west_boundary
-        ! print *, this_image(), ": diagonal boundry", this%northeast_boundary, &
-        !     this%northwest_boundary, this%southeast_boundary, &
-        !     this%southwest_boundary
+        ! ! if (this_image() .eq. 1) then
+        ! !   ! print *, "                               n s e w"
+        ! !   print *, "                               nw ne se sw"
+        ! ! end if
+        ! ! call flush()
+        ! ! sync all
+        ! ! ! print *, this_image(), ": boundry         ", this%north_boundary, &
+        ! ! !     this%south_boundary, this%east_boundary, this%west_boundary
+        ! ! print *, this_image(), ": diagonal boundry", this%northwest_boundary, &
+        ! !     this%northeast_boundary, this%southeast_boundary, &
+        ! !     this%southwest_boundary
+        ! sync all
+        ! call exit
+
       end associate
     endif
 
-    sync all
-    call exit
   end subroutine
 
 
@@ -536,37 +544,45 @@ contains
   end subroutine
 
 
-  module subroutine process(this, dt, its,ite, jts,jte, kts,kte, &
-        temperature, dz)
+     module subroutine process(this, nx_global, ny_global, grid, &
+         dt, dz, temperature)
       implicit none
       class(convection_exchangeable_t), intent(inout) :: this
-      real,           intent(in)    :: dt, dz
-      integer,        intent(in)    :: its,ite, jts,jte, kts,kte
+      type(grid_t), intent(in) :: grid
+      integer, intent(in) :: nx_global, ny_global
+      real, intent(in)    :: dt, dz
       real, dimension(:,:,:), intent(in) :: temperature
       real, parameter :: gravity = 9.80665, Gamma = 0.01
+      integer :: ims,ime, jms,jme, kms,kme
       real :: a_prime, z_displacement, t, t_prime, buoyancy
-      real :: ws, fake_wind_correction, delta_z, rcp
+      real :: ws, fake_wind_correction, delta_z
       integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
       real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
       real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr
-      real :: vapor_p, sat_p, T_C, mr
+      real :: vapor_p, sat_p, T_C, mr, T_squared, tmp
 
       me = this_image()
+      ims = grid%ims
+      ime = grid%ime
+      jms = grid%jms
+      jme = grid%jme
+      kms = grid%kms
+      kme = grid%kme
 
       do i=1,ubound(this%local,1)
         associate (particle=>this%local(i))
           if (particle%exists .eqv. .true.) then
             ! Check if particle is out of bounds
-            if (floor(particle%x) .lt. its .or. &
-                floor(particle%x) .gt. ite .or. &
-                floor(particle%z) .lt. kts .or. &
-                floor(particle%z) .gt. kte .or. &
-                floor(particle%y) .lt. jts .or. &
-                floor(particle%y) .gt. jte) then
+            if (floor(particle%x) .lt. ims .or. &
+                floor(particle%x) .gt. ime .or. &
+                floor(particle%z) .lt. kms .or. &
+                floor(particle%z) .gt. kme .or. &
+                floor(particle%y) .lt. jms .or. &
+                floor(particle%y) .gt. jme) then
               print *, "particle", particle%particle_id, "on image", me
-              print *, "x:", its, "<", particle%x, "<", ite
-              print *, "z:", kts, "<", particle%z, "<", kte
-              print *, "y:", jts, "<", particle%y, "<", jte
+              print *, "x:", ims, "<", particle%x, "<", ime
+              print *, "z:", kms, "<", particle%z, "<", kme
+              print *, "y:", jms, "<", particle%y, "<", jme
               stop "x,y,z is out of bounds"
             end if
 
@@ -591,26 +607,31 @@ contains
             T_prime = temperature(floor(particle%x), floor(particle%z), &
                 floor(particle%y))
 
-            ! 4.12 in Rogers and Yao, simple for now
-            buoyancy = (T - T_prime) / T_prime
-            a_prime = buoyancy * gravity
-
-            ! time step is 1 so t and t^2 go away
-            z_displacement = particle%velocity + 0.5 * a_prime
-            ! number from dz_interface, currently always 500
-            delta_z = z_displacement / dz
-            particle%z = particle%z + delta_z
-            particle%velocity = z_displacement
-
-
+            if (advection .eqv. .true.) then
+              ! 4.12 in Rogers and Yao, simple for now
+              buoyancy = (T - T_prime) / T_prime
+              a_prime = buoyancy * gravity
+              ! time step is 1 so t and t^2 go away
+              z_displacement = particle%velocity + 0.5 * a_prime
+              ! number from dz_interface, currently always 500
+              delta_z = z_displacement / dz
+              if (z_displacement /= z_displacement) then
+                ! when T=0 it causes division by 0. This problem should be fixed
+                print *, "------------NAN--------------"
+                particle%z = -1
+              else
+                particle%z = particle%z + delta_z
+                particle%velocity = z_displacement
+              end if
+            else
+              z_displacement = 0.0
+            end if
 
             ! print *, ":::::ARTLESS:::::"
             ! print *, "z_displacement = ", z_displacement
             ! print *, "temp     =" ,particle%temperature
             ! print *, "potential temp     =" ,particle%potential_temp
             ! print *, "pressure =" ,particle%pressure
-
-            rcp = 0.286
 
             ! OLD
             !-----------------------------------------------------------------
@@ -648,8 +669,33 @@ contains
             ! Temperature is reduced T - Gamma * delta_z  (3.8)
             ! print *, this_image(), "z_displacement", z_displacement
             ! Gamma in Kelvin per meter
+            if (particle%relative_humidity .ge. 1.01) then
+              ! equation from
+              ! wikipedia.org/wiki/Lapse_rate#Moist_adiabatic_lapse_rate
+              T_C = particle%temperature - 273.15
+              T_squared = T_C * T_C
+              mixing_ratio = particle%pressure
 
-            particle%temperature = particle%temperature - Gamma * z_displacement
+              tmp = gravity * (286 * T_squared + &
+                  2501000 * mixing_ratio * T_C ) / &
+                  (1003.5 *  287 * T_squared + &
+                  0.622 * mixing_ratio * 2501000 * 2501000)
+              particle%temperature = tmp + 273.15
+              ! particle%temperature = gravity * (286 * T_squared + &
+              !     2501000 * mixing_ratio * T_C ) / &
+              !     (1003.5 *  287 * T_squared + &
+              !      0.622 * mixing_ratio * 2501000 * 2501000) + 273.15
+              ! ---ARTLESS---
+              ! print *, "MALR: from", T_C+273.15, "to", particle%temperature, &
+              !     "diff", T_C - tmp
+
+              ! other possible equation
+              ! http://www.theweatherprediction.com/habyhints/161/
+              ! MALR = dT/dz = DALR / (1 + L/Cp*dWs/dT)
+              ! dWs/dT is the change in saturation mixing ratio with change in T
+            else
+              particle%temperature = particle%temperature - Gamma * z_displacement
+            end if
 
 
 
@@ -670,8 +716,6 @@ contains
             ! alt_pressure4 = (p0 * (-Gamma * z_displacement)) / (-0.286*T)
 
 
-
-
             !-----------------------------------------------------------------
             ! Better update
             ! T_0 + gamma U dt - Gamma_s U d t
@@ -679,25 +723,21 @@ contains
             ! Gamma_s is the pseudoadiabaitc lapse rate
             ! gamme is the ambient lapse rate
 
-
-            !-----------------------------------------------------------------
-            ! WANTED: LCL, lifted condensation level:
-            ! approximation: h_LCL = 125(T-T_d)
-            ! T_d = dew-point Temperature
-
             !-----------------------------------------------------------------
             ! Time to figure outclear
 
 
-
-
-
-            ! print *,me,"z = ",particle%z,"with z_displacement",z_displacement
-
-            if (particle%z .gt. kte) then
+            !-----------------------------------------------------------------
+            ! remove particle if beyond the z axis
+            !-----------------------------------------------------------------
+            if (particle%z .gt. kme) then
               particle%exists=.false.
-            else if (particle%z .lt. kts) then ! kts will be 1
+              ! print *, "particle", particle%particle_id, "gone out the top"
+              cycle
+            else if (particle%z .lt. kms) then ! kts will be 1
               particle%exists=.false.
+              ! print *, "particle", particle%particle_id, "gone out the bottom"
+              cycle
             end if
 
             !-----------------------------------------------------------------
@@ -709,7 +749,8 @@ contains
             ! u: zonal velocity, wind towards the east
             ! dz: 500, supposes all dz_interface values are the same
             fake_wind_correction = (1.0 / dz) ! real correction
-            fake_wind_correction = (1.0 / 4) ! ARTLESS
+            ! fake_wind_correction = (1.0 / 10) ! ARTLESS
+            ! fake_wind_correction = (1.0 / 4) ! ARTLESS
             particle%x = particle%x + (particle%u * fake_wind_correction)
             ! v: meridional velocity, wind towards north
             particle%y = particle%y + (particle%v * fake_wind_correction)
@@ -721,19 +762,18 @@ contains
             ! saturate mixing ratio: max amount of water vapor parcel can hold
             !                        without condensation
             !-----------------------------------------------------------------
-            ! water_vapor_p =
+            ! water_vapor = water vapor mixing ratio (w)
+            ! relative humidity = w / w_s
+
             sat_mr = e_sat_mr(particle%temperature, particle%pressure)
+            particle%relative_humidity = particle%water_vapor / sat_mr
 
-
-            ! ! Mixing ratio: r, or mr
-            ! ! r = R_d/ R_v  *  e/(p-e)
-            ! ! from
-            ! ! http://snowball.millersville.edu/~adecaria/ESCI340/esci340-Lesson02-Thermodynamics.pdf
-            ! !
-            ! ! Specific gas constants for dry air and water vapor R_d, R_v
-            ! ! R_d = 287.058, R_v = 461.5, R_d / R_v = 0.622
-            ! ! p, total air pressure
-            ! ! e, vapor pressure, vapor_[]
+            ! print *, me, "RH = ", particle%relative_humidity
+            ! if (particle%relative_humidity .ge. 1) then
+            !   print *, "particle", particle%particle_id, &
+            !       particle%relative_humidity, "=", &
+            !       particle%water_vapor, "/", sat_mr
+            ! end if
 
             ! ! Antoine equation to find vapor pressure
             ! if (T_C .lt. 100) then
@@ -741,65 +781,62 @@ contains
             ! else
             !   vapor_p = 10 ** (8.14019 - 1810.94 / (244.485 + T_C))
             ! end if
-
             ! mr =  0.622 * (vapor_p / particle%pressure - vapor_p)
-
-            ! print *, "-------"
-            ! print *, "vapor_p =", vapor_p
-            ! print *, "pressure =", particle%pressure
-            ! print *, "mr =", mr
-            ! ! print *, "saturation vapor pressure =", sat_p
-            ! print *, "sat_mr = ",sat_mr
-            ! print *, "relative humidity =", mr / sat_mr * 100
-            ! print *, "-------"
-
-            ! ! T in celcius
-            ! T_C = particle%temperature - 273.15
-
-
-            ! sat_p = 611**((17.27*T_C) / (237.3+T_C))
-            ! print *, "-------"
-            ! print *, "vapor pressure =", vapor_p
-            ! print *, "saturation vapor pressure =", sat_p
-            ! print *, "relative humidity =", vapor_p / sat_p * 100
-            ! print *, "sat_mr = ",sat_mr
-            ! print *, "-------"
-            ! print *, "sat_mr" = sat_mr
-
-            ! particle%mixing_ratio = ! change this to relative humidity
-
-
 
             associate (x => floor(particle%x), y => floor(particle%y), &
                 z => floor(particle%z))
-              if (x .lt. its .or. x .gt. ite .or. &
-                  z .lt. kts .or. z .gt. kte .or. &
-                  y .lt. jts .or. y .gt. jte) then
-                print *, "PUTTING", particle%x, particle%z,  particle%y, &
-                    "FROM", this_image(), "REMINDER!!! FAKE WIND"
-                print *, its,ite, kts, kte, jts, jte
-                print *, "------"
+              if (x .lt. ims .or. x .gt. ime .or. &
+                  z .lt. kms .or. z .gt. kme .or. &
+                  y .lt. jms .or. y .gt. jme) then
+                if (caf_comm_message .eqv. .true.) then
+                  print *, "PUTTING", particle%x, particle%z,  particle%y, &
+                      "FROM", this_image(), "id:", particle%particle_id
+                  print *, ims,ime, kms, kme, jms, jme
+                  print *, "------"
+                end if
               end if
 
-              if (y .lt. jts) then      ! "jts  <   y    <  jte"
-                if (x .lt. its) then
+
+              ! If particle is getting wrapped the x and y values need to be
+              ! properly updated
+              if (wrap_neighbors .eqv. .true.) then
+                if (particle%x > nx_global + 1) then
+                  if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                  particle%x = particle%x - nx_global
+                else if (particle%x < 1) then
+                  if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                  particle%x = particle%x + nx_global - 1
+                end if
+
+                if (particle%y > ny_global + 1) then
+                  if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                  particle%y = particle%y - ny_global
+                else if (particle%y < 1) then
+                  if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                  particle%y = particle%y + ny_global - 1
+                end if
+              end if
+
+              ! Check values to know where to send particle
+              if (y .lt. jms) then      ! "jts  <   y    <  jte"
+                if (x .lt. ims) then
                   call this%put_southwest(particle)
-                else if (x .gt. ite) then
+                else if (x .gt. ime) then
                   call this%put_southeast(particle)
                 else
                   call this%put_south(particle)
                 end if
-              else if (y .gt. jte) then ! jts will be 1
-                if (x .lt. its) then
+              else if (y .gt. jme) then ! jts will be 1
+                if (x .lt. ims) then
                   call this%put_northwest(particle)
-                else if (x .gt. ite) then
+                else if (x .gt. ime) then
                   call this%put_northeast(particle)
                 else
                   call this%put_north(particle)
                 endif
-              else if (x .lt. its) then ! "its  <   x    <  ite"
+              else if (x .lt. ims) then ! "its  <   x    <  ite"
                 call this%put_west(particle)      ! need to double check this!
-              else if (x .gt. ite) then
+              else if (x .gt. ime) then
                 call this%put_east(particle)
               end if
             end associate

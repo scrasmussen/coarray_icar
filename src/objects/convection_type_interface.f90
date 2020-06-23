@@ -21,7 +21,7 @@ module convection_type_interface
      real :: u, v, w
      real :: k ! Amontons's law
      real :: pressure, temperature, potential_temp
-     real :: velocity
+     real :: velocity, water_vapor, relative_humidity
    contains
      procedure :: move_to
      procedure :: send_particle
@@ -83,12 +83,13 @@ contains
     to%temperature = from%temperature
   end subroutine move_to
 
-  function constructor(particle_id,x,y,z,u,v,w,pressure,temperature) &
+  function constructor(particle_id,x,y,z,u,v,w,pressure,temperature, &
+      water_vapor, relative_humidity) &
       result(this)
     type(convection_particle) :: this
     integer :: particle_id
     real :: x, y, z
-    real :: u, v, w, pressure, temperature
+    real :: u, v, w, pressure, temperature, water_vapor, relative_humidity
     real :: exner
     this%particle_id = particle_id
     this%exists = .true.
@@ -101,12 +102,14 @@ contains
     this%v = v
     this%w = w
     this%pressure = pressure
-    this%temperature = temperature + 10
+    this%temperature = temperature * 1.01
+    ! print *, "------IN CONSTRUCTOR: currently adding 0 K to temp"
 
+    this%water_vapor = water_vapor
+    this%relative_humidity = relative_humidity
 
     ! Amontons's law
     this%k = pressure / temperature
-
 
     associate(po=>100000, Rd=>287.058, cp=>1003.5)
       exner = (pressure / po) ** (Rd/cp)
@@ -114,8 +117,5 @@ contains
     this%potential_temp = temperature / exner
     this%velocity = 0
 
-
-
-    print *, "------IN CONSTRUCTOR: currently adding 0 K to temp"
   end function constructor
 end module convection_type_interface
