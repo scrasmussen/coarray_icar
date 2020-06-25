@@ -7,6 +7,7 @@ submodule(domain_interface) domain_implementation
   use grid_interface, only : grid_t
   implicit none
 
+
 contains
 
     subroutine print_in_image_order(input)
@@ -109,8 +110,8 @@ contains
           surface_z            => 0.0,              &   ! elevation of the first model level [m]
           dz_value             => 500.0,            &   ! thickness of each model gridcell   [m]
           sealevel_pressure    => 100000.0,         &   ! pressure at sea level              [Pa]
-          hill_height          => 0.0,           &   ! height of the ideal hill(s)        [m]
-          ! hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
+          ! hill_height          => 0.0,           &   ! height of the ideal hill(s)        [m]
+          hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
           n_hills              => 1.0,              &   ! number of hills across the domain  []
           ids=>this%ids, ide=>this%ide,             &
           jds=>this%jds, jde=>this%jde,             &
@@ -131,11 +132,6 @@ contains
           allocate(this%dz_mass                  (ims:ime, kms:kme, jms:jme), source=dz_value)
 
           ! this is a simple sine function for a hill... not the best test case but it's easy
-          ! print *, this_image(), jms, jme, ims, ime
-          ! print *, "JDS =", jde, ide, kms
-          ! print *, "jde, jds", jde, jds
-          ! sync all
-          ! call exit
           do j=jms,jme
               do i=ims,ime
                   sine_curve = (sin((i-ids)/real((ide-ids) / n_hills) * 2*3.14159 - 3.14159/2) + 1) / 2  &
@@ -159,35 +155,22 @@ contains
           this%water_vapor%local = sat_mr(this%temperature,this%pressure)
 
 
-          ! print *, "----------------------------------"
-          ! print *, "me = ", this_image()
-          ! model domain
-          ! print *, "ids,ide, jds,jde, kds,kde"
-          ! print *, this_image(),"d",this%ids,this%ide, this%jds,this%jde, this%kds,this%kde
-          ! memory in arrays
-          ! print *, "ims,ime, jms,jme, kms,kme"
-          ! print *, this_image(),"m",this%ims,this%ime, this%jms,this%jme, this%kms,this%kme
-          ! ! data tile to process
-          ! ! print *, "its,ite, jts,jte, kts,kte"
-          ! ! print *, this_image(),"t",this%its,this%ite, this%jts,this%jte, this%kts,this%kte
-          ! print *, "----------------------------------"
-          ! print *, "---------TEMPERATURE------------------"
-          ! ! print *, this%temperature
 
-          ! print *, "-------WINWINWINIW-------------------"
+          ! call this%convection_obj%initialize(convection_particle_e, &
+          !     this%get_grid_dimensions(), &
+          !     ims,ime,kms,kme,jms,jme, &
+          !     input_buf_size=8,halo_width=2, &
+          !     u_in=0.5, v_in=0.5, w_in=0.0, &
+          !     temperature=this%temperature, pressure=this%pressure, &
+          !     water_vapor=this%water_vapor%local)
 
-          ! ! --- Convection Particle ---
-          ! ! call this%convection_obj%initialize(convection_particle_e) ! works
-          call this%convection_obj%initialize(convection_particle_e, &
-              this%get_grid_dimensions(), &
-              ims,ime,kms,kme,jms,jme, &
-              input_buf_size=8,halo_width=2, &
-              u_in=0.5, v_in=0.5, w_in=0.0, &
-              temperature=this%temperature, pressure=this%pressure, &
-              water_vapor=this%water_vapor%local)
-          ! ! ARTLESS NEED TO FIX THIS
-          ! this%u, this%v, this%w
-              ! u_in=u_test_val, v_in=v_test_val, w_in=w_test_val,     &
+          call this%convection_obj%initialize(this%potential_temperature, &
+              this%u, this%v, this%w, this%get_grid_dimensions(), this%z, &
+              ims,ime,kms,kme,jms,jme,dz_value, &
+              input_buf_size=8,halo_width=2)
+
+          sync all
+          call exit
 
       end associate
 
@@ -253,13 +236,11 @@ contains
     !! Convert p [Pa] at shifting it to a given elevatiom [m]
     !!
     !! -------------------------------
-    elemental function pressure_at_elevation(sealevel_pressure, elevation) result(pressure)
+    elemental module function pressure_at_elevation(sealevel_pressure, elevation) result(pressure)
         implicit none
         real, intent(in) :: sealevel_pressure, elevation
         real :: pressure
-
         pressure = sealevel_pressure * (1 - 2.25577E-5 * elevation)**5.25588
-
     end function
 
     !> -------------------------------
@@ -267,7 +248,7 @@ contains
     !! Compute exner function to convert potential_temperature to temperature
     !!
     !! -------------------------------
-    elemental function exner_function(pressure) result(exner)
+    elemental module function exner_function(pressure) result(exner)
         implicit none
         real, intent(in) :: pressure
         real :: exner

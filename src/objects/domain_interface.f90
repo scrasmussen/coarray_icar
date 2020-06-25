@@ -9,6 +9,7 @@ module domain_interface
 
   private
   public :: domain_t
+  public :: pressure_at_elevation, exner_function
 
   type domain_t
     ! private
@@ -75,6 +76,7 @@ module domain_interface
 
   interface
 
+
     ! Set default component values
     module subroutine default_initialize(this)
       implicit none
@@ -139,6 +141,19 @@ module domain_interface
       class(domain_t), intent(inout) :: this
       integer, intent(in) :: step
     end subroutine
+
+    elemental module function pressure_at_elevation(sealevel_pressure, elevation) result(pressure)
+      implicit none
+      real, intent(in) :: sealevel_pressure, elevation
+      real :: pressure
+    end function pressure_at_elevation
+
+    elemental module function exner_function(pressure) result(exner)
+      implicit none
+      real, intent(in) :: pressure
+      real :: exner
+    end function exner_function
   end interface
+
 
 end module

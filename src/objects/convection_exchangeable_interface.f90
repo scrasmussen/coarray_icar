@@ -3,6 +3,7 @@ module convection_exchangeable_interface
   use grid_interface, only : grid_t
   use iso_c_binding, only: c_int
   use convection_type_interface
+  use exchangeable_interface, only : exchangeable_t
   implicit none
 
   private
@@ -62,13 +63,13 @@ module convection_exchangeable_interface
 
    contains
      private
-     procedure, public :: const
+     procedure, public :: const, const2
      procedure, public :: send
      procedure, public :: load_buf
      procedure, public :: retrieve
      procedure, public :: exchange
      procedure, public :: process
-     generic,   public :: initialize=>const
+     generic,   public :: initialize=>const2
 
      procedure :: put_north
      procedure :: put_south
@@ -97,6 +98,21 @@ module convection_exchangeable_interface
        type(grid_t), intent(in) :: grid
        real, dimension(:,:,:), intent(in) :: temperature
      end subroutine
+
+  module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z, &
+      ims, ime, kms, kme, jms, jme, dz_value, &
+      input_buf_size, halo_width)
+    class(convection_exchangeable_t), intent(inout) :: this
+    class(exchangeable_t), intent(in)    :: potential_temp
+    class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
+    type(grid_t), intent(in)      :: grid
+    real, intent(in)              :: z(ims:ime,kms:kme,jms:jme)
+    integer, intent(in)           :: ims, ime, kms, kme, jms, jme
+    real, intent(in)              :: dz_value
+    integer, intent(in), optional :: input_buf_size
+    integer, intent(in), optional :: halo_width
+  end subroutine
+
 
      module subroutine const(this, convection_type_enum, grid, tims,time,tkms,tkme,&
          tjms,tjme, input_buf_size, &
