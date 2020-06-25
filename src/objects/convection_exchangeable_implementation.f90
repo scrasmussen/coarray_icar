@@ -2,7 +2,7 @@ submodule(convection_exchangeable_interface) &
     convection_exchangeable_implementation
   use assertions_interface, only : assert, assertions
   use exchangeable_interface, only : exchangeable_t
-  use domain_interface, only : pressure_at_elevation, exner_function
+  use domain_interface, only : pressure_at_elevation, exner_function, sat_mr
 
   use grid_interface, only : grid_t
   implicit none
@@ -43,7 +43,7 @@ contains
   !    -> aka change in z
   !    -> change in temp,
   !       -> change in pressure
-  !       -> change in potential temp ! NOT WHEN
+  !       -> change in potential temp ! NOT WHEN dry adiabatic
   !
 
 
@@ -63,7 +63,8 @@ contains
     integer :: me, create
     real :: random_start(3), xm, zm, ym, north_adjust, east_adjust
     real :: z_meters, z_floor, z_ceiling
-    real :: pressure_val, exner_val, potentional_temp_val, temp_val
+    real :: theta_val, theta_floor, theta_ceiling
+    real :: pressure_val, exner_val, temp_val, water_vapor_val
     me = this_image()
     if (present(input_buf_size)) then
         buf_size = input_buf_size
@@ -125,9 +126,14 @@ contains
       ! sealevel_pressure => 100000.0
       pressure_val = pressure_at_elevation(100000.0, z_meters)
       exner_val = exner_function(pressure_val)
-      ! temp_val = exner_val * potential_temp()
-      !, exner_val, potentional_temp_val, temp_val
-      ! print *, "z_floor =", z_floor, "z_ceiling =", z_ceiling, "mod", modulo(zm,1.0)
+
+      theta_floor = potential_temp%local(floor(xm),floor(zm),floor(ym))
+      theta_ceiling = potential_temp%local(ceiling(xm),ceiling(zm),ceiling(ym))
+      theta_val = theta_floor + (theta_ceiling - theta_floor) * (modulo(zm,1.0))
+
+      temp_val = exner_val * theta_val
+      water_vapor_val = sat_mr(temp_val, pressure_val)
+
       call this%create_particle_id()
 
       ! this%local(create) = convection_particle( &

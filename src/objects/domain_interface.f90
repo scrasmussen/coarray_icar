@@ -9,7 +9,7 @@ module domain_interface
 
   private
   public :: domain_t
-  public :: pressure_at_elevation, exner_function
+  public :: pressure_at_elevation, exner_function, sat_mr
 
   type domain_t
     ! private
@@ -153,6 +153,13 @@ module domain_interface
       real, intent(in) :: pressure
       real :: exner
     end function exner_function
+
+    elemental module function sat_mr(temperature,pressure)
+      ! Calculate the saturated mixing ratio at a temperature (K), pressure (Pa)
+      implicit none
+      real,intent(in) :: temperature,pressure
+      real :: sat_mr
+    end function sat_mr
   end interface
 
 

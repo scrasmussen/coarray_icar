@@ -192,7 +192,7 @@ contains
     !!   Environmental Prediction Research Facility, Technical Paper No. 4-74
     !!
     !!----------------------------------------------------------
-    elemental function sat_mr(temperature,pressure)
+    elemental module function sat_mr(temperature,pressure)
     ! Calculate the saturated mixing ratio at a temperature (K), pressure (Pa)
         implicit none
         real,intent(in) :: temperature,pressure
