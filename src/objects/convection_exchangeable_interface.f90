@@ -99,14 +99,14 @@ module convection_exchangeable_interface
        real, dimension(:,:,:), intent(in) :: temperature
      end subroutine
 
-  module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z, &
+  module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
       ims, ime, kms, kme, jms, jme, dz_value, &
       input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
     class(exchangeable_t), intent(in)    :: potential_temp
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
     type(grid_t), intent(in)      :: grid
-    real, intent(in)              :: z(ims:ime,kms:kme,jms:jme)
+    real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
     integer, intent(in)           :: ims, ime, kms, kme, jms, jme
     real, intent(in)              :: dz_value
     integer, intent(in), optional :: input_buf_size

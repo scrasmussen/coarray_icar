@@ -47,21 +47,21 @@ contains
   !
 
 
-  module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z, &
+  module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
       ims, ime, kms, kme, jms, jme, dz_value, &
       input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
     class(exchangeable_t), intent(in)    :: potential_temp
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
     type(grid_t), intent(in)      :: grid
-    real, intent(in)              :: z(ims:ime,kms:kme,jms:jme)
+    real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
     integer, intent(in)           :: ims, ime, kms, kme, jms, jme
     real, intent(in)              :: dz_value
     integer, intent(in), optional :: input_buf_size
     integer, intent(in), optional :: halo_width
 
     integer :: me, create
-    real :: random_start(3), xm, zm, ym, north_adjust, east_adjust
+    real :: random_start(3), x, z, y, north_adjust, east_adjust
     real :: z_meters, z_floor, z_ceiling
     real :: theta_val, theta_floor, theta_ceiling
     real :: pressure_val, exner_val, temp_val, water_vapor_val
@@ -112,30 +112,33 @@ contains
       call random_number(random_start)
       north_adjust = 0.99
       east_adjust = 0.99
-      xm = ims + (random_start(1) * (ime+east_adjust-ims))
-      zm = kms + (random_start(3) * (kme-kms))
-      ym = jms + (random_start(2) * (jme+north_adjust-jms))
+      x = ims + (random_start(1) * (ime+east_adjust-ims))
+      z = kms + (random_start(3) * (kme-kms))
+      y = jms + (random_start(2) * (jme+north_adjust-jms))
 
-      print *, xm, zm, ym
+      print *, x, z, y
 
-      z_floor = z(floor(xm),floor(zm),floor(ym))
-      z_ceiling = z(ceiling(xm),ceiling(zm),ceiling(ym))
-      z_meters = z_floor + (z_ceiling - z_floor) * (modulo(zm,1.0))
+      z_floor = z_m(floor(x),floor(z),floor(y))
+      z_ceiling = z_m(ceiling(x),ceiling(z),ceiling(y))
+      z_meters = z_floor + (z_ceiling - z_floor) * (modulo(z,1.0))
 
       print *, "z_meter =", z_meters
       ! sealevel_pressure => 100000.0
       pressure_val = pressure_at_elevation(100000.0, z_meters)
       exner_val = exner_function(pressure_val)
 
-      theta_floor = potential_temp%local(floor(xm),floor(zm),floor(ym))
-      theta_ceiling = potential_temp%local(ceiling(xm),ceiling(zm),ceiling(ym))
-      theta_val = theta_floor + (theta_ceiling - theta_floor) * (modulo(zm,1.0))
+      theta_floor = potential_temp%local(floor(x),floor(z),floor(y))
+      theta_ceiling = potential_temp%local(ceiling(x),ceiling(z),ceiling(y))
+      theta_val = theta_floor + (theta_ceiling - theta_floor) * (modulo(z,1.0))
 
       temp_val = exner_val * theta_val
       water_vapor_val = sat_mr(temp_val, pressure_val)
 
       call this%create_particle_id()
 
+      this%local(create) = convection_particle(x, z, y, dz_value, u_in, v_in, &
+          w_in, z_meters, theta_val, water_vapor_val, this%particle_id_count)
+      ! -- old --
       ! this%local(create) = convection_particle( &
       !     this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
       !     pressure_val, t0, wv0, wv0 / e_sat_mr(t0,wv0))
@@ -317,7 +320,12 @@ contains
         ! print *, me, "BROKEN:::::::::", broken_fx, broken_fz, broken_fy, t0, wv0, pressure_val
       end if
 
-      ! sometimes we create a particle that will grab an out of bounds
+      this%local(create) = convection_particle( &
+          this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
+          pressure_val, t0, wv0, wv0 / e_sat_mr(t0,wv0))
+
+
+            ! sometimes we create a particle that will grab an out of bounds
       ! temperature, this fixes that
       ! do while (t0 .eq. 0)
       !   call random_number(random_start)
@@ -330,10 +338,6 @@ contains
       !   t0 = temperature(fx,fz,fy)
       ! end do
 
-
-      this%local(create) = convection_particle( &
-          this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
-          pressure_val, t0, wv0, wv0 / e_sat_mr(t0,wv0))
     end do
 
     if (particle_create_message .eqv. .true.) then

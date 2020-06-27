@@ -27,7 +27,8 @@ module convection_type_interface
      procedure :: send_particle
   end type convection_particle
   interface convection_particle
-     module procedure constructor
+     module procedure :: constructor
+     module procedure :: constructor2
   end interface convection_particle
 
 
@@ -82,6 +83,20 @@ contains
     to%pressure = from%pressure
     to%temperature = from%temperature
   end subroutine move_to
+
+  function constructor2(x, z, y, dxyz, u, v, w, z_meters, theta, water_vapor, &
+    particle_id) &
+        result(this)
+    type(convection_particle) :: this
+    integer :: particle_id
+    real :: x, z, y, dxyz, u, v, w, z_meters
+    real :: pressure, theta, temp, water_vapor
+    this%particle_id = particle_id
+    this%exists = .true.
+    this%moved = .false.
+    this%temperature =
+
+  end function constructor2
 
   function constructor(particle_id,x,y,z,u,v,w,pressure,temperature, &
       water_vapor, relative_humidity) &
