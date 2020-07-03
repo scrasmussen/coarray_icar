@@ -18,7 +18,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: wind = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  integer, parameter :: particles_per_image = 100
+  integer, parameter :: particles_per_image = 10
   integer, parameter :: local_buf_size = particles_per_image * 4
 
 contains
@@ -63,7 +63,8 @@ contains
     real :: z_meters, z_floor, z_ceiling
     real :: theta_val, theta_floor, theta_ceiling
     real :: pressure_val, exner_val, temp_val, water_vapor_val
-    integer :: floor_x, floor_z, floor_y, ceiling_x, ceiling_z, ceiling_y
+    real :: u_val, v_val, w_val
+    integer :: x0, x1, z0, z1, y0, y1
     me = this_image()
     if (present(input_buf_size)) then
         buf_size = input_buf_size
@@ -98,20 +99,20 @@ contains
       z = kms + (random_start(3) * (kme-kms))
       y = jms + (random_start(2) * (jme+north_adjust-jms))
 
+      x0 = floor(x); z0 = floor(z); y0 = floor(y);
+      x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
 
-      floor_x = floor(x); floor_z = floor(z); floor_y = floor(y);
-      ceiling_x = ceiling(x); ceiling_z = ceiling(z); ceiling_y = ceiling(y);
+      associate (A => z_m)
+        z_meters = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+            A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+            A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+      end associate
 
-      z_floor = z_m(floor_x,floor_z,floor_y)
-      z_ceiling = z_m(ceiling_x,ceiling_z,ceiling_y)
-      z_meters = z_floor + (z_ceiling - z_floor) * (modulo(z,1.0))
-
-      ! print *, x, z, y
-      ! print *, "z_meter =", z_meters
-
-      theta_floor = potential_temp%local(floor_x,floor_z,floor_y)
-      theta_ceiling = potential_temp%local(ceiling_x,ceiling_z,ceiling_y)
-      theta_val = theta_floor + (theta_ceiling - theta_floor) * (modulo(z,1.0))
+      associate (A => potential_temp%local)
+        theta_val = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+            A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+            A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+      end associate
 
       ! sealevel_pressure => 100000.0
       pressure_val = pressure_at_elevation(100000.0, z_meters)
@@ -121,19 +122,14 @@ contains
 
       call this%create_particle_id()
 
-      this%local(create) = convection_particle(this%particle_id_count, .true., &
-          .false., x, y, z, u_in%local(floor_x, floor_z, floor_y), &
-          v_in%local(floor_x, floor_z, floor_y), 0, z_meters, pressure_val, &
-          temp_val, theta_val, 0, water_vapor_val, 0)
+      ! wind is constant in this system, ignoring w wind (aka z-direction)
+      u_val = u_in%local(x0, z0, y0)
+      v_val = v_in%local(x0, z0, y0)
+      w_val = 0
 
-      ! -- old --
-      ! this%local(create) = convection_particle(x, z, y, dz_value, u_in, v_in, &
-      !     w_in, z_meters, theta_val, temp_val, water_vapor_val, &
-      !     this%particle_id_count)
-      ! -- old --
-      ! this%local(create) = convection_particle( &
-      !     this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
-      !     pressure_val, t0, wv0, wv0 / e_sat_mr(t0,wv0))
+      this%local(create) = convection_particle(this%particle_id_count, .true., &
+          .false., x, y, z, u_val, v_val, w_val, z_meters, pressure_val, &
+          temp_val, theta_val, 0, water_vapor_val, 0)
     end do
 
 
@@ -1100,4 +1096,27 @@ contains
       end if
 
     end subroutine
+
+    function trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+        c000, c001, c010, c100, c011, c101, c110, c111) result(c)
+      real, intent(in) :: x, z, y
+      real, intent(in) :: c000, c001, c010, c100, c011, c101, c110, c111
+      integer, intent(in) :: x0, x1, z0, z1, y0, y1
+      real :: xd, zd, yd, c00, c01, c10, c11, c0, c1, c
+
+      xd = (x - x0) / (x1 - x0)
+      zd = (z - z0) / (z1 - z0)
+      yd = (y - y0) / (y1 - y0)
+
+      c00 = c000 * (1 - xd) + c100 * xd
+      c01 = c001 * (1 - xd) + c101 * xd
+      c10 = c010 * (1 - xd) + c110 * xd
+      c11 = c011 * (1 - xd) + c111 * xd
+
+      c0 = c00 * (1 - zd) + c10 * zd
+      c1 = c01 * (1 - zd) + c11 * zd
+
+      c = c0 * (1 - yd) + c1 * yd
+    end function trilinear_interpolation
+
 end submodule
