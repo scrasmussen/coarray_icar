@@ -6,7 +6,6 @@ submodule(convection_exchangeable_interface) &
 
   use grid_interface, only : grid_t
   implicit none
-
   integer, parameter :: default_buf_size=1
   integer, parameter :: default_halo_size=1
   integer, save, allocatable :: neighbors(:)
@@ -15,13 +14,12 @@ submodule(convection_exchangeable_interface) &
   integer, save :: northeast_neighbor, northwest_neighbor
   integer, save :: southeast_neighbor, southwest_neighbor
   logical, parameter :: wrap_neighbors = .true.
-  logical, parameter :: advection = .false.
-  logical, parameter :: wind = .true.
+  logical, parameter :: advection = .true.
+  logical, parameter :: wind = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  integer, parameter :: particles_per_image = 1
+  integer, parameter :: particles_per_image = 100
   integer, parameter :: local_buf_size = particles_per_image * 4
-
 
 contains
   ! function initialize_convection_array_t(this)
@@ -65,6 +63,7 @@ contains
     real :: z_meters, z_floor, z_ceiling
     real :: theta_val, theta_floor, theta_ceiling
     real :: pressure_val, exner_val, temp_val, water_vapor_val
+    integer :: floor_x, floor_z, floor_y, ceiling_x, ceiling_z, ceiling_y
     me = this_image()
     if (present(input_buf_size)) then
         buf_size = input_buf_size
@@ -83,23 +82,6 @@ contains
     this%east_boundary  = (grid%ximg == grid%ximages)
     this%west_boundary  = (grid%ximg == 1)
 
-    ! --- setup boundaries ---
-    if (this%north_boundary) then
-      this%northeast_boundary = .true.
-      this%northwest_boundary = .true.
-    end if
-    if (this%south_boundary) then
-      this%southeast_boundary = .true.
-      this%southwest_boundary = .true.
-    end if
-    if (this%east_boundary) then
-      this%northeast_boundary = .true.
-      this%southeast_boundary = .true.
-    end if
-    if (this%west_boundary) then
-      this%northwest_boundary = .true.
-      this%southwest_boundary = .true.
-    end if
 
     allocate(this%local(particles_per_image * 4))
     if (particle_create_message .eqv. .true.) then
@@ -116,28 +98,38 @@ contains
       z = kms + (random_start(3) * (kme-kms))
       y = jms + (random_start(2) * (jme+north_adjust-jms))
 
-      print *, x, z, y
 
-      z_floor = z_m(floor(x),floor(z),floor(y))
-      z_ceiling = z_m(ceiling(x),ceiling(z),ceiling(y))
+      floor_x = floor(x); floor_z = floor(z); floor_y = floor(y);
+      ceiling_x = ceiling(x); ceiling_z = ceiling(z); ceiling_y = ceiling(y);
+
+      z_floor = z_m(floor_x,floor_z,floor_y)
+      z_ceiling = z_m(ceiling_x,ceiling_z,ceiling_y)
       z_meters = z_floor + (z_ceiling - z_floor) * (modulo(z,1.0))
 
-      print *, "z_meter =", z_meters
+      ! print *, x, z, y
+      ! print *, "z_meter =", z_meters
+
+      theta_floor = potential_temp%local(floor_x,floor_z,floor_y)
+      theta_ceiling = potential_temp%local(ceiling_x,ceiling_z,ceiling_y)
+      theta_val = theta_floor + (theta_ceiling - theta_floor) * (modulo(z,1.0))
+
       ! sealevel_pressure => 100000.0
       pressure_val = pressure_at_elevation(100000.0, z_meters)
       exner_val = exner_function(pressure_val)
-
-      theta_floor = potential_temp%local(floor(x),floor(z),floor(y))
-      theta_ceiling = potential_temp%local(ceiling(x),ceiling(z),ceiling(y))
-      theta_val = theta_floor + (theta_ceiling - theta_floor) * (modulo(z,1.0))
-
       temp_val = exner_val * theta_val
       water_vapor_val = sat_mr(temp_val, pressure_val)
 
       call this%create_particle_id()
 
-      this%local(create) = convection_particle(x, z, y, dz_value, u_in, v_in, &
-          w_in, z_meters, theta_val, water_vapor_val, this%particle_id_count)
+      this%local(create) = convection_particle(this%particle_id_count, .true., &
+          .false., x, y, z, u_in%local(floor_x, floor_z, floor_y), &
+          v_in%local(floor_x, floor_z, floor_y), 0, z_meters, pressure_val, &
+          temp_val, theta_val, 0, water_vapor_val, 0)
+
+      ! -- old --
+      ! this%local(create) = convection_particle(x, z, y, dz_value, u_in, v_in, &
+      !     w_in, z_meters, theta_val, temp_val, water_vapor_val, &
+      !     this%particle_id_count)
       ! -- old --
       ! this%local(create) = convection_particle( &
       !     this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
@@ -157,10 +149,10 @@ contains
     allocate( this%buf_southeast_in(buf_size)[*])
     allocate( this%buf_southwest_in(buf_size)[*])
 
-
-    ! input, z elevation, potential_temp :: potential is exchangable, z is real
-    print *, "--- fin - ish ---"
+    call this%setup_neighbors(grid)
   end subroutine
+
+
 
   ! constructor
   module subroutine const(this, convection_type_enum, grid,tims,time,tkms,tkme,tjms,&
@@ -185,7 +177,7 @@ contains
     real :: x,y,z,t0,wv0
     real :: u,v,w,pressure_val
     integer :: fx,fy,fz
-    logical, parameter :: broken=.true.
+    logical, parameter :: broken=.false.
     integer :: u_bound(3), broken_fx, broken_fy, broken_fz
 
     me = this_image()
@@ -320,12 +312,12 @@ contains
         ! print *, me, "BROKEN:::::::::", broken_fx, broken_fz, broken_fy, t0, wv0, pressure_val
       end if
 
+      print *, "Shouldn't be here, creating a convection particle"
       this%local(create) = convection_particle( &
           this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
-          pressure_val, t0, wv0, wv0 / e_sat_mr(t0,wv0))
+          pressure_val, t0, wv0, wv0 / sat_mr(t0,wv0))
 
-
-            ! sometimes we create a particle that will grab an out of bounds
+      ! sometimes we create a particle that will grab an out of bounds
       ! temperature, this fixes that
       ! do while (t0 .eq. 0)
       !   call random_number(random_start)
@@ -352,128 +344,22 @@ contains
     allocate( this%buf_southeast_in(buf_size)[*])
     allocate( this%buf_southwest_in(buf_size)[*])
 
-    ! if (this_image() .eq. 1) then
-    !   print *, "===--- ARTLESS NEED TO DOUBLE CHECK NEIGHBORS ---==="
-    ! end if
-    ! set up the neighbors array so we can sync with our neighbors when needed
-    if (.not.allocated(neighbors)) then
-      associate(me=>this_image())
-        north_neighbor = me + grid%ximages
-        south_neighbor = me - grid%ximages
-        east_neighbor  = me + 1
-        west_neighbor  = me - 1
-        northeast_neighbor = me + grid%ximages + 1
-        northwest_neighbor = me + grid%ximages - 1
-        southeast_neighbor = me - grid%ximages + 1
-        southwest_neighbor = me - grid%ximages - 1
+    call this%setup_neighbors(grid)
 
-        n_neighbors = merge(0,1,this%south_boundary)  &
-            +merge(0,1,this%north_boundary)  &
-            +merge(0,1,this%east_boundary)   &
-            +merge(0,1,this%west_boundary)
-        n_neighbors = max(1, n_neighbors)
-
-        allocate(neighbors(n_neighbors))
-
-        current = 1
-        if (.not. this%south_boundary) then
-          neighbors(current) = south_neighbor
-          current = current+1
-        endif
-        if (.not. this%north_boundary) then
-          neighbors(current) = north_neighbor
-          current = current+1
-        endif
-        if (.not. this%east_boundary) then
-          neighbors(current) = east_neighbor
-          current = current+1
-        endif
-        if (.not. this%west_boundary) then
-          neighbors(current) = west_neighbor
-          current = current+1
-        endif
-        ! if current = 1 then all of the boundaries were set, just store ourself as our "neighbor"
-        if (current == 1) then
-          neighbors(current) = me
-        endif
-
-        ! Wrap boundaries: so particles in the xy direction don't disappear
-        associate(nx => grid%ximages, ny => grid%yimages, &
-            nimages => grid%ximages * grid%yimages)
-        if (wrap_neighbors .eqv. .true.) then
-          n_images = num_images()
-          ! --- handle diagonals
-          if (this%north_boundary .eqv. .true.) then
-            northeast_neighbor = modulo( (me+nx+1)-nimages, (nx+1))
-            if (northeast_neighbor .eq. 0) northeast_neighbor = 1
-            northwest_neighbor = (me+nx-1)-nimages
-            if (northwest_neighbor .eq. 0) northwest_neighbor = nx
-          else  if (this%east_boundary .eqv. .true.) then
-            northeast_neighbor = me + 1
-          else  if (this%west_boundary .eqv. .true.) then
-            northwest_neighbor = me + nx * 2 - 1
-          end if
-
-          if (this%south_boundary .eqv. .true.) then
-            southeast_neighbor = me + nimages - nx + 1
-            if (southeast_neighbor > nimages) then
-              southeast_neighbor = southeast_neighbor - nx
-            end if
-            southwest_neighbor = me + nimages - nx - 1
-            if (modulo(southwest_neighbor,nx) == 0) then
-              southwest_neighbor = nimages
-            end if
-            ! southwest_neighbor = - 2
-          else  if (this%east_boundary .eqv. .true.) then
-            southeast_neighbor = me - nx * 2 + 1
-          else  if (this%west_boundary .eqv. .true.) then
-            southwest_neighbor = me - 1
-            ! southwest_neighbor = - 1
-          end if
-          ! this%northeast_boundary = .false.
-          ! this%northwest_boundary = .false.
-          ! this%southeast_boundary = .false.
-          ! this%southwest_boundary = .false.
-
-          ! --- handle up/down/left/right
-          if (this%north_boundary .eqv. .true.) then
-            north_neighbor = north_neighbor - n_images
-            this%north_boundary = .false.
-            this%wrapped_north = .true.
-          end if
-          if (this%south_boundary .eqv. .true.) then
-            south_neighbor = south_neighbor + n_images
-            this%south_boundary = .false.
-            this%wrapped_south = .true.
-          end if
-          if (this%east_boundary .eqv. .true.) then
-            east_neighbor = east_neighbor - grid%ximages
-            this%east_boundary = .false.
-            this%wrapped_east = .true.
-          end if
-          if (this%west_boundary .eqv. .true.) then
-            west_neighbor = west_neighbor + grid%ximages
-            this%west_boundary = .false.
-            this%wrapped_west = .true.
-          end if
-        end if
-        end associate
-
-
-        do i=1,num_images()
-          call flush()
-          sync all
-          if (this_image() .eq. i) then
-          print *, "                               n s e w"
-          print *, this_image(), ": boundry         ", this%north_boundary, &
-              this%south_boundary, this%east_boundary, this%west_boundary
-          print *, "                               nw ne se sw"
-          print *, this_image(), ": diagonal boundry", this%northwest_boundary, &
-              this%northeast_boundary, this%southeast_boundary, &
-              this%southwest_boundary
-          end if
-          sync all
-        end do
+        ! do i=1,num_images()
+        !   call flush()
+        !   sync all
+        !   if (this_image() .eq. i) then
+        !   print *, "                               n s e w"
+        !   print *, this_image(), ": boundry         ", this%north_boundary, &
+        !       this%south_boundary, this%east_boundary, this%west_boundary
+        !   print *, "                               nw ne se sw"
+        !   print *, this_image(), ": diagonal boundry", this%northwest_boundary, &
+        !       this%northeast_boundary, this%southeast_boundary, &
+        !       this%southwest_boundary
+        !   end if
+        !   sync all
+        ! end do
 
         ! if (this_image() .eq. 1) then
         !   print *, "grid x y ", grid%ximages, grid%yimages
@@ -503,9 +389,8 @@ contains
         ! !     this%southwest_boundary
         ! sync all
         ! call exit
-
-      end associate
-    endif
+    !   end associate
+    ! endif
 
   end subroutine
 
@@ -744,9 +629,9 @@ contains
       real :: ws, fake_wind_correction, delta_z
       integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
       real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
-      real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr
+      real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
       real :: vapor_p, sat_p, T_C, mr, T_squared, tmp
-      logical, parameter :: broken=.true.
+      logical, parameter :: broken=.false.
       integer :: u_bound(3), broken_fx, broken_fy, broken_fz
       real :: T_broken
 
@@ -758,6 +643,7 @@ contains
       jme = grid%jme
       kms = grid%kms
       kme = grid%kme
+
 
       do i=1,ubound(this%local,1)
         associate (particle=>this%local(i))
@@ -798,6 +684,7 @@ contains
                 floor(particle%y))
 
             if (broken .eqv. .true.) then
+              print *, "BROKEN:::::::::"
               u_bound = ubound(temperature)
               broken_fx = mod((floor(particle%x)-1),u_bound(1)+1)
               broken_fz = mod((floor(particle%z)-1),u_bound(2)+1)
@@ -810,17 +697,7 @@ contains
 
 
 
-            ! print *, "------------ ubound---", ubound(temperature), T_prime
-
-            ! if (me .eq. 2) then
-            !   print *,  "ME ================", 2, "|", ubound(this%local,1)
-            ! end if
-
             if (advection .eqv. .true.) then
-            ! if (advection .eqv. .true. .and. me .eq. 2) then
-              ! 4.12 in Rogers and Yao, simple for now
-              ! print *, "id = ", particle%particle_id
-
               buoyancy = (T - T_prime) / T_prime
               a_prime = buoyancy * gravity
               ! time step is 1 so t and t^2 go away
@@ -835,18 +712,14 @@ contains
                 print *, me, ":: ------------NAN--------------"
                 particle%z = -1
               else
+                ! print *, "delta_z ::", delta_z, "z_displacement",z_displacement
                 particle%z = particle%z + delta_z
+                particle%z_meters = particle%z_meters + z_displacement
                 particle%velocity = z_displacement
               end if
             else
               z_displacement = 0.0
             end if
-
-            ! print *, ":::::ARTLESS:::::"
-            ! print *, "z_displacement = ", z_displacement
-            ! print *, "temp     =" ,particle%temperature
-            ! print *, "potential temp     =" ,particle%potential_temp
-            ! print *, "pressure =" ,particle%pressure
 
             ! OLD
             !-----------------------------------------------------------------
@@ -865,16 +738,9 @@ contains
             particle%pressure = p0 - z_displacement * &
                 gravity / (287.05 * particle%temperature) * p0
 
-
             ! ! barometric formula for an adiabatic atmosphere
             ! exponent = gravity / (287.05 * Gamma)
             ! alt_pressure = p0 * (1 - Gamma * particle%z / T)
-
-            ! ! Exner
-            ! ! T/potential =
-            ! associate(po=>100000, Rd=>287.058, cp=>1003.5)
-            !   alt_pressure2= p0 / ((particle%potential_temp / T)**(cp/Rd))
-            ! end associate
 
 
 
@@ -884,34 +750,39 @@ contains
             ! Temperature is reduced T - Gamma * delta_z  (3.8)
             ! print *, this_image(), "z_displacement", z_displacement
             ! Gamma in Kelvin per meter
-            if (particle%relative_humidity .ge. 1.01) then
-              ! equation from
-              ! wikipedia.org/wiki/Lapse_rate#Moist_adiabatic_lapse_rate
-              T_C = particle%temperature - 273.15
-              T_squared = T_C * T_C
-              mixing_ratio = particle%pressure
+            ! if (particle%relative_humidity .ge. 1.01) then
+            !   ! equation from
+            !   ! wikipedia.org/wiki/Lapse_rate#Moist_adiabatic_lapse_rate
+            !   T_C = particle%temperature - 273.15
+            !   T_squared = T_C * T_C
+            !   mixing_ratio = particle%pressure
 
-              tmp = gravity * (286 * T_squared + &
-                  2501000 * mixing_ratio * T_C ) / &
-                  (1003.5 *  287 * T_squared + &
-                  0.622 * mixing_ratio * 2501000 * 2501000)
-              particle%temperature = tmp + 273.15
-              ! particle%temperature = gravity * (286 * T_squared + &
-              !     2501000 * mixing_ratio * T_C ) / &
-              !     (1003.5 *  287 * T_squared + &
-              !      0.622 * mixing_ratio * 2501000 * 2501000) + 273.15
-              ! ---ARTLESS---
-              print *, "MALR: from", T_C+273.15, "to", particle%temperature, &
-                  "diff", T_C - tmp
+            !   tmp = gravity * (286 * T_squared + &
+            !       2501000 * mixing_ratio * T_C ) / &
+            !       (1003.5 *  287 * T_squared + &
+            !       0.622 * mixing_ratio * 2501000 * 2501000)
+            !   particle%temperature = tmp + 273.15
+            !   ! particle%temperature = gravity * (286 * T_squared + &
+            !   !     2501000 * mixing_ratio * T_C ) / &
+            !   !     (1003.5 *  287 * T_squared + &
+            !   !      0.622 * mixing_ratio * 2501000 * 2501000) + 273.15
+            !   ! ---ARTLESS---
+            !   print *, "MALR: from", T_C+273.15, "to", particle%temperature, &
+            !       "diff", T_C - tmp
 
-              ! other possible equation
-              ! http://www.theweatherprediction.com/habyhints/161/
-              ! MALR = dT/dz = DALR / (1 + L/Cp*dWs/dT)
-              ! dWs/dT is the change in saturation mixing ratio with change in T
-            else
-              particle%temperature = particle%temperature - Gamma * z_displacement
-            end if
+            !   ! other possible equation
+            !   ! http://www.theweatherprediction.com/habyhints/161/
+            !   ! MALR = dT/dz = DALR / (1 + L/Cp*dWs/dT)
+            !   ! dWs/dT is the change in saturation mixing ratio with change in T
+            ! else
+            !   ! OLD METHOD
+            !   ! particle%temperature = particle%temperature - Gamma * z_displacement
+            !   particle%temperature = exner_function(particle%pressure) * &
+            !       particle%potential_temp
+            ! end if
 
+            particle%temperature = exner_function(particle%pressure) * &
+                particle%potential_temp
 
 
             ! this is close to the potential temp given by the Exner func
@@ -920,10 +791,11 @@ contains
             ! print *, "new potential temp", particle%potential_temp
 
             ! potential_temp from exner
-            associate(po=>100000, Rd=>287.058, cp=>1003.5)
-              particle%potential_temp = particle%temperature / &
-                  ((particle%pressure / p0) ** (Rd/cp))
-            end associate
+            ! potential temp does not change in dry adiabat
+            ! associate(po=>100000, Rd=>287.058, cp=>1003.5)
+            !   particle%potential_temp = particle%temperature / &
+            !       ((particle%pressure / p0) ** (Rd/cp))
+            ! end associate
 
             ! Equaion Ethan gave me, same as pressure
             ! alt_pressure = p0 * exp( -((9.81/287.058)*z_displacement) / &
@@ -960,11 +832,10 @@ contains
             ! ARTLESS below might be correctish math
             ! dz: 500, supposes all dz_interface values are the same
             fake_wind_correction = 0
-            ! fake_wind_correction = (1.0 / dz) ! real correction
             ! fake_wind_correction = (1.0 / 10) ! ARTLESS
             fake_wind_correction = (1.0 / 4) ! ARTLESS
-            fake_wind_correction = (1.0 / 4) ! ARTLESS
             fake_wind_correction = (1.0) ! ARTLESS
+            fake_wind_correction = (1.0 / dz) ! real correction
 
             if (wind .eqv. .true.) then
               ! u: zonal velocity, wind towards the east
@@ -982,8 +853,24 @@ contains
             ! water_vapor = water vapor mixing ratio (w)
             ! relative humidity = w / w_s
 
-            sat_mr = e_sat_mr(particle%temperature, particle%pressure)
-            particle%relative_humidity = particle%water_vapor / sat_mr
+
+            ! R_v the specific gas constant for water vapor
+            ! R_a
+            ! epsilon = R_d / R_v
+            !   from https://www.engineeringtoolbox.com/density-air-d_680.html
+            ! mr = epsilon * e / (p-e)   ;  from
+            ! snowball.millersville.edu/~adecaria/ESCI241/esci241_lesson06_humidity.pdf
+            ! density of water vapor / density of dry air
+            ! associate (epsilon => 1.609)
+            !   row_v = 0.0022 / T_k
+            !   e = row_v *  462 * particle_temperature
+            !   mr = epsilon * e / (particle%pressure - e)
+            ! end associate
+            ! row_a = 0.0035 /
+
+
+            ! sat_mr_val = sat_mr(particle%temperature, particle%pressure)
+            ! particle%relative_humidity = particle%water_vapor / sat_mr_val
 
             ! print *, me, "RH = ", particle%relative_humidity
             ! if (particle%relative_humidity .ge. 1) then
@@ -1082,58 +969,135 @@ contains
       end if
     end subroutine
 
+    module subroutine setup_neighbors(this, grid)
+      implicit none
+      class(convection_exchangeable_t), intent(inout) :: this
+      type(grid_t), intent(in)      :: grid
+      integer :: current, n_neighbors, n_images
 
-    ! THIS IS COPIED FROM DOMAIN_IMPLEMENTATION.F90
-    !>----------------------------------------------------------
-    !!  Calculate the saturated mixing ratio for a given temperature and pressure
-    !!
-    !!  If temperature > 0C: returns the saturated mixing ratio with respect to liquid
-    !!  If temperature < 0C: returns the saturated mixing ratio with respect to ice
-    !!
-    !!  @param temperature  Air Temperature [K]
-    !!  @param pressure     Air Pressure [Pa]
-    !!  @retval sat_mr      Saturated water vapor mixing ratio [kg/kg]
-    !!
-    !!  @see http://www.dtic.mil/dtic/tr/fulltext/u2/778316.pdf
-    !!   Lowe, P.R. and J.M. Ficke., 1974: The Computation of Saturation Vapor Pressure
-    !!   Environmental Prediction Research Facility, Technical Paper No. 4-74
-    !!
-    !!----------------------------------------------------------
-    elemental function e_sat_mr(temperature,pressure)
-    ! Calculate the saturated mixing ratio at a temperature (K), pressure (Pa)
-        implicit none
-        real,intent(in) :: temperature,pressure
-        real :: e_s,a,b
-        real :: e_sat_mr
-        ! from http://www.dtic.mil/dtic/tr/fulltext/u2/778316.pdf
-        !   Lowe, P.R. and J.M. Ficke., 1974: THE COMPUTATION OF SATURATION VAPOR PRESSURE
-        !       Environmental Prediction Research Facility, Technical Paper No. 4-74
-       ! which references:
-        !   Murray, F. W., 1967: On the computation of saturation vapor pressure.
-        !       Journal of Applied Meteorology, Vol. 6, pp. 203-204.
-        ! Also notes a 6th order polynomial and look up table as viable options.
-        if (temperature < 273.15) then
-            a = 21.8745584
-            b = 7.66
-        else
-            a = 17.2693882
-            b = 35.86
-        endif
-
-        e_s = 610.78 * exp(a * (temperature - 273.16) / (temperature - b)) !(Pa)
-
-        ! alternate formulations
-        ! Polynomial:
-        ! e_s = ao + t*(a1+t*(a2+t*(a3+t*(a4+t*(a5+a6*t))))) a0-6 defined separately for water and ice
-        ! e_s = 611.2*exp(17.67*(t-273.15)/(t-29.65)) ! (Pa)
-        ! from : http://www.srh.noaa.gov/images/epz/wxcalc/vaporPressure.pdf
-        ! e_s = 611.0*10.0**(7.5*(t-273.15)/(t-35.45))
+      ! --- setup boundaries ---
+      if (this%north_boundary) then
+        this%northeast_boundary = .true.
+        this%northwest_boundary = .true.
+      end if
+      if (this%south_boundary) then
+        this%southeast_boundary = .true.
+        this%southwest_boundary = .true.
+      end if
+      if (this%east_boundary) then
+        this%northeast_boundary = .true.
+        this%southeast_boundary = .true.
+      end if
+      if (this%west_boundary) then
+        this%northwest_boundary = .true.
+        this%southwest_boundary = .true.
+      end if
 
 
-        if ((pressure - e_s) <= 0) then
-            e_s = pressure * 0.99999
-        endif
-        ! from : http://www.srh.noaa.gov/images/epz/wxcalc/mixingRatio.pdf
-        e_sat_mr = 0.6219907 * e_s / (pressure - e_s) !(kg/kg)
-    end function e_sat_mr
+      if (.not.allocated(neighbors)) then
+        associate(me=>this_image())
+          north_neighbor = me + grid%ximages
+          south_neighbor = me - grid%ximages
+          east_neighbor  = me + 1
+          west_neighbor  = me - 1
+          northeast_neighbor = me + grid%ximages + 1
+          northwest_neighbor = me + grid%ximages - 1
+          southeast_neighbor = me - grid%ximages + 1
+          southwest_neighbor = me - grid%ximages - 1
+
+          n_neighbors = merge(0,1,this%south_boundary)  &
+              +merge(0,1,this%north_boundary)  &
+              +merge(0,1,this%east_boundary)   &
+              +merge(0,1,this%west_boundary)
+          n_neighbors = max(1, n_neighbors)
+
+          allocate(neighbors(n_neighbors))
+
+          current = 1
+          if (.not. this%south_boundary) then
+            neighbors(current) = south_neighbor
+            current = current+1
+          endif
+          if (.not. this%north_boundary) then
+            neighbors(current) = north_neighbor
+            current = current+1
+          endif
+          if (.not. this%east_boundary) then
+            neighbors(current) = east_neighbor
+            current = current+1
+          endif
+          if (.not. this%west_boundary) then
+            neighbors(current) = west_neighbor
+            current = current+1
+          endif
+          ! if current = 1 then all of the boundaries were set, just store ourself as our "neighbor"
+          if (current == 1) then
+            neighbors(current) = me
+          endif
+
+          ! Wrap boundaries: so particles in the xy direction don't disappear
+          associate(nx => grid%ximages, ny => grid%yimages, &
+              nimages => grid%ximages * grid%yimages)
+            if (wrap_neighbors .eqv. .true.) then
+              n_images = num_images()
+              ! --- handle diagonals
+              if (this%north_boundary .eqv. .true.) then
+                northeast_neighbor = modulo( (me+nx+1)-nimages, (nx+1))
+                if (northeast_neighbor .eq. 0) northeast_neighbor = 1
+                northwest_neighbor = (me+nx-1)-nimages
+                if (northwest_neighbor .eq. 0) northwest_neighbor = nx
+              else  if (this%east_boundary .eqv. .true.) then
+                northeast_neighbor = me + 1
+              else  if (this%west_boundary .eqv. .true.) then
+                northwest_neighbor = me + nx * 2 - 1
+              end if
+
+              if (this%south_boundary .eqv. .true.) then
+                southeast_neighbor = me + nimages - nx + 1
+                if (southeast_neighbor > nimages) then
+                  southeast_neighbor = southeast_neighbor - nx
+                end if
+                southwest_neighbor = me + nimages - nx - 1
+                if (modulo(southwest_neighbor,nx) == 0) then
+                  southwest_neighbor = nimages
+                end if
+                ! southwest_neighbor = - 2
+              else  if (this%east_boundary .eqv. .true.) then
+                southeast_neighbor = me - nx * 2 + 1
+              else  if (this%west_boundary .eqv. .true.) then
+                southwest_neighbor = me - 1
+                ! southwest_neighbor = - 1
+              end if
+              ! this%northeast_boundary = .false.
+              ! this%northwest_boundary = .false.
+              ! this%southeast_boundary = .false.
+              ! this%southwest_boundary = .false.
+
+              ! --- handle up/down/left/right
+              if (this%north_boundary .eqv. .true.) then
+                north_neighbor = north_neighbor - n_images
+                this%north_boundary = .false.
+                this%wrapped_north = .true.
+              end if
+              if (this%south_boundary .eqv. .true.) then
+                south_neighbor = south_neighbor + n_images
+                this%south_boundary = .false.
+                this%wrapped_south = .true.
+              end if
+              if (this%east_boundary .eqv. .true.) then
+                east_neighbor = east_neighbor - grid%ximages
+                this%east_boundary = .false.
+                this%wrapped_east = .true.
+              end if
+              if (this%west_boundary .eqv. .true.) then
+                west_neighbor = west_neighbor + grid%ximages
+                this%west_boundary = .false.
+                this%wrapped_west = .true.
+              end if
+            end if
+          end associate
+        end associate
+      end if
+
+    end subroutine
 end submodule

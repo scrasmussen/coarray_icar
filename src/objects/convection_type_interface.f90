@@ -1,4 +1,5 @@
 module convection_type_interface
+  ! use domain_interface, only : pressure_at_elevation, exner_function, sat_mr
   implicit none
   private
   public :: convection_particle, convection_array
@@ -15,11 +16,11 @@ module convection_type_interface
   type convection_particle
      ! when adding element, remember about constructor
      integer :: particle_id
-     logical :: exists, moved
+     logical :: exists = .false., moved
      real :: x, y, z
      ! real :: xd, yd, zd  ! ARTLESS these are really the domain xyz
      real :: u, v, w
-     real :: k ! Amontons's law
+     real :: z_meters
      real :: pressure, temperature, potential_temp
      real :: velocity, water_vapor, relative_humidity
    contains
@@ -28,7 +29,7 @@ module convection_type_interface
   end type convection_particle
   interface convection_particle
      module procedure :: constructor
-     module procedure :: constructor2
+     ! module procedure :: constructor2
   end interface convection_particle
 
 
@@ -84,19 +85,23 @@ contains
     to%temperature = from%temperature
   end subroutine move_to
 
-  function constructor2(x, z, y, dxyz, u, v, w, z_meters, theta, water_vapor, &
-    particle_id) &
-        result(this)
-    type(convection_particle) :: this
-    integer :: particle_id
-    real :: x, z, y, dxyz, u, v, w, z_meters
-    real :: pressure, theta, temp, water_vapor
-    this%particle_id = particle_id
-    this%exists = .true.
-    this%moved = .false.
-    this%temperature =
+  ! function constructor2(x, z, y, dxyz, u, v, w, z_meters, potential_temp, temp, &
+  !     water_vapor, particle_id) &
+  !     result(this)
+  !   type(convection_particle) :: this
+  !   integer :: particle_id
+  !   real :: x, z, y, dxyz, u, v, w, z_meters
+  !   real :: pressure, potential_temp, temp, water_vapor, exner_val
+  !   this%particle_id = particle_id
+  !   this%exists = .true.
+  !   this%moved = .false.
 
-  end function constructor2
+  !   this%pressure = pressure
+  !   this%potential_temp = potential_temp
+  !   this%temperature = temp
+  !   this%water_vapor = water_vapor
+
+  ! end function constructor2
 
   function constructor(particle_id,x,y,z,u,v,w,pressure,temperature, &
       water_vapor, relative_humidity) &
@@ -124,7 +129,7 @@ contains
     this%relative_humidity = relative_humidity
 
     ! Amontons's law
-    this%k = pressure / temperature
+    ! this%k = pressure / temperature
 
     associate(po=>100000, Rd=>287.058, cp=>1003.5)
       exner = (pressure / po) ** (Rd/cp)

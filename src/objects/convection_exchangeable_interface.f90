@@ -81,6 +81,7 @@ module convection_exchangeable_interface
      procedure :: put_southwest
      procedure :: retrieve_buf
      procedure :: create_particle_id
+     procedure :: setup_neighbors
   end type convection_exchangeable_t
 
   ! type convection_object_t
@@ -208,8 +209,10 @@ module convection_exchangeable_interface
        class(convection_exchangeable_t), intent(inout) :: this
      end subroutine
 
+     module subroutine setup_neighbors(this,grid)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(grid_t), intent(in) :: grid
+     end subroutine
   end interface
-
-
-
 end module convection_exchangeable_interface
