@@ -153,6 +153,8 @@ contains
           this%exner       = exner_function(this%pressure)
           this%temperature = this%exner * this%potential_temperature%local
           this%water_vapor%local = sat_mr(this%temperature,this%pressure)
+          ! print *, "water vapor=", this%water_vapor%local
+          ! call exit
 
 
 
@@ -169,8 +171,8 @@ contains
               ims,ime,kms,kme,jms,jme,dz_value, &
               input_buf_size=8,halo_width=2)
 
-          sync all
-          call exit
+          ! sync all
+          ! call exit
 
       end associate
 
@@ -618,7 +620,5 @@ contains
         sync all
       end do
 
-
     end subroutine
-
 end submodule

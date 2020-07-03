@@ -2,7 +2,7 @@ module domain_interface
   use configuration_interface, only : configuration_t
   use exchangeable_interface, only : exchangeable_t
   use grid_interface, only: grid_t
-  use convection_object
+  ! use convection_object
   use convection_exchangeable_interface, only : &
       convection_exchangeable_t
   implicit none
