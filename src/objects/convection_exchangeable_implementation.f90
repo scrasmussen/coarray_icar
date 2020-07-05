@@ -18,7 +18,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: wind = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  integer, parameter :: particles_per_image = 10
+  integer, parameter :: particles_per_image = 20
   integer, parameter :: local_buf_size = particles_per_image * 4
 
 contains
@@ -63,7 +63,7 @@ contains
     real :: z_meters, z_floor, z_ceiling
     real :: theta_val, theta_floor, theta_ceiling
     real :: pressure_val, exner_val, temp_val, water_vapor_val
-    real :: u_val, v_val, w_val
+    real :: u_val, v_val, w_val, rand, neg
     integer :: x0, x1, z0, z1, y0, y1
     me = this_image()
     if (present(input_buf_size)) then
@@ -95,9 +95,11 @@ contains
       call random_number(random_start)
       north_adjust = 0.99
       east_adjust = 0.99
-      x = ims + (random_start(1) * (ime+east_adjust-ims))
+      north_adjust = -1
+      east_adjust = -1
+      x = 1 + ims + (random_start(1) * (ime+east_adjust-ims))
       z = kms + (random_start(3) * (kme-kms))
-      y = jms + (random_start(2) * (jme+north_adjust-jms))
+      y = 1 + jms + (random_start(2) * (jme+north_adjust-jms))
 
       x0 = floor(x); z0 = floor(z); y0 = floor(y);
       x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
@@ -113,6 +115,15 @@ contains
             A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
             A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
       end associate
+
+      ! call random_number(rand)
+      ! call random_number(neg)
+      ! if (neg > 0.5) rand = rand * (-1)
+      ! theta_val = theta_val * (1 + rand / 90)
+      ! if (me .lt. 8 .and. me .gt. 4) then
+      !   print *, me, "~~", theta_val, (1 + rand / 90)
+      ! end if
+
 
       ! sealevel_pressure => 100000.0
       pressure_val = pressure_at_elevation(100000.0, z_meters)
@@ -611,35 +622,26 @@ contains
   end subroutine
 
 
-  module subroutine process(this, nx_global, ny_global, grid, &
-         dt, dz, temperature)
+  module subroutine process(this, nx_global, ny_global, &
+      ims, ime, kms, kme, jms, jme, dt, dz, temperature)
       implicit none
       class(convection_exchangeable_t), intent(inout) :: this
-      type(grid_t), intent(in) :: grid
       integer, intent(in) :: nx_global, ny_global
       real, intent(in)    :: dt, dz
-      real, dimension(:,:,:), intent(in) :: temperature
+      real, intent(in) :: temperature(ims:ime,kms:kme,jms:jme)
+      integer, intent(in) :: ims, ime, kms, kme, jms, jme
       real, parameter :: gravity = 9.80665, Gamma = 0.01
-      integer :: ims,ime, jms,jme, kms,kme
       real :: a_prime, z_displacement, t, t_prime, buoyancy
       real :: ws, fake_wind_correction, delta_z
       integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
       real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
       real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
       real :: vapor_p, sat_p, T_C, mr, T_squared, tmp
-      logical, parameter :: broken=.false.
-      integer :: u_bound(3), broken_fx, broken_fy, broken_fz
-      real :: T_broken
+      integer :: x0, x1, z0, z1, y0, y1
+      integer :: u_bound(3)
 
 
       me = this_image()
-      ims = grid%ims
-      ime = grid%ime
-      jms = grid%jms
-      jme = grid%jme
-      kms = grid%kms
-      kme = grid%kme
-
 
       do i=1,ubound(this%local,1)
         associate (particle=>this%local(i))
@@ -676,19 +678,20 @@ contains
             ! orig: properites of air parcel are prime
             ! new: properites of environment are prime
             T = particle%temperature
-            T_prime = temperature(floor(particle%x), floor(particle%z), &
-                floor(particle%y))
 
-            if (broken .eqv. .true.) then
-              print *, "BROKEN:::::::::"
-              u_bound = ubound(temperature)
-              broken_fx = mod((floor(particle%x)-1),u_bound(1)+1)
-              broken_fz = mod((floor(particle%z)-1),u_bound(2)+1)
-              broken_fy = mod((floor(particle%y)-1),u_bound(3)+1)
-              T_broken = temperature(broken_fx,broken_fz,broken_fy)
-              ! print *, "BROKEN:::::::::", broken_fx, broken_fz, broken_fy, &
-              !     T, T_broken, T_prime
-              T_prime = T_broken
+
+            associate (A => temperature, x => particle%x, z => particle%z , &
+                y => particle%y)
+              x0 = floor(x); z0 = floor(z); y0 = floor(y);
+              x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
+
+              T_prime = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0,y1,&
+                  A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+                  A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+            end associate
+
+            if (me .lt. 8 .and. me .gt. 4) then
+              print *, me, "::", T, "||", T_prime
             end if
 
 
@@ -717,14 +720,22 @@ contains
               z_displacement = 0.0
             end if
 
-            ! OLD
+
             !-----------------------------------------------------------------
-            ! ! barometric formula for an adiabatic atmosphere
-            ! ! p(h) = p_0 * (1 + Gamma / T_0 * h) ^ -g/R_s*Gamma
-            ! new_pressure = particle%pressure * (1 + Gamma / )
+            ! Orographic lift
+            ! Find dz change from change in environment
             !-----------------------------------------------------------------
-            ! dp = - g / (R_s * T) * p * dh
-            ! R_s is specific gas constant 287
+            ! associate (A => temperature, x => particle%x, z => particle%z , &
+            !     y => particle%y)
+            !   x0 = floor(x); z0 = floor(z); y0 = floor(y);
+            !   x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
+
+            !   T_prime = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0,y1,&
+            !       A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+            !       A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+            ! end associate
+
+
 
 
             !-----------------------------------------------------------------

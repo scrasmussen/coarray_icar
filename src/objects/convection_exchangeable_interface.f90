@@ -90,14 +90,14 @@ module convection_exchangeable_interface
   ! end type convection_object_t
 
   interface
-     module subroutine process(this, nx_global, ny_global, grid, &
-         dt, dz, temperature)
+     module subroutine process(this, nx_global, ny_global, &
+         ims, ime, kms, kme, jms, jme, dt, dz, temperature)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
        integer, intent(in) :: nx_global, ny_global
        real, intent(in)    :: dt, dz
-       type(grid_t), intent(in) :: grid
-       real, dimension(:,:,:), intent(in) :: temperature
+       integer, intent(in) :: ims, ime, kms, kme, jms, jme
+       real, intent(in) :: temperature(ims:ime,kms:kme,jms:jme)
      end subroutine
 
   module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
