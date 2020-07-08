@@ -3,7 +3,7 @@ submodule(exchangeable_interface) exchangeable_implementation
   use grid_interface, only : grid_t
   implicit none
 
-  integer, parameter :: default_halo_size=1
+  integer, parameter :: default_halo_size=2
   integer, save, allocatable :: neighbors(:)
   integer, save :: north_neighbor, south_neighbor, halo_size
   integer, save :: east_neighbor, west_neighbor
@@ -32,10 +32,14 @@ contains
     this%west_boundary  = (grid%ximg == 1)
 
 
-    associate( halo_south => merge(0,halo_size,this%south_boundary), &
-               halo_north => merge(0,halo_size,this%north_boundary), &
-               halo_east  => merge(0,halo_size,this%east_boundary), &
-               halo_west  => merge(0,halo_size,this%west_boundary))
+    ! associate( halo_south => merge(0,halo_size,this%south_boundary), &
+    !            halo_north => merge(0,halo_size,this%north_boundary), &
+    !            halo_east  => merge(0,halo_size,this%east_boundary), &
+    !            halo_west  => merge(0,halo_size,this%west_boundary))
+    associate( halo_south => halo_size, &
+               halo_north => halo_size, &
+               halo_east  => halo_size, &
+               halo_west  => halo_size)
       ims = grid%ims - halo_east
       ime = grid%ime + halo_west
       jms = grid%jms - halo_south
@@ -89,12 +93,12 @@ contains
         if (current == 1) then
             neighbors(current) = me
         endif
-        ! print *, this_image(), ": north", north_neighbor, ": east", &
-        !      east_neighbor, ": south", south_neighbor, &
-        !      ": west", west_neighbor
+        print *, this_image(), ":: north", north_neighbor, ": east", &
+             east_neighbor, ": south", south_neighbor, &
+             ": west", west_neighbor
       end associate
     endif
-    
+
   end subroutine
 
   module subroutine send(this)
@@ -214,7 +218,7 @@ contains
       integer :: start, ny
       start = lbound(this%local,1)
       ny = size(this%local,3)
-      ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)), 
+      ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)),
       if (assertions) then
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
         call assert( shape(this%halo_east_in(1:halo_size,:,:ny)[west_neighbor])               &
