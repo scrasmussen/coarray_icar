@@ -35,9 +35,10 @@ contains
 
     subroutine master_initialize(this)
       class(domain_t), intent(inout) :: this
-      integer :: i,j
+      integer :: i,j, halo_width
       real :: sine_curve
-
+      type(grid_t) :: grid
+      ! halo_width = 1
       associate(                                            &
         u_test_val=>0.5, v_test_val=>0.5, w_test_val=>0.0,  &
         water_vapor_test_val            => 0.001,           &
@@ -77,6 +78,18 @@ contains
       end associate
 
       ! this permits arrays to have starting indices that are not 1
+      grid = this%get_grid_dimensions()
+      ! call  flush()
+      ! sync all
+      ! call exit
+      this%its = grid%ims
+      this%jts = grid%jms
+      this%kts = grid%kms
+      this%ite = grid%ime
+      this%jte = grid%jme
+      this%kte = grid%kme
+
+
       this%ims = lbound(this%water_vapor%local,1)
       this%kms = lbound(this%water_vapor%local,2)
       this%jms = lbound(this%water_vapor%local,3)
@@ -84,16 +97,20 @@ contains
       this%kme = ubound(this%water_vapor%local,2)
       this%jme = ubound(this%water_vapor%local,3)
 
+      print *, this_image(),":::", this%ims, this%ime, "|", this%jms, this%jme
+      call flush()
+      sync all
+      ! call exit
+
       ! initially set the tile to process to be set in one from the edges of memory
       if (assertions) call assert((this%ime - this%ims+1) >= 2, "x dimension has too few elements")
       if (assertions) call assert((this%jme - this%jms+1) >= 2, "y dimension has too few elements")
       if (assertions) call assert((this%kme - this%kms+1) >= 2, "z dimension has too few elements")
-      this%its = this%ims + 1
-      this%jts = this%jms + 1
-      this%kts = this%kms
-      this%ite = this%ime
-      this%jte = this%jme - 1
-      this%kte = this%kme - 1
+
+      ! ! print *, this_image(), ":j", this%jts, this%jte, this%jms, this%jme
+      ! call flush()
+      ! sync all
+      ! call exit
 
       ! The entire model domain begins at 1 and ends at nx,y,z
       this%ids = 1
@@ -168,7 +185,8 @@ contains
 
           call this%convection_obj%initialize(this%potential_temperature, &
               this%u, this%v, this%w, this%get_grid_dimensions(), this%z, &
-              ims,ime,kms,kme,jms,jme,dz_value, &
+              this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
+              this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
               input_buf_size=8,halo_width=2)
 
           ! sync all
