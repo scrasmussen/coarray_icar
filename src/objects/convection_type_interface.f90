@@ -20,7 +20,7 @@ module convection_type_interface
      real :: x, y, z
      ! real :: xd, yd, zd  ! ARTLESS these are really the domain xyz
      real :: u, v, w
-     real :: z_meters
+     real :: z_meters, z_interface
      real :: pressure, temperature, potential_temp
      real :: velocity, water_vapor, relative_humidity
    contains
@@ -79,10 +79,17 @@ contains
     ! handle the to
     to%exists = .true.
     to%moved  = .true.
+    to%particle_id = from%particle_id
     to%x = from%x; to%y = from%y; to%z = from%z
     to%u = from%u; to%v = from%v; to%w = from%w
+    to%z_meters = from%z_meters
+    to%z_interface = from%z_interface
     to%pressure = from%pressure
     to%temperature = from%temperature
+    to%potential_temp = from%potential_temp
+    to%velocity = from%velocity
+    to%water_vapor = from%water_vapor
+    to%relative_humidity = from%relative_humidity
   end subroutine move_to
 
   ! function constructor2(x, z, y, dxyz, u, v, w, z_meters, potential_temp, temp, &
