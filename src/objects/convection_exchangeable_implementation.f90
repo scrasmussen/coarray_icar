@@ -15,10 +15,10 @@ submodule(convection_exchangeable_interface) &
   integer, save :: southeast_neighbor, southwest_neighbor
   logical, parameter :: wrap_neighbors = .true.
   logical, parameter :: advection = .true.
-  logical, parameter :: wind = .false.
-  logical, parameter :: caf_comm_message = .false.
+  logical, parameter :: wind = .true.
+  logical, parameter :: caf_comm_message = .true.
   logical, parameter :: particle_create_message = .false.
-  integer, parameter :: particles_per_image = 20
+  integer, parameter :: particles_per_image = 400
   integer, parameter :: local_buf_size = particles_per_image * 4
 
 contains
@@ -46,25 +46,27 @@ contains
 
 
   module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
-      ims, ime, kms, kme, jms, jme, dz_value, &
-      input_buf_size, halo_width)
+      z_interface, ims, ime, kms, kme, jms, jme, dz_value, &
+      its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
     class(exchangeable_t), intent(in)    :: potential_temp
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
     type(grid_t), intent(in)      :: grid
     real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+    real, intent(in)              :: z_interface(ims:ime,jms:jme)
     integer, intent(in)           :: ims, ime, kms, kme, jms, jme
+    integer, intent(in)           :: its, ite, kts, kte, jts, jte
     real, intent(in)              :: dz_value
     integer, intent(in), optional :: input_buf_size
     integer, intent(in), optional :: halo_width
 
     integer :: me, create
     real :: random_start(3), x, z, y, north_adjust, east_adjust
-    real :: z_meters, z_floor, z_ceiling
-    real :: theta_val, theta_floor, theta_ceiling
+    real :: z_meters, z_interface_val, theta_val
     real :: pressure_val, exner_val, temp_val, water_vapor_val
     real :: u_val, v_val, w_val, rand, neg
     integer :: x0, x1, z0, z1, y0, y1
+    logical :: calc
     me = this_image()
     if (present(input_buf_size)) then
         buf_size = input_buf_size
@@ -93,13 +95,26 @@ contains
 
     do create=1,particles_per_image
       call random_number(random_start)
-      north_adjust = 0.99
-      east_adjust = 0.99
-      north_adjust = -1
-      east_adjust = -1
-      x = 1 + ims + (random_start(1) * (ime+east_adjust-ims))
-      z = kms + (random_start(3) * (kme-kms))
-      y = 1 + jms + (random_start(2) * (jme+north_adjust-jms))
+      ! north_adjust = 0.99
+      ! east_adjust = 0.99
+      ! north_adjust = -1
+      ! east_adjust = -1
+      x = its + (random_start(1) * (ite-its))
+      z = kts + (random_start(3) * (kte-kts))
+      y = jts + (random_start(2) * (jte-jts))
+
+      if (x .lt. its .or. &
+          x .gt. ite .or. &
+          z .lt. kts .or. &
+          z .gt. kte .or. &
+          y .lt. jts .or. &
+          y .gt. jte) then
+        print *, "x:", its, "<", x, "<", ite
+        print *, "z:", kts, "<", z, "<", kte
+        print *, "y:", jts, "<", y, "<", jte
+        stop "x,y,z is out of bounds"
+      end if
+
 
       x0 = floor(x); z0 = floor(z); y0 = floor(y);
       x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
@@ -116,6 +131,12 @@ contains
             A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
       end associate
 
+      associate (A => z_interface)
+        z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
+            A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
+      end associate
+
+      ! print *, "Z", z_interface_val
       ! call random_number(rand)
       ! call random_number(neg)
       ! if (neg > 0.5) rand = rand * (-1)
@@ -139,8 +160,8 @@ contains
       w_val = 0
 
       this%local(create) = convection_particle(this%particle_id_count, .true., &
-          .false., x, y, z, u_val, v_val, w_val, z_meters, pressure_val, &
-          temp_val, theta_val, 0, water_vapor_val, 0)
+          .false., x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
+          pressure_val, temp_val, theta_val, 0, water_vapor_val, 0)
     end do
 
 
@@ -623,22 +644,27 @@ contains
 
 
   module subroutine process(this, nx_global, ny_global, &
-      ims, ime, kms, kme, jms, jme, dt, dz, temperature)
+      ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
+      its, ite, kts, kte, jts, jte)
       implicit none
       class(convection_exchangeable_t), intent(inout) :: this
       integer, intent(in) :: nx_global, ny_global
       real, intent(in)    :: dt, dz
       real, intent(in) :: temperature(ims:ime,kms:kme,jms:jme)
+      real, intent(in) :: z_interface(ims:ime,jms:jme)
       integer, intent(in) :: ims, ime, kms, kme, jms, jme
+      integer, intent(in) :: its, ite, kts, kte, jts, jte
       real, parameter :: gravity = 9.80665, Gamma = 0.01
       real :: a_prime, z_displacement, t, t_prime, buoyancy
-      real :: ws, fake_wind_correction, delta_z
+      real :: ws, fake_wind_correction, delta_z, z_interface_val, z_wind_change
       integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
       real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
       real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
       real :: vapor_p, sat_p, T_C, mr, T_squared, tmp
+      real :: xx, yy
       integer :: x0, x1, z0, z1, y0, y1
       integer :: u_bound(3)
+      logical :: calc, calc_x, calc_y
 
 
       me = this_image()
@@ -647,18 +673,31 @@ contains
         associate (particle=>this%local(i))
           if (particle%exists .eqv. .true.) then
             ! Check if particle is out of bounds
-            if (floor(particle%x) .lt. ims .or. &
-                floor(particle%x) .gt. ime .or. &
-                floor(particle%z) .lt. kms .or. &
-                floor(particle%z) .gt. kme .or. &
-                floor(particle%y) .lt. jms .or. &
-                floor(particle%y) .gt. jme) then
+            ! if (floor(particle%x) .lt. its .or. &
+            !     floor(particle%x) .gt. ite .or. &
+            !     floor(particle%z) .lt. kms .or. &
+            !     floor(particle%z) .gt. kme .or. &
+            !     floor(particle%y) .lt. jts .or. &
+            !     floor(particle%y) .gt. jte) then
+            !   print *, "particle", particle%particle_id, "on image", me
+            !   print *, "x:", ims, "<", particle%x, "<", ime
+            !   print *, "z:", kms, "<", particle%z, "<", kme
+            !   print *, "y:", jms, "<", particle%y, "<", jme
+            !   stop "x,y,z is out of bounds"
+            ! end if
+            if (particle%x .lt. its-1 .or. &
+                particle%z .lt. kts-1 .or. &
+                particle%y .lt. jts-1 .or. &
+                particle%x .gt. ite+1 .or. &
+                particle%z .gt. kte+1 .or. &
+                particle%y .gt. jte+1) then
               print *, "particle", particle%particle_id, "on image", me
-              print *, "x:", ims, "<", particle%x, "<", ime
-              print *, "z:", kms, "<", particle%z, "<", kme
-              print *, "y:", jms, "<", particle%y, "<", jme
+              print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
+              print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
+              print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
               stop "x,y,z is out of bounds"
             end if
+
 
             !-----------------------------------------------------------------
             ! Handle Buoyancy
@@ -680,6 +719,12 @@ contains
             T = particle%temperature
 
 
+            ! if (me .eq. 1) then
+            ! print *, "TRILINEAR", &
+            !     trilinear_interpolation(0.75, 0, 1, 0.5, 0, 1, 0.5, 0,1,&
+            !     0.0, 0.0, 0.0, 1.0, 0.0, 1.0,1.0, 1.0)
+            ! end if
+
             associate (A => temperature, x => particle%x, z => particle%z , &
                 y => particle%y)
               x0 = floor(x); z0 = floor(z); y0 = floor(y);
@@ -690,11 +735,6 @@ contains
                   A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
             end associate
 
-            if (me .lt. 8 .and. me .gt. 4) then
-              print *, me, "::", T, "||", T_prime
-            end if
-
-
 
             if (advection .eqv. .true.) then
               buoyancy = (T - T_prime) / T_prime
@@ -703,52 +743,60 @@ contains
               z_displacement = particle%velocity + 0.5 * a_prime
               ! number from dz_interface, currently always 500
               delta_z = z_displacement / dz
-              ! print *, "bouyancy::", buoyancy, T,  T_prime
-              ! print *, "dispalce::", z_displacement, particle%velocity, a_prime
-              ! print *, "delta_z ::", delta_z, z_displacement, dz
               if (z_displacement /= z_displacement) then
                 ! when T=0 it causes division by 0. This problem should be fixed
-                print *, me, ":: ------------NAN--------------"
+
+                print *, me, ":: ------------NAN--------------", &
+                    particle%particle_id, T, T_prime
                 particle%z = -1
+                call flush()
+                call exit
               else
                 ! print *, "delta_z ::", delta_z, "z_displacement",z_displacement
                 particle%z = particle%z + delta_z
-                particle%z_meters = particle%z_meters + z_displacement
                 particle%velocity = z_displacement
               end if
             else
               z_displacement = 0.0
             end if
 
-
+            ! print *, me, ":", particle%particle_id, z_displacement
             !-----------------------------------------------------------------
             ! Orographic lift
             ! Find dz change from change in environment
             !-----------------------------------------------------------------
-            ! associate (A => temperature, x => particle%x, z => particle%z , &
-            !     y => particle%y)
-            !   x0 = floor(x); z0 = floor(z); y0 = floor(y);
-            !   x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
-
-            !   T_prime = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0,y1,&
-            !       A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
-            !       A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
-            ! end associate
-
-
+            if (wind .eqv. .true.) then
+              ! print *, "old wind", particle%x, particle%y, "z", particle%z_meters
+              fake_wind_correction = (1.0 / dz) ! real correction
+              ! fake_wind_correction = (1.0) ! correction
+              ! u: zonal velocity, wind towards the east
+              particle%x = particle%x + (particle%u * fake_wind_correction)
+              ! v: meridional velocity, wind towards north
+              particle%y = particle%y + (particle%v * fake_wind_correction)
+              associate (A => z_interface, x=> particle%x, y=>particle%y)
+                x0 = floor(x); x1 = ceiling(x)
+                y0 = floor(y); y1 = ceiling(y)
+                z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
+                    A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
+              end associate
+              z_wind_change = z_interface_val - particle%z_interface
+              particle%z_interface = z_interface_val
+              z_displacement = z_displacement + z_wind_change
+            end if
 
 
             !-----------------------------------------------------------------
             ! p = p_0 * e^( ((9.81/287.058)*dz) / t_mean )
             !-----------------------------------------------------------------
+            particle%z_meters = particle%z_meters + z_displacement
             p0 = particle%pressure
             particle%pressure = p0 - z_displacement * &
                 gravity / (287.05 * particle%temperature) * p0
 
+            ! print *, me, ":::", particle%particle_id, particle%z_meters
             ! ! barometric formula for an adiabatic atmosphere
             ! exponent = gravity / (287.05 * Gamma)
             ! alt_pressure = p0 * (1 - Gamma * particle%z / T)
-
 
 
             !-----------------------------------------------------------------
@@ -790,6 +838,16 @@ contains
 
             particle%temperature = exner_function(particle%pressure) * &
                 particle%potential_temp
+            if (particle%temperature /= particle%temperature) then
+              print *, me, ":: ~~~~~~NAN~~~~~~", &
+                  particle%particle_id, particle%temperature, &
+                  exner_function(particle%pressure), particle%pressure, &
+                  particle%potential_temp
+
+              call flush()
+              ! call exit
+            end if
+
 
 
             ! this is close to the potential temp given by the Exner func
@@ -819,37 +877,45 @@ contains
 
 
             !-----------------------------------------------------------------
+            ! Mixing Ratio
+            ! saturate = sat_mr(t,p)
+            ! if (water_vapor > saturated)
+            !   condensate = water_vapor - satured
+            !   water_vapor -= condensate
+            !   clouds += condensate
+            !   temperature += latent_heat * condensate
+            !-----------------------------------------------------------------
+            ! iterate 3-4 times
+            !
+            ! water_vapor < satured and clouds present, remove from the clouds
+
+            ! validation:
+            !    freq of particle oscilation: Brunt-Väisälä frequency
+            ! change in potential temp with elevation
+            ! convection validation:
+            !
+
+            !   - slighlty , a few cal per 100 meters,
+            ! BV freq:  0dt/dz
+
+            ! run with different potential temp, should have different
+            ! if RH is set to very low, BF freq
+            !
+
+            ! warf if more time
+
+            ! IDEAL ICAR MINI APP
+
+            !-----------------------------------------------------------------
             ! remove particle if beyond the z axis
             !-----------------------------------------------------------------
-            if (particle%z .gt. kme) then
+            if (particle%z .lt. kts .or. particle%z .gt. kte) then
               particle%exists=.false.
               ! print *, "particle", particle%particle_id, "gone out the top"
               cycle
-            else if (particle%z .lt. kms) then ! kts will be 1
-              particle%exists=.false.
-              ! print *, "particle", particle%particle_id, "gone out the bottom"
-              cycle
             end if
 
-            !-----------------------------------------------------------------
-            ! Handle Windfield
-            !-----------------------------------------------------------------
-            ! ! ARTLESS, this fake math right now
-            ! ws = sqrt(particle%u * particle%u + particle%v * particle%v)
-            ! ARTLESS below might be correctish math
-            ! dz: 500, supposes all dz_interface values are the same
-            fake_wind_correction = 0
-            ! fake_wind_correction = (1.0 / 10) ! ARTLESS
-            fake_wind_correction = (1.0 / 4) ! ARTLESS
-            fake_wind_correction = (1.0) ! ARTLESS
-            fake_wind_correction = (1.0 / dz) ! real correction
 
-            if (wind .eqv. .true.) then
-              ! u: zonal velocity, wind towards the east
-              particle%x = particle%x + (particle%u * fake_wind_correction)
-              ! v: meridional velocity, wind towards north
-              particle%y = particle%y + (particle%v * fake_wind_correction)
-            end if
 
             !-----------------------------------------------------------------
             ! Handle Saturated Mixing Ratio
@@ -894,60 +960,60 @@ contains
             ! end if
             ! mr =  0.622 * (vapor_p / particle%pressure - vapor_p)
 
-            associate (x => floor(particle%x), y => floor(particle%y), &
-                z => floor(particle%z))
-              if (x .lt. ims .or. x .gt. ime .or. &
+            associate (x => particle%x, y => particle%y, z => particle%z)
+              if (x .lt. its .or. x .gt. ite .or. &
                   z .lt. kms .or. z .gt. kme .or. &
-                  y .lt. jms .or. y .gt. jme) then
+                  y .lt. jts .or. y .gt. jte) then
                 if (caf_comm_message .eqv. .true.) then
-                  print *, "PUTTING", particle%x, particle%z,  particle%y, &
-                      "FROM", this_image(), "id:", particle%particle_id
-                  print *, ims,ime, kms, kme, jms, jme
+                  print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
+                      "FROM", this_image(), "id:", particle%particle_id, &
+                      "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
                   print *, "------"
                 end if
               end if
 
-
+              xx = x
+              yy = y
               ! If particle is getting wrapped the x and y values need to be
               ! properly updated
               if (wrap_neighbors .eqv. .true.) then
-                if (particle%x > nx_global + 1) then
+                if (x > nx_global) then
                   if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
-                  particle%x = particle%x - nx_global
-                else if (particle%x < 1) then
+                  x = x - nx_global + 1
+                else if (x < 1) then
                   if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
-                  particle%x = particle%x + nx_global - 1
+                  x = x + nx_global - 1
                 end if
 
-                if (particle%y > ny_global + 1) then
+                if (y > ny_global) then
                   if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
-                  particle%y = particle%y - ny_global
-                else if (particle%y < 1) then
+                  y = y - ny_global + 1
+                else if (y < 1) then
                   if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
-                  particle%y = particle%y + ny_global - 1
+                  y = y + ny_global - 1
                 end if
               end if
 
               ! Check values to know where to send particle
-              if (y .lt. jms) then      ! "jts  <   y    <  jte"
-                if (x .lt. ims) then
+              if (yy .lt. jts) then      ! "jts  <   y    <  jte"
+                if (xx .lt. its) then
                   call this%put_southwest(particle)
-                else if (x .gt. ime) then
+                else if (xx .gt. ite) then
                   call this%put_southeast(particle)
                 else
                   call this%put_south(particle)
                 end if
-              else if (y .gt. jme) then ! jts will be 1
-                if (x .lt. ims) then
+              else if (yy .gt. jte) then ! jts will be 1
+                if (xx .lt. its) then
                   call this%put_northwest(particle)
-                else if (x .gt. ime) then
+                else if (xx .gt. ite) then
                   call this%put_northeast(particle)
                 else
                   call this%put_north(particle)
                 endif
-              else if (x .lt. ims) then ! "its  <   x    <  ite"
+              else if (xx .lt. its) then ! "its  <   x    <  ite"
                 call this%put_west(particle)      ! need to double check this!
-              else if (x .gt. ime) then
+              else if (xx .gt. ite) then
                 call this%put_east(particle)
               end if
             end associate
@@ -1108,26 +1174,53 @@ contains
 
     end subroutine
 
+    function bilinear_interpolation(x, x0, x1, y, y0, y1, &
+        c00, c01, c10, c11) result(c)
+      real, intent(in) :: x, y
+      real, intent(in) :: c00, c01, c10, c11
+      integer, intent(in) :: x0, x1, y0, y1
+      real :: xd, yd, c00, c01, c10, c11, c0, c1, c
+      if (x0 .eq. x1) then
+        c = c00 + (c11-c00) * (y-y0) / (y1-y0)
+      else if (y0 .eq. y1) then
+        c = c00 + (c11-c00) * (x-x0) / (x1-x0)
+      else
+        c0 = ((x1 - x)/(x1 - x0)) * c00 + ((x - x0)/(x1 - x0)) * c10
+        c1 = ((x1 - x)/(x1 - x0)) * c01 + ((x - x0)/(x1 - x0)) * c11
+        c = ((y1 - y)/(y1 - y0)) * c0 + ((y - y0)/(y1 - y0)) * c1
+      end if
+    end function bilinear_interpolation
+
     function trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
         c000, c001, c010, c100, c011, c101, c110, c111) result(c)
       real, intent(in) :: x, z, y
       real, intent(in) :: c000, c001, c010, c100, c011, c101, c110, c111
       integer, intent(in) :: x0, x1, z0, z1, y0, y1
       real :: xd, zd, yd, c00, c01, c10, c11, c0, c1, c
+      if (x0 .eq. x1) then
+        c = bilinear_interpolation(z, z0, z1, y, y0, y1, &
+            c000, c001, c010, c011)
+      else if (y0 .eq. y1) then
+        c = bilinear_interpolation(x, x0, x1, z, z0, z1, &
+            c000, c010, c100, c110)
+      else if (z0 .eq. z1 ) then
+        c = bilinear_interpolation(x, x0, x1, y, y0, y1, &
+            c000, c001, c100, c101)
+      else
+        xd = (x - x0) / (x1 - x0)
+        zd = (z - z0) / (z1 - z0)
+        yd = (y - y0) / (y1 - y0)
 
-      xd = (x - x0) / (x1 - x0)
-      zd = (z - z0) / (z1 - z0)
-      yd = (y - y0) / (y1 - y0)
+        c00 = c000 * (1 - xd) + c100 * xd
+        c01 = c001 * (1 - xd) + c101 * xd
+        c10 = c010 * (1 - xd) + c110 * xd
+        c11 = c011 * (1 - xd) + c111 * xd
 
-      c00 = c000 * (1 - xd) + c100 * xd
-      c01 = c001 * (1 - xd) + c101 * xd
-      c10 = c010 * (1 - xd) + c110 * xd
-      c11 = c011 * (1 - xd) + c111 * xd
+        c0 = c00 * (1 - zd) + c10 * zd
+        c1 = c01 * (1 - zd) + c11 * zd
 
-      c0 = c00 * (1 - zd) + c10 * zd
-      c1 = c01 * (1 - zd) + c11 * zd
-
-      c = c0 * (1 - yd) + c1 * yd
+        c = c0 * (1 - yd) + c1 * yd
+      end if
     end function trilinear_interpolation
 
 end submodule
