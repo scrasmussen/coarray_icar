@@ -91,24 +91,29 @@ module convection_exchangeable_interface
 
   interface
      module subroutine process(this, nx_global, ny_global, &
-         ims, ime, kms, kme, jms, jme, dt, dz, temperature)
+         ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
+         its, ite, kts, kte, jts, jte)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
        integer, intent(in) :: nx_global, ny_global
        real, intent(in)    :: dt, dz
        integer, intent(in) :: ims, ime, kms, kme, jms, jme
+       integer, intent(in) :: its, ite, kts, kte, jts, jte
        real, intent(in) :: temperature(ims:ime,kms:kme,jms:jme)
+       real, intent(in) :: z_interface(ims:ime,jms:jme)
      end subroutine
 
   module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
-      ims, ime, kms, kme, jms, jme, dz_value, &
-      input_buf_size, halo_width)
+      z_interface, ims, ime, kms, kme, jms, jme, dz_value, &
+      its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
     class(exchangeable_t), intent(in)    :: potential_temp
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
     type(grid_t), intent(in)      :: grid
     real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+    real, intent(in)              :: z_interface(ims:ime,jms:jme)
     integer, intent(in)           :: ims, ime, kms, kme, jms, jme
+    integer, intent(in)           :: its, ite, kts, kte, jts, jte
     real, intent(in)              :: dz_value
     integer, intent(in), optional :: input_buf_size
     integer, intent(in), optional :: halo_width
