@@ -63,18 +63,21 @@
    3750.00000       628.424316       262.669800       2.46796501E-03
    1750.00000       809.217651       282.372711       9.08217765E-03
  ThompMP: read qr_acr_qg.dat instead of computing
- qr_acr_qg initialized:  0.316000015            
+ qr_acr_qg initialized:  0.316000015
  ThompMP: read qr_acr_qs.dat instead of computing
- qr_acr_qs initialized:  0.222000003            
+ qr_acr_qs initialized:  0.222000003
  ThompMP: read freezeH2O.dat instead of computing
- freezeH2O initialized:   1.13699996            
- qi_aut_qs initialized:   1.09999999E-02        
- 
+ freezeH2O initialized:   1.13699996
+ qi_aut_qs initialized:   1.09999999E-02
+
  Beginning simulation...
  For         500 timesteps
  With          50 particles per image for a total of         800
- Model run time: 818.293 seconds         
+ Model run time: 818.293 seconds
  Test passed.
+
+
+z is 20
 + echo '========== FIN =========='
 ========== FIN ==========
 + rm /mnt/gpfs0/home/s280353/src/icar/icar_caf/build-fast-gcc10/src/tests/210136.mgmt01
