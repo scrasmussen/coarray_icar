@@ -1,56 +1,18 @@
 =Confection Readme=
 
-* Convection Object
-all allocatable types
-** convection particle
-most basic unit: contains variables and methods
-** convection exchangeable array
-*** LOCAL: array of convection particle arrays
-*** HALO: array of convection particles
-** convection exchangeable linked list
-*** LOCAL: linked list of convection particles
-*** HALO: array of convection particles
+In convection_exchangeable_implementation.f90 you can turn on/off
+ - convection
+ - wind
+ - relative humidity
+ - etc.
+ and choose number of particles per image
 
-* TODO
-- [ ] convection_exchangealbe_implementation.f90 ~ 340,
-       check ARTLESS TEMP DIF BETWEEN IMAGES WORRISOME
-- [X] check the bounds in `convection_exchangeable_implementation.f90`: process subroutine
-      , I don't need, shouldn't process the halo region for particles
-      , this should be handled in the setup
-- [X] `convection_exchangeable_implementation.f90`: add northeast/west  neighbors when initializing
-- [X] `convection_exchangeable_{implementation,interface}.f90`: {put,retrieve}_north{west,east} etc. both interface and implementation
+ Functions within this file
+  - const: the constructor function
+  - process: the function that gets called every timestep
 
-- [ ] look at previous particle tracking templates
-- [ ] more organized lagrangian convection parameterization.
+In test-ideal.f90 you can turn on/off convection particles
 
-
-
-* program flow : new stuff
-
-=going to add=
--------------
--handles creation, destruction or particles, constantly knows its surroundings
-`convection_particle_interface.f90`
-`convection_particle_implementation.f90`
-
--handles the exchange of the halo regions for the array and linked list types, all the puts and recieves
-`convection_exchangeable_interface.f90`
-`convection_exchangeable_implementation.f90`
-
--has the different types, convection particle, array, node and linked list, etc
--defines the linked list functions
-`convection_type_interface.f90`
-`convection_type_implementation.f90`
-
-=given goals=
-seperate interface that handles creation, destruction of convection particles, constantly knows its surroundings
-switch between array and linked list at runtime
-
-
-* Flow
-domain : `type(convection_exchangeable_array_t) :: convection_object`
-grid   :
-convection exchangeable: initialize=> const(ructor)
 
 * COMMMENTS FROM CONVECTION EXCHANGEABLE IMPLEMENTATION
 
