@@ -13,8 +13,10 @@ program main
 
   block
     type(domain_t), save :: domain
+
+    ! parameters to setup test
     integer, parameter :: timesteps = 500
-    logical :: report = .true.
+    logical            :: report = .true.
     logical, parameter :: convection = .true.
     logical, parameter :: print_timestep = .false.
 
