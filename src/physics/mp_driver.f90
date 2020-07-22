@@ -1,7 +1,7 @@
 module module_mp_driver
     use domain_interface,   only: domain_t
     use module_mp_thompson, only: thompson_init, mp_gt_driver
-
+    use grid_interface, only : grid_t
     logical :: initialized = .false.
 contains
 
@@ -91,18 +91,38 @@ contains
 
     end subroutine process_halo
 
-    subroutine microphysics(domain, dt, halo, subset)
+    subroutine microphysics(domain, dt, halo, subset, convected_particles)
         implicit none
         type(domain_t), intent(inout) :: domain
         real,           intent(in)    :: dt
         integer,        intent(in),   optional :: halo, subset
+        logical,        intent(in),   optional :: convected_particles
+        logical                       :: convect_particles
+        integer                       :: dz_lb(3)
+        type(grid_t) :: grid
 
-        if (.not.initialized) call mp_init(domain)
+        if (.not. initialized) call mp_init(domain)
+
+        convect_particles = .false.
+        if (present(convected_particles) .and. &
+            convected_particles .eqv. .true.) then
+          convect_particles = .true.
+        end if
 
         if (present(subset)) then
-          call domain%convection_obj%process( &
-              domain%nx_global, domain%ny_global, domain%get_grid_dimensions(),&
-              dt, domain%dz_interface(1,1,1), domain%temperature)
+
+          dz_lb = lbound(domain%dz_interface)
+          grid = domain%get_grid_dimensions()
+
+          if (convect_particles .eqv. .true.) then
+            call domain%convection_obj%process( &
+                domain%nx_global, domain%ny_global, &
+                grid%ims, grid%ime, grid%kms, grid%kme, grid%jms, grid%jme, &
+                dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
+                domain%temperature, domain%z_interface(:,1,:), &
+                domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
+                domain%jte)
+          end if
 
             call process_subdomain(domain, dt,                               &
                                    domain%its + subset, domain%ite - subset, &
