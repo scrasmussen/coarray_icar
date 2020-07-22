@@ -16,36 +16,14 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: wrap_neighbors = .true.
   logical, parameter :: advection = .true.
   logical, parameter :: wind = .true.
-  logical, parameter :: caf_comm_message = .true.
+  logical, parameter :: relative_humidity = .true.
+  logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  integer, parameter :: particles_per_image = 400
+  integer, parameter :: particles_per_image = 30
   integer, parameter :: local_buf_size = particles_per_image * 4
 
 contains
-  ! function initialize_convection_array_t(this)
-  !   class(convection_exchangeable_array_t), intent(inout) :: this
-  ! end function initialize_convection_array_t
-
-  ! ----- STEPS -----
-  ! CREATE PARTICLE
-  ! input, z elevation, potential_temp,
-  ! get z elevation
-  !  -> pressure from pressure_at_elevation(sealevel_pressure, z_meters)
-  !     VARY THE PRESSURE BY AN AMOUNT
-  !  -> exner from exner_function(pressure)
-  !  -> temp  from exner * potential_temp
-  !  -> water_vapor = sat_mr(temp, pressure)
-
-  ! Advection
-  !  potential_temp, potential_temp` -> boyancy -> z displacement
-  !    -> aka change in z
-  !    -> change in temp,
-  !       -> change in pressure
-  !       -> change in potential temp ! NOT WHEN dry adiabatic
-  !
-
-
-  module subroutine const2(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
+  module subroutine const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
       z_interface, ims, ime, kms, kme, jms, jme, dz_value, &
       its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
@@ -64,7 +42,7 @@ contains
     real :: random_start(3), x, z, y, north_adjust, east_adjust
     real :: z_meters, z_interface_val, theta_val
     real :: pressure_val, exner_val, temp_val, water_vapor_val
-    real :: u_val, v_val, w_val, rand, neg
+    real :: u_val, v_val, w_val, rand
     integer :: x0, x1, z0, z1, y0, y1
     logical :: calc
     me = this_image()
@@ -136,29 +114,22 @@ contains
             A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
       end associate
 
-      ! print *, "Z", z_interface_val
-      ! call random_number(rand)
-      ! call random_number(neg)
-      ! if (neg > 0.5) rand = rand * (-1)
-      ! theta_val = theta_val * (1 + rand / 90)
-      ! if (me .lt. 8 .and. me .gt. 4) then
-      !   print *, me, "~~", theta_val, (1 + rand / 90)
-      ! end if
-
-
       ! sealevel_pressure => 100000.0
       pressure_val = pressure_at_elevation(100000.0, z_meters)
       exner_val = exner_function(pressure_val)
-      temp_val = exner_val * theta_val
-      water_vapor_val = sat_mr(temp_val, pressure_val)
 
-      call this%create_particle_id()
+      call random_number(rand)
+      theta_val = theta_val * (1 + rand / 10) ! random 1-10% change
+      temp_val = exner_val * theta_val
+
+      water_vapor_val = sat_mr(temp_val, pressure_val)
 
       ! wind is constant in this system, ignoring w wind (aka z-direction)
       u_val = u_in%local(x0, z0, y0)
       v_val = v_in%local(x0, z0, y0)
       w_val = 0
 
+      call this%create_particle_id()
       this%local(create) = convection_particle(this%particle_id_count, .true., &
           .false., x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
           pressure_val, temp_val, theta_val, 0, water_vapor_val, 0)
@@ -182,245 +153,6 @@ contains
 
 
 
-  ! constructor
-  module subroutine const(this, convection_type_enum, grid,tims,time,tkms,tkme,tjms,&
-      tjme, input_buf_size, &
-      halo_width, u_in, v_in, w_in, temperature, pressure, water_vapor)
-    use iso_c_binding, only: c_int
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(grid_t) :: grid
-    integer, intent(in) :: tims,time,tkms,tkme,tjms,tjme
-    integer :: ims,ime,kms,kme,jms,jme
-    integer, intent(in), optional :: input_buf_size
-    integer, intent(in), optional :: halo_width
-    integer(c_int), intent(in) :: convection_type_enum
-    real, optional, intent(in) :: u_in,v_in,w_in
-    real, dimension(:,:,:), intent(in) :: temperature, pressure, water_vapor
-    real :: random_start(3)
-
-    integer :: n_images
-    integer :: n_neighbors, current, id_range, particle_id, i, j, k, me
-    integer :: create
-    real :: north_adjust, east_adjust
-    real :: x,y,z,t0,wv0
-    real :: u,v,w,pressure_val
-    integer :: fx,fy,fz
-    logical, parameter :: broken=.false.
-    integer :: u_bound(3), broken_fx, broken_fy, broken_fz
-
-    me = this_image()
-
-    if (particle_create_message .eqv. .true.) then
-      sync all
-      print *, me,":grid = ", grid
-      sync all
-    end if
-
-    ims = grid%ims
-    ime = grid%ime
-    kms = grid%kms
-    kme = grid%kme
-    jms = grid%jms
-    jme = grid%jme
-
-    if (present(u_in)) then
-      u = u_in
-    else
-      u = 0.0
-    end if
-    if (present(v_in)) then
-      v = v_in
-    else
-      v = 0.0
-    end if
-    if (present(w_in)) then
-      w = w_in
-    else
-      w = 0.0
-    end if
-
-    if (present(input_buf_size)) then
-        buf_size = input_buf_size
-    else
-        buf_size = default_buf_size
-    end if
-    if (present(halo_width)) then
-        halo_size = halo_width
-    else
-        halo_size = default_halo_size
-    end if
-
-    if (allocated(this%local)) deallocate(this%local)
-    this%north_boundary = (grid%yimg == grid%yimages)
-    this%south_boundary = (grid%yimg == 1)
-    this%east_boundary  = (grid%ximg == grid%ximages)
-    this%west_boundary  = (grid%ximg == 1)
-
-    if (this%north_boundary) then
-      this%northeast_boundary = .true.
-      this%northwest_boundary = .true.
-    end if
-    if (this%south_boundary) then
-      this%southeast_boundary = .true.
-      this%southwest_boundary = .true.
-    end if
-    if (this%east_boundary) then
-      this%northeast_boundary = .true.
-      this%southeast_boundary = .true.
-    end if
-    if (this%west_boundary) then
-      this%northwest_boundary = .true.
-      this%southwest_boundary = .true.
-    end if
-
-    ! ids,ide, jds,jde, kds,kde, & ! for the entire model domain    (d)
-    ! ims,ime, jms,jme, kms,kme, & ! for the memory in these arrays (m)
-    ! its,ite, jts,jte, kts,kte    ! for the data tile to process   (t)
-    ! ARTLESS:: removing ims, ime, etc, trying to get proper range
-
-    allocate(this%local(local_buf_size))
-
-    if (particle_create_message .eqv. .true.) then
-      if (me == 1) then
-        print*, "Creating", particles_per_image, "parcels per image"
-        print*, "buffer based on particles_per_image value not input_buf_size"
-      end if
-    end if
-
-    do i=1, num_images()
-      call flush()
-      sync all
-      print *, me, "---l=", lbound(temperature), "u=", ubound(temperature)
-      call flush()
-      sync all
-    end do
-
-
-
-    do create=1,particles_per_image
-      call random_number(random_start)
-      north_adjust = 0.99
-      east_adjust = 0.99
-      x = ims + (random_start(1) * (ime+east_adjust-ims))
-      z = kms + (random_start(3) * (kme-kms))
-      y = jms + (random_start(2) * (jme+north_adjust-jms))
-
-
-
-      ! if (particle_create_message .eqv. .true. &
-      !     .and. me .eq. 16 &
-      !     ) then
-      !   print *, "BOUNDS::", ims, ime, kms, kme, jms, jme, &
-      !       "CREATED::", x,z,y, " ON IMAGE", this_image()
-      !   print *, "---l=", lbound(temperature), "u=", ubound(temperature)
-      ! end if
-
-      call this%create_particle_id()
-    ! print *, me, ": particle_id = ", this%particle_id_count
-
-      ! fx = floor(x)
-      ! fy = floor(y)
-      ! fz = floor(z)
-      fx = floor(x)
-      fy = floor(y)
-      fz = floor(z)
-      t0 = temperature(fx,fz,fy)
-      wv0 = water_vapor(fx,fz,fy)
-      pressure_val = pressure(fx,fz,fy)
-
-      ! doing this because bounds aren't being passed
-      if (broken .eqv. .true.) then
-        u_bound = ubound(temperature)
-        broken_fx = mod((fx-1),u_bound(1)+1)
-        broken_fz = mod((fz-1),u_bound(2)+1)
-        broken_fy = mod((fy-1),u_bound(3)+1)
-        t0 = temperature(broken_fx,broken_fz,broken_fy)
-        wv0 = water_vapor(broken_fx,broken_fz,broken_fy)
-        pressure_val = pressure(broken_fx,broken_fz,broken_fy)
-        ! print *, me, "BROKEN:::::::::", broken_fx, broken_fz, broken_fy, t0, wv0, pressure_val
-      end if
-
-      print *, "Shouldn't be here, creating a convection particle"
-      this%local(create) = convection_particle( &
-          this%particle_id_count, x,y,z, 0.5,0.5,0.0,&
-          pressure_val, t0, wv0, wv0 / sat_mr(t0,wv0))
-
-      ! sometimes we create a particle that will grab an out of bounds
-      ! temperature, this fixes that
-      ! do while (t0 .eq. 0)
-      !   call random_number(random_start)
-      !   x = ims + (random_start(1) * (ime+east_adjust-ims))
-      !   z = kms + (random_start(3) * (kme-kms))
-      !   y = jms + (random_start(2) * (jme+north_adjust-jms))
-      !   fx = floor(x)
-      !   fy = floor(y)
-      !   fz = floor(z)
-      !   t0 = temperature(fx,fz,fy)
-      ! end do
-
-    end do
-
-    if (particle_create_message .eqv. .true.) then
-      print *, "ALLOCATING BUFFERS OF SIZE", buf_size
-    end if
-    allocate( this%buf_north_in(buf_size)[*])
-    allocate( this%buf_south_in(buf_size)[*])
-    allocate( this%buf_east_in(buf_size)[*])
-    allocate( this%buf_west_in(buf_size)[*])
-    allocate( this%buf_northeast_in(buf_size)[*])
-    allocate( this%buf_northwest_in(buf_size)[*])
-    allocate( this%buf_southeast_in(buf_size)[*])
-    allocate( this%buf_southwest_in(buf_size)[*])
-
-    call this%setup_neighbors(grid)
-
-        ! do i=1,num_images()
-        !   call flush()
-        !   sync all
-        !   if (this_image() .eq. i) then
-        !   print *, "                               n s e w"
-        !   print *, this_image(), ": boundry         ", this%north_boundary, &
-        !       this%south_boundary, this%east_boundary, this%west_boundary
-        !   print *, "                               nw ne se sw"
-        !   print *, this_image(), ": diagonal boundry", this%northwest_boundary, &
-        !       this%northeast_boundary, this%southeast_boundary, &
-        !       this%southwest_boundary
-        !   end if
-        !   sync all
-        ! end do
-
-        ! if (this_image() .eq. 1) then
-        !   print *, "grid x y ", grid%ximages, grid%yimages
-        ! end if
-        ! call flush()
-        ! sync all
-        ! ! print *, this_image(), ": w", west_neighbor, ": n", &
-        ! !      north_neighbor, ": e", east_neighbor, &
-        ! !      ": s", south_neighbor
-        ! call flush()
-        ! sync all
-        ! print *, this_image(), ": nw", northwest_neighbor, ": ne", &
-        !      northeast_neighbor, ": se", southeast_neighbor, &
-        !      ": sw", southwest_neighbor
-        ! call flush()
-        ! sync all
-        ! ! if (this_image() .eq. 1) then
-        ! !   ! print *, "                               n s e w"
-        ! !   print *, "                               nw ne se sw"
-        ! ! end if
-        ! ! call flush()
-        ! ! sync all
-        ! ! ! print *, this_image(), ": boundry         ", this%north_boundary, &
-        ! ! !     this%south_boundary, this%east_boundary, this%west_boundary
-        ! ! print *, this_image(), ": diagonal boundry", this%northwest_boundary, &
-        ! !     this%northeast_boundary, this%southeast_boundary, &
-        ! !     this%southwest_boundary
-        ! sync all
-        ! call exit
-    !   end associate
-    ! endif
-
-  end subroutine
 
 
   module subroutine send(this)
@@ -496,17 +228,6 @@ contains
     this%northwest_i = 1
     this%southeast_i = 1
     this%southwest_i = 1
-  end subroutine
-
-  module subroutine load_buf(this, particle)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer :: i
-    particle%exists = .false.
-    do i=1,ubound(this%buf_north_in, dim=1)
-    end do
-
-    print *, "LOADING BUF SUBROUTINE"
   end subroutine
 
   module subroutine retrieve_buf(this, buf)
@@ -654,37 +375,25 @@ contains
       real, intent(in) :: z_interface(ims:ime,jms:jme)
       integer, intent(in) :: ims, ime, kms, kme, jms, jme
       integer, intent(in) :: its, ite, kts, kte, jts, jte
-      real, parameter :: gravity = 9.80665, Gamma = 0.01
+      real, parameter :: gravity = 9.80665
+      real :: Gamma
       real :: a_prime, z_displacement, t, t_prime, buoyancy
       real :: ws, fake_wind_correction, delta_z, z_interface_val, z_wind_change
       integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
       real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
       real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
-      real :: vapor_p, sat_p, T_C, mr, T_squared, tmp
+      real :: vapor_p, sat_p, T_C, T_K, mr, T_squared, T_original, tmp
       real :: xx, yy
+      real :: rate_of_temp_change
       integer :: x0, x1, z0, z1, y0, y1
       integer :: u_bound(3)
       logical :: calc, calc_x, calc_y
-
 
       me = this_image()
 
       do i=1,ubound(this%local,1)
         associate (particle=>this%local(i))
           if (particle%exists .eqv. .true.) then
-            ! Check if particle is out of bounds
-            ! if (floor(particle%x) .lt. its .or. &
-            !     floor(particle%x) .gt. ite .or. &
-            !     floor(particle%z) .lt. kms .or. &
-            !     floor(particle%z) .gt. kme .or. &
-            !     floor(particle%y) .lt. jts .or. &
-            !     floor(particle%y) .gt. jte) then
-            !   print *, "particle", particle%particle_id, "on image", me
-            !   print *, "x:", ims, "<", particle%x, "<", ime
-            !   print *, "z:", kms, "<", particle%z, "<", kme
-            !   print *, "y:", jms, "<", particle%y, "<", jme
-            !   stop "x,y,z is out of bounds"
-            ! end if
             if (particle%x .lt. its-1 .or. &
                 particle%z .lt. kts-1 .or. &
                 particle%y .lt. jts-1 .or. &
@@ -718,13 +427,6 @@ contains
             ! new: properites of environment are prime
             T = particle%temperature
 
-
-            ! if (me .eq. 1) then
-            ! print *, "TRILINEAR", &
-            !     trilinear_interpolation(0.75, 0, 1, 0.5, 0, 1, 0.5, 0,1,&
-            !     0.0, 0.0, 0.0, 1.0, 0.0, 1.0,1.0, 1.0)
-            ! end if
-
             associate (A => temperature, x => particle%x, z => particle%z , &
                 y => particle%y)
               x0 = floor(x); z0 = floor(z); y0 = floor(y);
@@ -745,12 +447,13 @@ contains
               delta_z = z_displacement / dz
               if (z_displacement /= z_displacement) then
                 ! when T=0 it causes division by 0. This problem should be fixed
-
                 print *, me, ":: ------------NAN--------------", &
                     particle%particle_id, T, T_prime
                 particle%z = -1
-                call flush()
-                call exit
+                print *, p0, z_displacement, gravity, particle%temperature
+                cycle
+                ! call flush()
+                ! call exit
               else
                 ! print *, "delta_z ::", delta_z, "z_displacement",z_displacement
                 particle%z = particle%z + delta_z
@@ -759,7 +462,7 @@ contains
             else
               z_displacement = 0.0
             end if
-
+            ! print *, "delta_z ::", delta_z, "z_displacement",z_displacement
             ! print *, me, ":", particle%particle_id, z_displacement
             !-----------------------------------------------------------------
             ! Orographic lift
@@ -783,15 +486,53 @@ contains
               particle%z_interface = z_interface_val
               z_displacement = z_displacement + z_wind_change
             end if
+            particle%z_meters = particle%z_meters + z_displacement
 
 
             !-----------------------------------------------------------------
             ! p = p_0 * e^( ((9.81/287.058)*dz) / t_mean )
             !-----------------------------------------------------------------
-            particle%z_meters = particle%z_meters + z_displacement
+            ! Method one, change pressure, update temperature
+            !-----------------------------------------------------------------
+            if (1 .eq. 1) then
             p0 = particle%pressure
             particle%pressure = p0 - z_displacement * &
                 gravity / (287.05 * particle%temperature) * p0
+
+            T_original = particle%temperature
+            particle%temperature = exner_function(particle%pressure) * &
+                particle%potential_temp
+
+            ! this change looks good
+            ! print *, "change :", t - particle%temperature, "expected:", z_displacement * .01
+
+            if (particle%temperature /= particle%temperature) then
+              print *, me, ":: ~~~~~~NAN~~~~~~", &
+                  particle%particle_id, particle%temperature, &
+                  exner_function(particle%pressure), particle%pressure, &
+                  particle%potential_temp
+              print*, p0, z_displacement, gravity ,287.05,particle%temperature
+              particle%exists = .false.
+              ! call flush()
+              ! call exit
+            end if
+            end if
+            !-----------------------------------------------------------------
+            ! Method two: heuristics, not using
+            !-----------------------------------------------------------------
+            if (1 .eq. 1) then
+            if (particle%cloud_water .gt. 0.0) then
+              gamma = 0.006 ! 6 celsius, not sure if this conversion is correct
+            else
+              gamma = 0.01 ! 10 celcius
+            end if
+            end if
+
+            ! end if
+            ! print *,me, ""
+            ! call flush()
+            ! call exit
+
 
             ! print *, me, ":::", particle%particle_id, particle%z_meters
             ! ! barometric formula for an adiabatic atmosphere
@@ -836,19 +577,6 @@ contains
             !       particle%potential_temp
             ! end if
 
-            particle%temperature = exner_function(particle%pressure) * &
-                particle%potential_temp
-            if (particle%temperature /= particle%temperature) then
-              print *, me, ":: ~~~~~~NAN~~~~~~", &
-                  particle%particle_id, particle%temperature, &
-                  exner_function(particle%pressure), particle%pressure, &
-                  particle%potential_temp
-
-              call flush()
-              ! call exit
-            end if
-
-
 
             ! this is close to the potential temp given by the Exner func
             ! particle%potential_temp = particle%temperature * &
@@ -885,26 +613,125 @@ contains
             !   clouds += condensate
             !   temperature += latent_heat * condensate
             !-----------------------------------------------------------------
+            if (relative_humidity .eqv. .true.) then
+            block
+              real :: saturate, condensate, vapor, vapor_needed, RH
+              ! latent heat values, calculating using formula
+              real, parameter :: condensation_lh = 2600!000 ! 2.5 x 10^6 J/kg
+              real, parameter :: vaporization_lh = -condensation_lh
+              ! specific heat of water vapor at constant volume
+              ! real, parameter :: C_vv = 1.0 / 1390.0
+              real :: C_vv, c_p
+              real :: latent_heat, Q_heat, temp_c, delta_t, T0
+              integer :: repeat
+              logical :: rhed
+              rhed = .false.
+
+              saturate = sat_mr(particle%temperature, particle%pressure)
+              RH = particle%water_vapor / saturate
+
+              if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0) then
+                vapor_needed = 1.0 - RH
+                if (vapor_needed > particle%cloud_water) then
+                  vapor = particle%cloud_water
+                  particle%cloud_water = 0
+                else
+                  vapor = vapor_needed
+                  particle%cloud_water = particle%cloud_water - vapor_needed
+                end if
+
+                particle%water_vapor = particle%water_vapor + vapor
+                latent_heat = 2.5 * 10**6 ! J kg^-1  for condensation
+                Q_heat = latent_heat * vapor ! kJ
+                c_p = (1004 * (1 + 1.84 * vapor)) ! 3.3
+                delta_t = Q_heat / c_p   ! 3.2c
+                particle%temperature = particle%temperature - delta_t
+                ! print *, "VAPOR WAS NEEDED"
+
+              else if (RH .ge. 1.0) then    ! if (0.0001 > saturate) then
+                condensate = particle%water_vapor - saturate
+                particle%water_vapor = particle%water_vapor - condensate
+                particle%cloud_water = particle%cloud_water + condensate
+
+                T0 = particle%temperature
+                p0 = particle%pressure
+                ! if (T0 .lt. 248.15) then
+                !   latent_heat = 2600
+                ! else if (T0 .gt. 314.15) then
+                !   latent_heat = 2400
+                ! else
+                !   T_C = T0 - 273.15
+                !   latent_heat = 2500.8 - 2.36*T_C + 0.0016 * T_C**2 - &
+                !       0.00006 * T_C**3
+                ! end if
+                ! latent_heat = latent_heat !* 1000 ! J /
+
+                ! specific latent heat for condensation
+                latent_heat = 2.5 * 10**6 ! J kg^-1
+                ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
+                Q_heat = latent_heat * condensate ! kJ
+                ! Stull: Practical Meteorology
+                c_p = (1004 * (1 + 1.84 * condensate)) ! 3.3
+                delta_t = Q_heat / c_p   ! 3.2c
+                particle%temperature = T0 + delta_t
+
+                ! C_vv = 1.0 / 1390.0 ! C_vv = 0.718 * 10 ! C_vv = 0.718 * 1000
+
+                ! Q = c*m*delta_T  c=specific heat
+                !     Q = C * delta_t, C = specific heat   1390^-1
+                ! -> T1 = T0 + Q/C
+
+                ! delta_q = m_air * c_p * delta_t
+                !                   c_p = 1004 * (1 + 1.84 * condensate)
+
+
+                ! using Poisson's equation
+                ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
+                ! print *, "     NEW t:", particle%temperature, "adding", delta_t
+                ! print *, "    OLD t0:", T0, "z displacement =", z_displacement
+                ! print *, ""
+                ! print *, "latentheat:", latent_heat," condesnate:", condensate
+                ! print *, "         Q:", latent_heat * condensate
+                ! print *, "      C_vv:", C_vv
+                ! ! print *, "c_p", C_p
+                ! ! print *, "z displacement =", z_displacement
+                ! print *, "~expected:", z_displacement * 0.006, &
+                !     "new change", T_original - (T0+delta_t), &
+                !      "original", T_original - T0!, &
+                !     ! " old expe", z_displacement * 0.01
+
+                ! ! print *, "new change", T_original - (T0 + delta_t) , "original", T_original - T0
+
+                ! !     "expected ~", z_displacement * 0.006,& !, z_displacement * 0.01,
+                ! "q_heat" , T_original - (T0 + q_heat / 1000)
+
+
+                ! print *, "------"
+                ! ! print *, particle%temperature
+                ! call flush()
+                ! call exit
+
+                rhed = .true.
+              else
+                exit
+              end if
+
+              ! if (rhed .eqv. .true.) then
+              !   call flush()
+              !   call exit
+              ! end if
+              ! particle%cloud_water = RH
+            end block
+            end if
             ! iterate 3-4 times
             !
             ! water_vapor < satured and clouds present, remove from the clouds
 
-            ! validation:
-            !    freq of particle oscilation: Brunt-Väisälä frequency
-            ! change in potential temp with elevation
-            ! convection validation:
-            !
 
-            !   - slighlty , a few cal per 100 meters,
-            ! BV freq:  0dt/dz
 
-            ! run with different potential temp, should have different
-            ! if RH is set to very low, BF freq
-            !
 
-            ! warf if more time
 
-            ! IDEAL ICAR MINI APP
+
 
             !-----------------------------------------------------------------
             ! remove particle if beyond the z axis
@@ -1017,17 +844,10 @@ contains
                 call this%put_east(particle)
               end if
             end associate
-
         end if
         end associate
       end do
-
-      ! Only needed if array of particles
-      ! after moving everything need to reset movement flags to false
-      ! do concurrent (i=its:ite, j=jts:jte, k=kts:kte)
-      !   this%local(i,k,j)%moved = .false.
-      ! end do
-    end subroutine
+    end subroutine process
 
     module subroutine create_particle_id(this)
       use iso_fortran_env, only : int32
@@ -1223,4 +1043,8 @@ contains
       end if
     end function trilinear_interpolation
 
+    function num_particles()
+      integer :: num_particles
+      num_particles = particles_per_image
+    end function num_particles
 end submodule
