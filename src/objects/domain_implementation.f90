@@ -33,8 +33,9 @@ contains
 
     end subroutine print_in_image_order
 
-    subroutine master_initialize(this)
+    subroutine master_initialize(this, convected_particles)
       class(domain_t), intent(inout) :: this
+      logical, intent(in) :: convected_particles
       integer :: i,j, halo_width
       real :: sine_curve
       type(grid_t) :: grid
@@ -50,7 +51,6 @@ contains
         rain_number_test_val            => 0.0,             &
         snow_mass_test_val              => 0.0,             &
         graupel_mass_test_val           => 0.0,             &
-        ! convection_test_val             => type::convection_particle,  &
         nx=>this%nx, ny=>this%ny, nz=>this%nz )
 
         call this%u%initialize(this%get_grid_dimensions(nx_extra = 1), u_test_val)
@@ -170,30 +170,17 @@ contains
           this%exner       = exner_function(this%pressure)
           this%temperature = this%exner * this%potential_temperature%local
           this%water_vapor%local = sat_mr(this%temperature,this%pressure)
-          ! print *, "water vapor=", this%water_vapor%local
-          ! call exit
 
 
-
-          ! call this%convection_obj%initialize(convection_particle_e, &
-          !     this%get_grid_dimensions(), &
-          !     ims,ime,kms,kme,jms,jme, &
-          !     input_buf_size=8,halo_width=2, &
-          !     u_in=0.5, v_in=0.5, w_in=0.0, &
-          !     temperature=this%temperature, pressure=this%pressure, &
-          !     water_vapor=this%water_vapor%local)
-
-          call this%convection_obj%initialize(this%potential_temperature, &
-              this%u, this%v, this%w, this%get_grid_dimensions(), this%z, &
-              this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
-              this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
-              input_buf_size=8,halo_width=2)
-
-          ! sync all
-          ! call exit
+          if (convected_particles .eqv. .true.) then
+            call this%convection_obj%initialize(this%potential_temperature, &
+                this%u, this%v, this%w, this%get_grid_dimensions(), this%z, &
+                this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
+                this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
+                input_buf_size=8,halo_width=2)
+          end if
 
       end associate
-
     end subroutine
 
 
@@ -275,7 +262,6 @@ contains
 
         associate(po=>100000, Rd=>287.058, cp=>1003.5)
             exner = (pressure / po) ** (Rd/cp)
-
         end associate
     end function
 
@@ -354,9 +340,10 @@ contains
     !! Initialize the domain reading grid dimensions from an input file
     !!
     !! -------------------------------
-    module subroutine initialize_from_file(this,file_name)
+    module subroutine initialize_from_file(this,file_name,convected_particles)
       class(domain_t), intent(inout) :: this
       character(len=*), intent(in) :: file_name
+      logical, intent(in) :: convected_particles
       integer :: nx,ny,nz
       real    :: preferred_ratio
       integer :: my_unit,stat
@@ -391,7 +378,7 @@ contains
       this%ny = my_n(ny, this%yimg, this%yimages)
       this%nz = nz
       if (this_image()==1) print *,"call master_initialize(this)"
-      call master_initialize(this)
+      call master_initialize(this, convected_particles)
     end subroutine
 
     !> -------------------------------
@@ -408,7 +395,7 @@ contains
       this%nx = my_n(nx_global, this%ximg, this%ximages)
       this%ny = my_n(ny_global, this%yimg, this%yimages)
       this%nz = nz_global
-      call master_initialize(this)
+      call master_initialize(this, .false.)
     end subroutine
 
 
@@ -499,9 +486,10 @@ contains
       call this%graupel_mass%send()
     end subroutine
 
-    module subroutine halo_retrieve(this)
+    module subroutine halo_retrieve(this, convected_particles)
       class(domain_t), intent(inout) :: this
-      call this%convection_obj%retrieve() ! ARTLESS, should this be no_sync?
+      logical, intent(in) :: convected_particles
+      if (convected_particles .eqv. .true.) call this%convection_obj%retrieve()
       call this%water_vapor%retrieve()
       call this%potential_temperature%retrieve(no_sync=.True.)
       call this%cloud_water_mass%retrieve(no_sync=.True.)
@@ -627,16 +615,12 @@ contains
             ! print *, me, ":", this%convection_obj%local(i)%exists, i
 
             if (this%convection_obj%local(i)%exists .eqv. .true.) then
-              ! print *, me, ": PRINTING at",step, "particle", &
-              !     this%convection_obj%local(i)%particle_id
               write(me,*) me, step, this%convection_obj%local(i)
             end if
           end do
           close(me)
-
         end if
         sync all
       end do
-
     end subroutine
 end submodule
