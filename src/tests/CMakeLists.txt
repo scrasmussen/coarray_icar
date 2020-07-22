@@ -6,7 +6,6 @@ add_executable(test-ideal
   ../objects/domain_interface.f90
   ../objects/exchangeable_implementation.f90
   ../objects/exchangeable_interface.f90
-  ../objects/convection_object.f90
   ../objects/convection_type_interface.f90
   ../objects/convection_exchangeable_implementation.f90
   ../objects/convection_exchangeable_interface.f90
@@ -16,7 +15,8 @@ add_executable(test-ideal
   ../objects/timer_interface.f90
   ../physics/mp_driver.f90
   ../physics/mp_thompson.f90
-)
+  )
+
 target_link_libraries(test-ideal icar_utils)
 
 configure_file(input-parameters.txt ${CMAKE_BINARY_DIR}/input-parameters.txt COPYONLY)
