@@ -7,11 +7,19 @@ In convection_exchangeable_implementation.f90 you can turn on/off
  - etc.
  and choose number of particles per image
 
- Functions within this file
+ Important subroutines within this file
   - const: the constructor function
   - process: the function that gets called every timestep
 
-In test-ideal.f90 you can turn on/off convection particles
+
+In test-ideal.f90 you can turn on/off convection particles and whether or not to
+output the state of the particles every timestep. This file will write the state
+of the particles to output.txt.
+
+To visualize the particles run  `python plot.py output.txt`. This will produces
+a real-time scatter plot of the particles.
+
+
 
 
 * COMMMENTS FROM CONVECTION EXCHANGEABLE IMPLEMENTATION
