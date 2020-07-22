@@ -1,6 +1,6 @@
 =Confection Readme=
 
-In convection_exchangeable_implementation.f90 you can turn on/off
+In `src/objects/convection_exchangeable_implementation.f90` you can turn on/off
  - convection
  - wind
  - relative humidity
@@ -12,12 +12,13 @@ In convection_exchangeable_implementation.f90 you can turn on/off
   - process: the function that gets called every timestep
 
 
-In test-ideal.f90 you can turn on/off convection particles and whether or not to
-output the state of the particles every timestep. This file will write the state
-of the particles to output.txt.
+In `src/tests/test-ideal.f90` you can turn on/off convection particles and
+whether or not to output the state of the particles every timestep. This file
+will write the state of the particles to output.txt.
 
-To visualize the particles run  `python plot.py output.txt`. This will produces
-a real-time scatter plot of the particles.
+
+To visualize the particles run `python plot.py output.txt`. This will produces
+a real-time scatter plot of the particles. `plot.py` is in the `data` directory.
 
 
 
