@@ -208,7 +208,6 @@ contains
           ! v = u + a * t
           ! s = u*t + 1/2 a*t^2
           !-----------------------------------------------------------------
-          ! orig: properites of air parcel are prime
           ! new: properites of environment are prime
           T = particle%temperature
 
@@ -221,7 +220,6 @@ contains
                 A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
                 A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
           end associate
-
 
           if (advection .eqv. .true.) then
             buoyancy = (T - T_prime) / T_prime
@@ -240,13 +238,13 @@ contains
               ! call flush()
               ! call exit
             else
-              ! print *, "delta_z ::", delta_z, "z_displacement",z_displacement
               particle%z = particle%z + delta_z
               particle%velocity = z_displacement
             end if
           else
             z_displacement = 0.0
           end if
+
           ! print *, "delta_z ::", delta_z, "z_displacement",z_displacement
           ! print *, me, ":", particle%particle_id, z_displacement
           !-----------------------------------------------------------------
@@ -271,7 +269,15 @@ contains
             particle%z_interface = z_interface_val
             z_displacement = z_displacement + z_wind_change
           end if
+
+          !-----------------------------------------------------------------
+          ! Move particle, remove particle if beyond the z axis
+          !-----------------------------------------------------------------
           particle%z_meters = particle%z_meters + z_displacement
+          if (particle%z .lt. kts .or. particle%z .gt. kte) then
+            particle%exists=.false.
+            cycle
+          end if
 
 
           !-----------------------------------------------------------------
@@ -288,9 +294,6 @@ contains
             particle%temperature = exner_function(particle%pressure) * &
                 particle%potential_temp
 
-            ! this change looks good
-            ! print *, "change :", t - particle%temperature, "expected:", z_displacement * .01
-
             if (particle%temperature /= particle%temperature) then
               print *, me, ":: ~~~~~~NAN~~~~~~", &
                   particle%particle_id, particle%temperature, &
@@ -305,88 +308,13 @@ contains
           !-----------------------------------------------------------------
           ! Method two: heuristics, not using
           !-----------------------------------------------------------------
-          if (1 .eq. 1) then
+          if (0 .eq. 1) then
             if (particle%cloud_water .gt. 0.0) then
               gamma = 0.006 ! 6 celsius, not sure if this conversion is correct
             else
               gamma = 0.01 ! 10 celcius
             end if
           end if
-
-          ! end if
-          ! print *,me, ""
-          ! call flush()
-          ! call exit
-
-
-          ! print *, me, ":::", particle%particle_id, particle%z_meters
-          ! ! barometric formula for an adiabatic atmosphere
-          ! exponent = gravity / (287.05 * Gamma)
-          ! alt_pressure = p0 * (1 - Gamma * particle%z / T)
-
-
-          !-----------------------------------------------------------------
-          ! Update the parcel temperature for dry air
-          ! Gamma is the dry adiabatic lapse rate
-          ! Temperature is reduced T - Gamma * delta_z  (3.8)
-          ! print *, this_image(), "z_displacement", z_displacement
-          ! Gamma in Kelvin per meter
-          ! if (particle%relative_humidity .ge. 1.01) then
-          !   ! equation from
-          !   ! wikipedia.org/wiki/Lapse_rate#Moist_adiabatic_lapse_rate
-          !   T_C = particle%temperature - 273.15
-          !   T_squared = T_C * T_C
-          !   mixing_ratio = particle%pressure
-
-          !   tmp = gravity * (286 * T_squared + &
-          !       2501000 * mixing_ratio * T_C ) / &
-          !       (1003.5 *  287 * T_squared + &
-          !       0.622 * mixing_ratio * 2501000 * 2501000)
-          !   particle%temperature = tmp + 273.15
-          !   ! particle%temperature = gravity * (286 * T_squared + &
-          !   !     2501000 * mixing_ratio * T_C ) / &
-          !   !     (1003.5 *  287 * T_squared + &
-          !   !      0.622 * mixing_ratio * 2501000 * 2501000) + 273.15
-          !   ! ---ARTLESS---
-          !   print *, "MALR: from", T_C+273.15, "to", particle%temperature, &
-          !       "diff", T_C - tmp
-
-          !   ! other possible equation
-          !   ! http://www.theweatherprediction.com/habyhints/161/
-          !   ! MALR = dT/dz = DALR / (1 + L/Cp*dWs/dT)
-          !   ! dWs/dT is the change in saturation mixing ratio with change in T
-          ! else
-          !   ! OLD METHOD
-          !   ! particle%temperature = particle%temperature - Gamma * z_displacement
-          !   particle%temperature = exner_function(particle%pressure) * &
-          !       particle%potential_temp
-          ! end if
-
-
-          ! this is close to the potential temp given by the Exner func
-          ! particle%potential_temp = particle%temperature * &
-          !     (p0 / particle%pressure) ** (0.286)
-          ! print *, "new potential temp", particle%potential_temp
-
-          ! potential_temp from exner
-          ! potential temp does not change in dry adiabat
-          ! associate(po=>100000, Rd=>287.058, cp=>1003.5)
-          !   particle%potential_temp = particle%temperature / &
-          !       ((particle%pressure / p0) ** (Rd/cp))
-          ! end associate
-
-          ! Equaion Ethan gave me, same as pressure
-          ! alt_pressure = p0 * exp( -((9.81/287.058)*z_displacement) / &
-          !     particle%temperature)
-          ! alt_pressure4 = (p0 * (-Gamma * z_displacement)) / (-0.286*T)
-
-
-          !-----------------------------------------------------------------
-          ! Better update
-          ! T_0 + gamma U dt - Gamma_s U d t
-          ! T_0 is initial temperature
-          ! Gamma_s is the pseudoadiabaitc lapse rate
-          ! gamme is the ambient lapse rate
 
 
           !-----------------------------------------------------------------
@@ -409,8 +337,6 @@ contains
               real :: C_vv, c_p
               real :: latent_heat, Q_heat, temp_c, delta_t, T0
               integer :: repeat
-              logical :: rhed
-              rhed = .false.
 
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
@@ -440,6 +366,10 @@ contains
 
                 T0 = particle%temperature
                 p0 = particle%pressure
+
+                !--------------------------------------------------------------
+                ! calculate specific latent heat
+                !--------------------------------------------------------------
                 ! if (T0 .lt. 248.15) then
                 !   latent_heat = 2600
                 ! else if (T0 .gt. 314.15) then
@@ -449,129 +379,40 @@ contains
                 !   latent_heat = 2500.8 - 2.36*T_C + 0.0016 * T_C**2 - &
                 !       0.00006 * T_C**3
                 ! end if
-                ! latent_heat = latent_heat !* 1000 ! J /
 
                 ! specific latent heat for condensation
                 latent_heat = 2.5 * 10**6 ! J kg^-1
                 ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
                 Q_heat = latent_heat * condensate ! kJ
+
+
+                !--------------------------------------------------------------
+                ! calculate specific heat
+                !--------------------------------------------------------------
                 ! Stull: Practical Meteorology
                 c_p = (1004 * (1 + 1.84 * condensate)) ! 3.3
                 delta_t = Q_heat / c_p   ! 3.2c
                 particle%temperature = T0 + delta_t
 
-                ! C_vv = 1.0 / 1390.0 ! C_vv = 0.718 * 10 ! C_vv = 0.718 * 1000
 
-                ! Q = c*m*delta_T  c=specific heat
-                !     Q = C * delta_t, C = specific heat   1390^-1
-                ! -> T1 = T0 + Q/C
-
-                ! delta_q = m_air * c_p * delta_t
-                !                   c_p = 1004 * (1 + 1.84 * condensate)
-
-
+                ! -- is pressure constant during this process?
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
-                ! print *, "     NEW t:", particle%temperature, "adding", delta_t
-                ! print *, "    OLD t0:", T0, "z displacement =", z_displacement
-                ! print *, ""
-                ! print *, "latentheat:", latent_heat," condesnate:", condensate
-                ! print *, "         Q:", latent_heat * condensate
-                ! print *, "      C_vv:", C_vv
-                ! ! print *, "c_p", C_p
-                ! ! print *, "z displacement =", z_displacement
-                ! print *, "~expected:", z_displacement * 0.006, &
-                !     "new change", T_original - (T0+delta_t), &
-                !      "original", T_original - T0!, &
-                !     ! " old expe", z_displacement * 0.01
 
-                ! ! print *, "new change", T_original - (T0 + delta_t) , "original", T_original - T0
-
-                ! !     "expected ~", z_displacement * 0.006,& !, z_displacement * 0.01,
-                ! "q_heat" , T_original - (T0 + q_heat / 1000)
-
-
-                ! print *, "------"
-                ! ! print *, particle%temperature
                 ! call flush()
                 ! call exit
 
-                rhed = .true.
               else
                 exit
               end if
-
-              ! if (rhed .eqv. .true.) then
-              !   call flush()
-              !   call exit
-              ! end if
-              ! particle%cloud_water = RH
             end block
-          end if
-          ! iterate 3-4 times
-          !
-          ! water_vapor < satured and clouds present, remove from the clouds
-
-
-
-
+          end if ! ---- end of relative humidity seciton ----
 
 
 
           !-----------------------------------------------------------------
-          ! remove particle if beyond the z axis
+          ! Move particle if needed
           !-----------------------------------------------------------------
-          if (particle%z .lt. kts .or. particle%z .gt. kte) then
-            particle%exists=.false.
-            ! print *, "particle", particle%particle_id, "gone out the top"
-            cycle
-          end if
-
-
-
-          !-----------------------------------------------------------------
-          ! Handle Saturated Mixing Ratio
-          !
-          ! saturate mixing ratio: max amount of water vapor parcel can hold
-          !                        without condensation
-          !-----------------------------------------------------------------
-          ! water_vapor = water vapor mixing ratio (w)
-          ! relative humidity = w / w_s
-
-
-          ! R_v the specific gas constant for water vapor
-          ! R_a
-          ! epsilon = R_d / R_v
-          !   from https://www.engineeringtoolbox.com/density-air-d_680.html
-          ! mr = epsilon * e / (p-e)   ;  from
-          ! snowball.millersville.edu/~adecaria/ESCI241/esci241_lesson06_humidity.pdf
-          ! density of water vapor / density of dry air
-          ! associate (epsilon => 1.609)
-          !   row_v = 0.0022 / T_k
-          !   e = row_v *  462 * particle_temperature
-          !   mr = epsilon * e / (particle%pressure - e)
-          ! end associate
-          ! row_a = 0.0035 /
-
-
-          ! sat_mr_val = sat_mr(particle%temperature, particle%pressure)
-          ! particle%relative_humidity = particle%water_vapor / sat_mr_val
-
-          ! print *, me, "RH = ", particle%relative_humidity
-          ! if (particle%relative_humidity .ge. 1) then
-          !   print *, "particle", particle%particle_id, &
-          !       particle%relative_humidity, "=", &
-          !       particle%water_vapor, "/", sat_mr
-          ! end if
-
-          ! ! Antoine equation to find vapor pressure
-          ! if (T_C .lt. 100) then
-          !   vapor_p = 10 ** (8.07131 - 1730.63 / (233.426 + T_C))
-          ! else
-          !   vapor_p = 10 ** (8.14019 - 1810.94 / (244.485 + T_C))
-          ! end if
-          ! mr =  0.622 * (vapor_p / particle%pressure - vapor_p)
-
           associate (x => particle%x, y => particle%y, z => particle%z)
             if (x .lt. its .or. x .gt. ite .or. &
                 z .lt. kms .or. z .gt. kme .or. &
@@ -1043,4 +884,4 @@ contains
     integer :: num_particles
     num_particles = particles_per_image
   end function num_particles
-end submodule &
+end submodule

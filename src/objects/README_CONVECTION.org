@@ -51,3 +51,117 @@ switch between array and linked list at runtime
 domain : `type(convection_exchangeable_array_t) :: convection_object`
 grid   :
 convection exchangeable: initialize=> const(ructor)
+
+* COMMMENTS FROM CONVECTION EXCHANGEABLE IMPLEMENTATION
+
+
+          !-----------------------------------------------------------------
+          ! Update the parcel temperature for dry air
+          ! Gamma is the dry adiabatic lapse rate
+          ! Temperature is reduced T - Gamma * delta_z  (3.8)
+          ! print *, this_image(), "z_displacement", z_displacement
+          ! Gamma in Kelvin per meter
+          ! if (particle%relative_humidity .ge. 1.01) then
+          !   ! equation from
+          !   ! wikipedia.org/wiki/Lapse_rate#Moist_adiabatic_lapse_rate
+          !   T_C = particle%temperature - 273.15
+          !   T_squared = T_C * T_C
+          !   mixing_ratio = particle%pressure
+
+          !   tmp = gravity * (286 * T_squared + &
+          !       2501000 * mixing_ratio * T_C ) / &
+          !       (1003.5 *  287 * T_squared + &
+          !       0.622 * mixing_ratio * 2501000 * 2501000)
+          !   particle%temperature = tmp + 273.15
+          !   ! particle%temperature = gravity * (286 * T_squared + &
+          !   !     2501000 * mixing_ratio * T_C ) / &
+          !   !     (1003.5 *  287 * T_squared + &
+          !   !      0.622 * mixing_ratio * 2501000 * 2501000) + 273.15
+          !   ! ---ARTLESS---
+          !   print *, "MALR: from", T_C+273.15, "to", particle%temperature, &
+          !       "diff", T_C - tmp
+
+          !   ! other possible equation
+          !   ! http://www.theweatherprediction.com/habyhints/161/
+          !   ! MALR = dT/dz = DALR / (1 + L/Cp*dWs/dT)
+          !   ! dWs/dT is the change in saturation mixing ratio with change in T
+          ! else
+          !   ! OLD METHOD
+          !   ! particle%temperature = particle%temperature - Gamma * z_displacement
+          !   particle%temperature = exner_function(particle%pressure) * &
+          !       particle%potential_temp
+          ! end if
+
+
+          ! this is close to the potential temp given by the Exner func
+          ! particle%potential_temp = particle%temperature * &
+          !     (p0 / particle%pressure) ** (0.286)
+          ! print *, "new potential temp", particle%potential_temp
+
+          ! potential_temp from exner
+          ! potential temp does not change in dry adiabat
+          ! associate(po=>100000, Rd=>287.058, cp=>1003.5)
+          !   particle%potential_temp = particle%temperature / &
+          !       ((particle%pressure / p0) ** (Rd/cp))
+          ! end associate
+
+          ! Equaion Ethan gave me, same as pressure
+          ! alt_pressure = p0 * exp( -((9.81/287.058)*z_displacement) / &
+          !     particle%temperature)
+          ! alt_pressure4 = (p0 * (-Gamma * z_displacement)) / (-0.286*T)
+
+
+          !-----------------------------------------------------------------
+          ! Better update
+          ! T_0 + gamma U dt - Gamma_s U d t
+          ! T_0 is initial temperature
+          ! Gamma_s is the pseudoadiabaitc lapse rate
+          ! gamme is the ambient lapse rate
+
+
+
+
+
+
+          !-----------------------------------------------------------------
+          ! Handle Saturated Mixing Ratio
+          !
+          ! saturate mixing ratio: max amount of water vapor parcel can hold
+          !                        without condensation
+          !-----------------------------------------------------------------
+          ! water_vapor = water vapor mixing ratio (w)
+          ! relative humidity = w / w_s
+
+
+          ! R_v the specific gas constant for water vapor
+          ! R_a
+          ! epsilon = R_d / R_v
+          !   from https://www.engineeringtoolbox.com/density-air-d_680.html
+          ! mr = epsilon * e / (p-e)   ;  from
+          ! snowball.millersville.edu/~adecaria/ESCI241/esci241_lesson06_humidity.pdf
+          ! density of water vapor / density of dry air
+          ! associate (epsilon => 1.609)
+          !   row_v = 0.0022 / T_k
+          !   e = row_v *  462 * particle_temperature
+          !   mr = epsilon * e / (particle%pressure - e)
+          ! end associate
+          ! row_a = 0.0035 /
+
+
+          ! sat_mr_val = sat_mr(particle%temperature, particle%pressure)
+          ! particle%relative_humidity = particle%water_vapor / sat_mr_val
+
+          ! print *, me, "RH = ", particle%relative_humidity
+          ! if (particle%relative_humidity .ge. 1) then
+          !   print *, "particle", particle%particle_id, &
+          !       particle%relative_humidity, "=", &
+          !       particle%water_vapor, "/", sat_mr
+          ! end if
+
+          ! ! Antoine equation to find vapor pressure
+          ! if (T_C .lt. 100) then
+          !   vapor_p = 10 ** (8.07131 - 1730.63 / (233.426 + T_C))
+          ! else
+          !   vapor_p = 10 ** (8.14019 - 1810.94 / (244.485 + T_C))
+          ! end if
+          ! mr =  0.622 * (vapor_p / particle%pressure - vapor_p)
