@@ -96,9 +96,10 @@ module domain_interface
       class(domain_t), intent(inout) :: this
     end subroutine
 
-    module subroutine halo_retrieve(this)
+    module subroutine halo_retrieve(this, convected_particles)
       implicit none
       class(domain_t), intent(inout) :: this
+      logical, intent(in) :: convected_particles
     end subroutine
 
 
@@ -130,10 +131,11 @@ module domain_interface
     end function
 
     ! Input domain_t object from file
-    module subroutine initialize_from_file(this,file_name)
+    module subroutine initialize_from_file(this,file_name,convected_particles)
       implicit none
       class(domain_t), intent(inout) :: this
       character(len=*), intent(in) :: file_name
+      logical, intent(in) :: convected_particles
     end subroutine
 
     module subroutine report_convection(this, step)
