@@ -9,13 +9,14 @@ submodule(convection_exchangeable_interface) &
 
   ! ----- PARAMETERS TO TUNE CONVECTION MODEL -----
   logical, parameter :: wrap_neighbors = .true.
-  logical, parameter :: advection = .true.
+  logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
   logical, parameter :: relative_humidity = .true.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  integer, parameter :: particles_per_image = 30
+  integer, parameter :: particles_per_image = 25
   integer, parameter :: local_buf_size = particles_per_image * 4
+  ! -----------------------------------------------
 
   integer, parameter :: default_buf_size=1
   integer, parameter :: default_halo_size=1
@@ -117,7 +118,7 @@ contains
       exner_val = exner_function(pressure_val)
 
       call random_number(rand)
-      theta_val = theta_val * (1 + rand / 10) ! random 1-10% change
+      theta_val = theta_val * (1 + rand / 100) ! random 0-1% change
       temp_val = exner_val * theta_val
 
       water_vapor_val = sat_mr(temp_val, pressure_val)
@@ -163,7 +164,7 @@ contains
     real, parameter :: gravity = 9.80665
     real :: Gamma
     real :: a_prime, z_displacement, t, t_prime, buoyancy
-    real :: ws, fake_wind_correction, delta_z, z_interface_val, z_wind_change
+    real :: ws, wind_correction, delta_z, z_interface_val, z_wind_change
     integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
     real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
     real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
@@ -221,7 +222,7 @@ contains
                 A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
           end associate
 
-          if (advection .eqv. .true.) then
+          if (convection .eqv. .true.) then
             buoyancy = (T - T_prime) / T_prime
             a_prime = buoyancy * gravity
             ! time step is 1 so t and t^2 go away
@@ -245,20 +246,17 @@ contains
             z_displacement = 0.0
           end if
 
-          ! print *, "delta_z ::", delta_z, "z_displacement",z_displacement
-          ! print *, me, ":", particle%particle_id, z_displacement
+
           !-----------------------------------------------------------------
           ! Orographic lift
           ! Find dz change from change in environment
           !-----------------------------------------------------------------
           if (wind .eqv. .true.) then
-            ! print *, "old wind", particle%x, particle%y, "z", particle%z_meters
-            fake_wind_correction = (1.0 / dz) ! real correction
-            ! fake_wind_correction = (1.0) ! correction
+            wind_correction = (1.0 / dz) ! real correction
             ! u: zonal velocity, wind towards the east
-            particle%x = particle%x + (particle%u * fake_wind_correction)
+            particle%x = particle%x + (particle%u * wind_correction)
             ! v: meridional velocity, wind towards north
-            particle%y = particle%y + (particle%v * fake_wind_correction)
+            particle%y = particle%y + (particle%v * wind_correction)
             associate (A => z_interface, x=> particle%x, y=>particle%y)
               x0 = floor(x); x1 = ceiling(x)
               y0 = floor(y); y1 = ceiling(y)
@@ -283,7 +281,8 @@ contains
           !-----------------------------------------------------------------
           ! p = p_0 * e^( ((9.81/287.058)*dz) / t_mean )
           !-----------------------------------------------------------------
-          ! Method one, change pressure, update temperature
+          ! Method one: physics
+          !        a) change pressure         b) update temperature
           !-----------------------------------------------------------------
           if (1 .eq. 1) then
             p0 = particle%pressure
@@ -306,7 +305,7 @@ contains
             end if
           end if
           !-----------------------------------------------------------------
-          ! Method two: heuristics, not using
+          ! Method two: adiabatic lapse rate, not using
           !-----------------------------------------------------------------
           if (0 .eq. 1) then
             if (particle%cloud_water .gt. 0.0) then
@@ -318,29 +317,41 @@ contains
 
 
           !-----------------------------------------------------------------
-          ! Mixing Ratio
+          ! Relative Humidity and physics of Moist Adiabatic Lapse Rate
+          !-----------------------------------------------------------------
+          ! | Mixing Ratio |
           ! saturate = sat_mr(t,p)
           ! if (water_vapor > saturated)
           !   condensate = water_vapor - satured
           !   water_vapor -= condensate
           !   clouds += condensate
-          !   temperature += latent_heat * condensate
+          !   Q_heat  = specific_latent_heat * condensate
+          !   delta_T = Q_heat / c_p   ! c_p is specific heat capacity
+          !   temperature += delta_T
           !-----------------------------------------------------------------
           if (relative_humidity .eqv. .true.) then
             block
               real :: saturate, condensate, vapor, vapor_needed, RH
-              ! latent heat values, calculating using formula
+              ! specific latent heat values, calculating using formula
               real, parameter :: condensation_lh = 2600!000 ! 2.5 x 10^6 J/kg
               real, parameter :: vaporization_lh = -condensation_lh
               ! specific heat of water vapor at constant volume
               ! real, parameter :: C_vv = 1.0 / 1390.0
               real :: C_vv, c_p
-              real :: latent_heat, Q_heat, temp_c, delta_t, T0
+              real :: specific_latent_heat, Q_heat, temp_c, delta_t, T1, p1
               integer :: repeat
 
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
+              T1 = particle%temperature
+              p1 = particle%pressure
+              ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
+              ! specific latent heat for condensation and evaporation
+              specific_latent_heat = 2.5 * 10**6 ! J kg^-1
 
+
+              ! Particle is falling, using evaporation of cloud water to keep
+              ! the relative humidity at 1 if possible
               if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0) then
                 vapor_needed = 1.0 - RH
                 if (vapor_needed > particle%cloud_water) then
@@ -352,58 +363,56 @@ contains
                 end if
 
                 particle%water_vapor = particle%water_vapor + vapor
-                latent_heat = 2.5 * 10**6 ! J kg^-1  for condensation
-                Q_heat = latent_heat * vapor ! kJ
-                c_p = (1004 * (1 + 1.84 * vapor)) ! 3.3
+                ! heat required by phase change
+                Q_heat = specific_latent_heat * vapor ! kJ
+                ! c_p = (1004 * (1 + 1.84 * vapor)) ! 3.3
+                c_p = 1004 ! specific heat of dry air at 0C
                 delta_t = Q_heat / c_p   ! 3.2c
-                particle%temperature = particle%temperature - delta_t
-                ! print *, "VAPOR WAS NEEDED"
+                particle%temperature = T1 - delta_t
 
-              else if (RH .ge. 1.0) then    ! if (0.0001 > saturate) then
+                ! update potential temperature, assumming pressure is constant
+                particle%potential_temp = exner_function(particle%pressure) * &
+                    particle%temperature
+
+
+              ! Particle is raising and condensation is occurring
+              else if (RH .ge. 1.0) then
                 condensate = particle%water_vapor - saturate
                 particle%water_vapor = particle%water_vapor - condensate
                 particle%cloud_water = particle%cloud_water + condensate
 
-                T0 = particle%temperature
-                p0 = particle%pressure
-
                 !--------------------------------------------------------------
-                ! calculate specific latent heat
+                ! a different way to calculate specific latent heat
                 !--------------------------------------------------------------
-                ! if (T0 .lt. 248.15) then
-                !   latent_heat = 2600
-                ! else if (T0 .gt. 314.15) then
-                !   latent_heat = 2400
+                ! if (T1 .lt. 248.15) then
+                !   specific_latent_heat = 2600
+                ! else if (T1 .gt. 314.15) then
+                !   specific_latent_heat = 2400
                 ! else
-                !   T_C = T0 - 273.15
-                !   latent_heat = 2500.8 - 2.36*T_C + 0.0016 * T_C**2 - &
+                !   T_C = T1 - 273.15
+                !   specific_latent_heat = 2500.8 - 2.36*T_C + 0.0016 * T_C**2 - &
                 !       0.00006 * T_C**3
                 ! end if
 
-                ! specific latent heat for condensation
-                latent_heat = 2.5 * 10**6 ! J kg^-1
-                ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
-                Q_heat = latent_heat * condensate ! kJ
 
-
+                ! heat from phase change
+                Q_heat = specific_latent_heat * condensate ! kJ
                 !--------------------------------------------------------------
-                ! calculate specific heat
+                ! calculate change in heat using specific heat (c_p)
                 !--------------------------------------------------------------
                 ! Stull: Practical Meteorology
                 c_p = (1004 * (1 + 1.84 * condensate)) ! 3.3
-                delta_t = Q_heat / c_p   ! 3.2c
-                particle%temperature = T0 + delta_t
+                c_p = 1004 ! specific heat of dry air at 0C
+                delta_T = Q_heat / c_p   ! 3.2c
+                particle%temperature = T1 + delta_T
 
+                ! update potential temperature, assumming pressure is constant
+                particle%potential_temp = exner_function(particle%pressure) * &
+                    particle%temperature
 
                 ! -- is pressure constant during this process?
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
-
-                ! call flush()
-                ! call exit
-
-              else
-                exit
               end if
             end block
           end if ! ---- end of relative humidity seciton ----
