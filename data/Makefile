@@ -15,7 +15,7 @@ gif:
 
 s: sounding
 sounding:
-	$(lc) get_sounding.py $(input) gif
+	$(lc) get_sounding.py
 
 t: temp
 temp:
