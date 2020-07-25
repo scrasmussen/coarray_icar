@@ -3,16 +3,23 @@ from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import matplotlib.animation as animation
+from matplotlib import rcParams
 import numpy as np
 import pandas as pd
 import sys
 
-
+gif = False
 if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
+if (len(sys.argv) == 3):
+    if (sys.argv[2] == 'gif'):
+        gif = True
+        print("Creating video/gif")
+
 
 
 frame_delay_ms=10 # 25
+frame_delay_ms=10
 turn_off_graphs=True
 
 
@@ -166,7 +173,7 @@ def graph_scatter(p):
 
 # --- plot initial timestep ---
 particles = particles[['timestep','x','y','z_meters','water_vapor','cloud_water'
-                       ,'temperature']]
+                       ,'temperature', 'identifier']]
 p = particles[ (particles.timestep == 0) ]
 scatter = graph_scatter(p)
 
@@ -174,6 +181,7 @@ scatter = graph_scatter(p)
 # ------------------------------------------------------------------------------
 #  function that gets run every animation timestep
 # ------------------------------------------------------------------------------
+t_interval = 1
 def updateFig(*args):
     global t, scatter, time
 
@@ -188,7 +196,7 @@ def updateFig(*args):
 
     p = particles[ (particles.timestep == t) ]
     scatter = graph_scatter(p)
-    t += 1
+    t += t_interval
     return scatter
 
 
@@ -196,7 +204,6 @@ def updateFig(*args):
 # setup animation
 # ------------------------------------------------------------------------------
 # decide whether to create gif or not
-gif    = False
 repeat = False if gif else True
 
 # - setup graph and start animation
@@ -204,13 +211,26 @@ plot_image_lines(time)
 set_graph_lim()
 t = 0
 ani = animation.FuncAnimation(fig, updateFig, interval=frame_delay_ms,
-                              frames=num_t-1,repeat=repeat)
+                              frames=int((num_t-1) / t_interval),repeat=repeat,
+                              blit=False)
 
-# gif not working on my mac right now
+
+
+# how
+# print(particles[(particles.identifier == 5) & (t > particles.timestep )]\
+#       .drop(['x','y','identifier'],axis=1).to_string())
+
 if (gif):
-    print("Gif!")
-    # ani.save('giftest.gif', writer=animation.PillowWriter, fps=None,dpi=20) # fps was 5
-    # ani.save('giftest.gif', writer=animation.ImageMagickWriter, fps=None) # fps was 5
+    vid_name = 'vid-' + f.name.replace('.txt','.mp4')
+    # vid_name = vid_name.replace('-','_')
+
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=50, metadata=dict(artist='Me'), bitrate=900)
+    ani.save(vid_name, writer=writer)
+    # ani.save('test.mp4', writer=writer)
+
+    # --- NOTE: not working on OSX, version too old? ---
+    # ani.save('giftest.gif', writer=animation.ImageMagickWriter)
 else:
     plt.show()
 print("Fin!")

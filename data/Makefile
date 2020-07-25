@@ -9,6 +9,14 @@ all: build
 build:
 	$(lc) plot.py $(input)
 
+g: gif
+gif:
+	$(lc) plot.py $(input) gif
+
+s: sounding
+sounding:
+	$(lc) get_sounding.py
+
 t: temp
 temp:
-	$(lc) temp_plot.py cafimage/$(input)
+	$(lc) temperature_plot.py $(input)
