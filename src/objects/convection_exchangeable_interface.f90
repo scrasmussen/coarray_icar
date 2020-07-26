@@ -52,6 +52,7 @@ module convection_exchangeable_interface
      procedure, public :: retrieve
      procedure, public :: exchange
      procedure, public :: process
+     procedure, public :: do_replacement
      generic,   public :: initialize=>const
 
      procedure :: put_north
@@ -71,7 +72,7 @@ module convection_exchangeable_interface
   interface
      module subroutine process(this, nx_global, ny_global, &
          ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
-         its, ite, kts, kte, jts, jte)
+         its, ite, kts, kte, jts, jte, z_m, potential_temp, u_in, v_in, w_in)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
        integer, intent(in) :: nx_global, ny_global
@@ -80,10 +81,13 @@ module convection_exchangeable_interface
        integer, intent(in) :: its, ite, kts, kte, jts, jte
        real, intent(in) :: temperature(ims:ime,kms:kme,jms:jme)
        real, intent(in) :: z_interface(ims:ime,jms:jme)
+       real, intent(in), optional :: z_m(ims:ime,kms:kme,jms:jme)
+       class(exchangeable_t), intent(in), optional :: potential_temp
+       class(exchangeable_t), intent(in), optional :: u_in, v_in, w_in
      end subroutine
 
      module subroutine const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
-         z_interface, ims, ime, kms, kme, jms, jme, dz_value, &
+         z_interface, ims, ime, kms, kme, jms, jme, dz_val, &
          its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
        class(convection_exchangeable_t), intent(inout) :: this
        class(exchangeable_t), intent(in)    :: potential_temp
@@ -93,7 +97,7 @@ module convection_exchangeable_interface
        real, intent(in)              :: z_interface(ims:ime,jms:jme)
        integer, intent(in)           :: ims, ime, kms, kme, jms, jme
        integer, intent(in)           :: its, ite, kts, kte, jts, jte
-       real, intent(in)              :: dz_value
+       real, intent(in)              :: dz_val
        integer, intent(in), optional :: input_buf_size
        integer, intent(in), optional :: halo_width
      end subroutine
@@ -188,5 +192,23 @@ module convection_exchangeable_interface
      module function num_particles()
        integer :: num_particles
      end function num_particles
+
+     module function create_particle(particle_id, its, ite, kts, kte, jts, jte,&
+         ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
+         u_in, v_in, w_in) result(particle)
+       integer :: particle_id
+       type(convection_particle) :: particle
+       integer, intent(in)           :: its, ite, kts, kte, jts, jte
+       integer, intent(in)           :: ims, ime, kms, kme, jms, jme
+       real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+       class(exchangeable_t), intent(in) :: potential_temp
+       real, intent(in)              :: z_interface(ims:ime,jms:jme)
+       class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
+     end function
+
+     module function do_replacement(this)
+       class(convection_exchangeable_t), intent(inout) :: this
+       logical :: do_replacement
+     end function do_replacement
   end interface
 end module convection_exchangeable_interface
