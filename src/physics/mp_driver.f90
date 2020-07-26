@@ -115,13 +115,24 @@ contains
           grid = domain%get_grid_dimensions()
 
           if (convect_particles .eqv. .true.) then
-            call domain%convection_obj%process( &
-                domain%nx_global, domain%ny_global, &
-                grid%ims, grid%ime, grid%kms, grid%kme, grid%jms, grid%jme, &
-                dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
-                domain%temperature, domain%z_interface(:,1,:), &
-                domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
-                domain%jte)
+            if (domain%convection_obj%do_replacement() .eqv. .false.) then
+              call domain%convection_obj%process( &
+                  domain%nx_global, domain%ny_global, &
+                  grid%ims, grid%ime, grid%kms, grid%kme, grid%jms, grid%jme, &
+                  dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
+                  domain%temperature, domain%z_interface(:,1,:), &
+                  domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
+                  domain%jte)
+            else
+              call domain%convection_obj%process( &
+                  domain%nx_global, domain%ny_global, &
+                  grid%ims, grid%ime, grid%kms, grid%kme, grid%jms, grid%jme, &
+                  dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
+                  domain%temperature, domain%z_interface(:,1,:), &
+                  domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
+                  domain%jte, domain%z, domain%potential_temperature, &
+                  domain%u, domain%v, domain%w)
+            end if
           end if
 
             call process_subdomain(domain, dt,                               &
