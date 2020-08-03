@@ -34,8 +34,11 @@ print("Data retrieved for " + today.isoformat())
 # ------------------------------------------------------------------------------
 # Save dataframe to file
 # ------------------------------------------------------------------------------
+f = open('sounding/sounding-README.txt', 'w')
+f.write("Sounding from the date " + str(date.today()))
 for col in df.columns:
-    filename = 'sounding/sounding-' + str(date.today()) + '-' + col + '.txt'
+    # filename = 'sounding/sounding-' + str(date.today()) + '-' + col + '.txt'
+    filename = 'sounding/sounding-' + col + '.txt'
     f = open(filename, 'w')
     f.write(str(df.shape[0]) + '\n')
     f.write(df[col].to_csv(header=False, index=False))
