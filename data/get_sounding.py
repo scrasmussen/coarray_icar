@@ -12,7 +12,8 @@ today = date.today()
 url   = 'http://weather.uwyo.edu/cgi-bin/sounding?region=naconf&TYPE=TEXT%3ALIST&'
 year  = 'YEAR=' + today.strftime("%Y")
 month = '&MONTH=' + today.strftime("%m")
-day   = '&FROM=2412&TO=2412'
+day_i = today.strftime("%d")
+day   = '&FROM=' + day_i + '12&TO=' + day_i + '12'
 end   = '&STNM=72469'
 url  += year + month + day + end
 
@@ -33,9 +34,10 @@ print("Data retrieved for " + today.isoformat())
 # ------------------------------------------------------------------------------
 # Save dataframe to file
 # ------------------------------------------------------------------------------
-filename = 'sounding-' + str(date.today()) + '.txt'
-f = open(filename, 'w')
-f.write(str(df.shape[0]) + ' ' + str(df.shape[1]) + '\n')
-f.write(df.to_csv(header=False, index=False))
+for col in df.columns:
+    filename = 'sounding/sounding-' + str(date.today()) + '-' + col + '.txt'
+    f = open(filename, 'w')
+    f.write(str(df.shape[0]) + '\n')
+    f.write(df[col].to_csv(header=False, index=False))
 
 print('File written')
