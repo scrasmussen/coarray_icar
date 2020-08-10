@@ -46,6 +46,11 @@ for i,size in enumerate(df.nx.unique()):
              label=label)
              # color=discrete_cmap(i*4))
 
+# --- plot ideal speedup ---
+max_np = df.np.max()
+plt.plot([1,max_np],[1,max_np],label="ideal speedup", linestyle='--')
+
+
 plt.legend(title="Dimensions")
 plt.xlabel("number of images")
 plt.ylabel("speedup")
