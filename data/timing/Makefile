@@ -1,6 +1,8 @@
 lc=python3.8
-all: timing
+type=scaling
+type=speedup
 
-t: timing
-timing:
-	$(lc) timing_plot.py timing_results.txt
+all: plot
+
+plot:
+	$(lc) plot_$(type).py timing_results.txt
