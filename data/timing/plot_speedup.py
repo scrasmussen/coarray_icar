@@ -49,6 +49,15 @@ for i,size in enumerate(df.nx.unique()):
 # --- plot ideal speedup ---
 max_np = df.np.max()
 plt.plot([1,max_np],[1,max_np],label="ideal speedup", linestyle='--')
+# --- plot strong scaling speedup ---
+amdahl_x=[]
+amdahl=[]
+s = 0.1
+p = 1 - s
+for n in range(1,max_np+1):
+    amdahl_x.append(n)
+    amdahl.append(1 / (s + p / n))
+plt.plot(amdahl_x,amdahl,label="Amdahl's Law s="+str(s), linestyle=':')
 
 
 plt.legend(title="Dimensions")
