@@ -43,7 +43,7 @@ for i,size in enumerate(df.nx.unique()):
              # color=discrete_cmap(i*4))
 
 plt.plot([0,df.n_particles.max()], [943.596,943.596], marker = '.',
-             label="Particles Turned Off")
+             label="Baseline: particles turned off", color='red')
 
 
 plt.legend(title="Dimensions")
