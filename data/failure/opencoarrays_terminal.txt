@@ -1,0 +1,207 @@
+Script started on Fri Aug 14 18:26:55 2020
+
+Inactive Modules:
+  1) emacs-25.3-gcc-7.3.0-watj4lw
+
+
+Activating Modules:
+  1) emacs-25.3-gcc-7.3.0-watj4lw
+
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>(reverse-i-search)`': m': mpiexec -machinefile nodes.txt -np 16 ./runMe.exe (reverse-i-search)`m': mpiexec -y': myjobsum 2[K[20PD:\>myjobsum 2 1
+ Job Summary for s280353:
+
+Job id    ss  Owner       Name                State       Queue           Submitted           Start                 Walltime   Maxtime  Finish              Cores  Nodes/Comment
+======    ==  =====       ====                =====       =====           =========           =====                 ========   =======  ======              =====  =============
+215929    42  s280353     interactive_node    running     half_hour       Fri Aug 14 18:03:09 Fri Aug 14 18:07:47   00:16:31  00:30:00  Fri Aug 14 18:37:47    32  dcn102/16+dcn113/16 
+ks280353@dcn102:~/test/caf\D:\>cat nodes.txt 
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn102.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+dcn113.cluster
+ks280353@dcn102:~/test/caf\D:\>cat [K(reverse-i-search)`': c': cat nodes.txt [1@a': [1@t': cat hostname.f90 [21PD:\>cat hostname.f90 
+program hostnametest
+  implicit none
+  integer me
+  character(len=32) :: filename
+  character*32 hostname
+  character*128 modulepath
+
+  me = this_image()
+
+  call get_environment_variable('HOSTNAME',hostname)
+  print *, me, ': has hostname ', trim(hostname)
+  call flush()
+  sync all
+end program hostnametest
+ks280353@dcn102:~/test/caf\D:\>make
+caf hostname.f90 -o runMe.exe -g
+ks280353@dcn102:~/test/caf\D:\>(reverse-i-search)`': m': makep': mpiexec -machinefile nodes.txt -np 16 ./runMe.exe (reverse-i-search)`mp': [1@i': [1@e': [22PD:\>mpiexec -machinefile nodes.txt -np 16 ./runMe.exe 
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+	[C]: in function 'format'
+	/apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+	(tail call): ?
+	/apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+	/apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+	/apps/software/lmod/default/libexec/lmod:512: in function 'main'
+	/apps/software/lmod/default/libexec/lmod:570: in main chunk
+	[C]: ?
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+	[C]: in function 'format'
+	/apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+	(tail call): ?
+	/apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+	/apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+	/apps/software/lmod/default/libexec/lmod:512: in function 'main'
+	/apps/software/lmod/default/libexec/lmod:570: in main chunk
+	[C]: ?
+           1 : has hostname dcn102.cluster
+           9 : has hostname dcn102.cluster
+           5 : has hostname dcn102.cluster
+           7 : has hostname dcn102.cluster
+           8 : has hostname dcn102.cluster
+           6 : has hostname dcn102.cluster
+           4 : has hostname dcn102.cluster
+          13 : has hostname dcn102.cluster
+          12 : has hostname dcn102.cluster
+          10 : has hostname dcn102.cluster
+          15 : has hostname dcn102.cluster
+          16 : has hostname dcn102.cluster
+           2 : has hostname dcn102.cluster
+          11 : has hostname dcn102.cluster
+          14 : has hostname dcn102.cluster
+           3 : has hostname dcn102.cluster
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>mpiexec -machinefile nodes.txt -np 16 ./runMe.exe [1P[1P[1@3[1@2
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+	[C]: in function 'format'
+	/apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+	(tail call): ?
+	/apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+	/apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+	/apps/software/lmod/default/libexec/lmod:512: in function 'main'
+	/apps/software/lmod/default/libexec/lmod:570: in main chunk
+	[C]: ?
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+	[C]: in function 'format'
+	/apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+	(tail call): ?
+	/apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+	/apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+	/apps/software/lmod/default/libexec/lmod:512: in function 'main'
+	/apps/software/lmod/default/libexec/lmod:570: in main chunk
+	[C]: ?
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+mpiexec detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[34983,1],23]
+  Exit code:    127
+--------------------------------------------------------------------------
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>mpiexec -machinefile nodes.txt -np 32 ./runMe.exe [1P[1P[1@1[1@7
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+	[C]: in function 'format'
+	/apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+	(tail call): ?
+	/apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+	/apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+	/apps/software/lmod/default/libexec/lmod:512: in function 'main'
+	/apps/software/lmod/default/libexec/lmod:570: in main chunk
+	[C]: ?
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+	[C]: in function 'format'
+	/apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+	(tail call): ?
+	/apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+	/apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+	/apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+	/apps/software/lmod/default/libexec/lmod:512: in function 'main'
+	/apps/software/lmod/default/libexec/lmod:570: in main chunk
+	[C]: ?
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+./runMe.exe: error while loading shared libraries: libgfortran.so.5: cannot open shared object file: No such file or directory
+--------------------------------------------------------------------------
+mpiexec detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[35088,1],16]
+  Exit code:    127
+--------------------------------------------------------------------------
+ks280353@dcn102:~/test/caf\D:\>
+ks280353@dcn102:~/test/caf\D:\>exit
+exit
+
+Script done on Fri Aug 14 18:28:49 2020
