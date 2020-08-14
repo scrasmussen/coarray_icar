@@ -1,0 +1,92 @@
+D:\>cat ~/nodes.txt
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn046.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+dcn092.cluster
+
+D:\>mpiexec -machinefile ~/nodes.txt -np 32 ./test-ideal &> output.txt
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+        [C]: in function 'format'
+        /apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+        (tail call): ?
+        /apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+        /apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+        /apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+        /apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+        /apps/software/lmod/default/libexec/lmod:512: in function 'main'
+        /apps/software/lmod/default/libexec/lmod:570: in main chunk
+        [C]: ?
+/bin/lua: /apps/software/lmod/local/SitePackage.lua:72: bad argument #5 to 'format' (string expected, got nil)
+stack traceback:
+        [C]: in function 'format'
+        /apps/software/lmod/local/SitePackage.lua:72: in function </apps/software/lmod/local/SitePackage.lua:54>
+        (tail call): ?
+        /apps/software/lmod/default/libexec/Master.lua:379: in function 'load'
+        /apps/software/lmod/default/libexec/MasterControl.lua:1008: in function 'load'
+        /apps/software/lmod/default/libexec/MasterControl.lua:984: in function 'load_usr'
+        /apps/software/lmod/default/libexec/cmdfuncs.lua:455: in function 'cmd'
+        /apps/software/lmod/default/libexec/lmod:512: in function 'main'
+        /apps/software/lmod/default/libexec/lmod:570: in main chunk
+        [C]: ?
+           7 : has hostname dcn046.cluster
+           9 : has hostname dcn046.cluster
+          13 : has hostname dcn046.cluster
+          14 : has hostname dcn046.cluster
+          16 : has hostname dcn046.cluster
+ Number of images =           32
+           1 : has hostname dcn046.cluster
+           3 : has hostname dcn046.cluster
+           4 : has hostname dcn046.cluster
+           5 : has hostname dcn046.cluster
+           6 : has hostname dcn046.cluster
+           8 : has hostname dcn046.cluster
+          10 : has hostname dcn046.cluster
+          11 : has hostname dcn046.cluster
+          12 : has hostname dcn046.cluster
+          15 : has hostname dcn046.cluster
+          22 : has hostname dcn046.cluster
+          28 : has hostname dcn046.cluster
+          29 : has hostname dcn046.cluster
+          20 : has hostname dcn046.cluster
+          17 : has hostname dcn046.cluster
+          21 : has hostname dcn046.cluster
+          24 : has hostname dcn046.cluster
+          30 : has hostname dcn046.cluster
+          18 : has hostname dcn046.cluster
+          19 : has hostname dcn046.cluster
+          25 : has hostname dcn046.cluster
+          26 : has hostname dcn046.cluster
+          31 : has hostname dcn046.cluster
+          32 : has hostname dcn046.cluster
+          23 : has hostname dcn046.cluster
+          27 : has hostname dcn046.cluster
+           2 : has hostname dcn046.cluster
