@@ -1,5 +1,6 @@
 from mpl_toolkits import mplot3d
 from matplotlib.ticker import MaxNLocator
+from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import matplotlib.animation as animation
@@ -38,6 +39,7 @@ discrete_cmap = plt.get_cmap('tab20b')
 for i,size in enumerate(df.nx.unique()):
     l = df.loc[df.nx == size, ['nx','ny','nz']].iloc[0]
     label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
+    label = "With particles"
     plt.plot(df.n_particles, df.time, marker = '.',
              label=label)
              # color=discrete_cmap(i*4))
@@ -46,10 +48,34 @@ plt.plot([0,df.n_particles.max()], [943.596,943.596], marker = '.',
              label="Baseline: particles turned off", color='red')
 
 
-plt.legend(title="Dimensions")
-plt.xlabel("number of particles")
+# plt.legend(title="Dimensions")
+plt.legend()
+plt.xlabel("number of particles (million)")
 plt.ylabel("time (seconds)")
-plt.title("Particle Scaling, 500 timesteps, 16 images")
+
+def format_xaxis(value, tick_num):
+    return int(value / 1000000.0)
+
+ax = plt.gca()
+ax.ticklabel_format(axis="x",style='plain')
+ax.xaxis.set_major_formatter(plt.FuncFormatter(format_xaxis))
+# plt.title("Particle Scaling, 500 timesteps, 16 images")
+
+model = LinearRegression()
+model.fit(df.n_particles.values.reshape(-1,1), df.time.values.reshape(-1,1))
+print("Linear Regression: y = " +str(model.coef_[0][0])+"x + " +
+      str(model.intercept_[0]))
+r_squared = model.score(df.n_particles.values.reshape(-1,1),
+                      df.time.values.reshape(-1,1))
+print("Coefficient of determination R^2 = ", str(r_squared))
+# plt.plot(df.n_particles, model.predict(df.n_particles.values.reshape(-1,1)), color='red')
+
+
+a = model.coef_[0][0]
+b = model.intercept_[0]
+y = a * 40000000 + b
+time = 12 * 60 * 60
+print("y = ", str(y), "data = ", time, "error =",(time-y)/y)
 
 # plt.xscale('log', basex=2)
 # ax.set_xticklabels([])

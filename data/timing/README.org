@@ -1,0 +1,5 @@
+* particle timing results
+500 time steps
+small size
+stopped at particle size 40 mill because it took more than 12 hours to complete,
+ - job failed
