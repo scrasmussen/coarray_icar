@@ -29,7 +29,7 @@ submodule(convection_exchangeable_interface) &
   integer, save :: southeast_neighbor, southwest_neighbor
 
 contains
-  module subroutine const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
+  module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
       z_interface, ims, ime, kms, kme, jms, jme, dz_val, &
       its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
@@ -106,7 +106,7 @@ contains
     allocate( this%buf_southwest_in(buf_size)[*])
 
     call this%setup_neighbors(grid)
-  end subroutine const
+  end subroutine convect_const
 
   module function create_particle(particle_id, its, ite, kts, kte, jts, jte, &
       ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
@@ -932,7 +932,7 @@ contains
     real, intent(in) :: x, y
     real, intent(in) :: c00, c01, c10, c11
     integer, intent(in) :: x0, x1, y0, y1
-    real :: xd, yd, c00, c01, c10, c11, c0, c1, c
+    real :: xd, yd, c0, c1, c
     if (x0 .eq. x1) then
       c = c00 + (c11-c00) * (y-y0) / (y1-y0)
     else if (y0 .eq. y1) then

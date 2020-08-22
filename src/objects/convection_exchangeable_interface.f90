@@ -47,13 +47,13 @@ module convection_exchangeable_interface
 
    contains
      private
-     procedure, public :: const
+     procedure, public :: convect_const
      procedure, public :: send
      procedure, public :: retrieve
      procedure, public :: exchange
      procedure, public :: process
      procedure, public :: do_replacement
-     generic,   public :: initialize=>const
+     generic,   public :: initialize=>convect_const
 
      procedure :: put_north
      procedure :: put_south
@@ -86,7 +86,7 @@ module convection_exchangeable_interface
        class(exchangeable_t), intent(in), optional :: u_in, v_in, w_in
      end subroutine
 
-     module subroutine const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
+     module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
          z_interface, ims, ime, kms, kme, jms, jme, dz_val, &
          its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
        class(convection_exchangeable_t), intent(inout) :: this

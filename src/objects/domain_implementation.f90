@@ -98,7 +98,7 @@ contains
       this%jme = ubound(this%water_vapor%local,3)
 
       print *, this_image(),":::", this%ims, this%ime, "|", this%jms, this%jme
-      call flush()
+      ! call flush()
       sync all
       ! call exit
 
