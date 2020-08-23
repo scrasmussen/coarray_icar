@@ -327,6 +327,10 @@ contains
 
         this%ximg = mod(this_image()-1,  this%ximages)+1
         this%yimg = floor(real(this_image()-1) / this%ximages)+1
+        print *, this_image(), "read =", real(this_image()-1), "this%ximages", this%ximages
+        print *, this_image(), "----- floor =", floor(real(this_image()-1) / this%ximages)
+        print *, this_image(), "THIS YIMG = ", this%yimg
+        sync all
 
         x = (nx/float(xs))
         y = (ny/float(ys))
