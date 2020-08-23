@@ -27,6 +27,10 @@ contains
 
     if (allocated(this%local)) deallocate(this%local)
     this%north_boundary = (grid%yimg == grid%yimages)
+
+    print *, this_image(), "::", this%north_boundary
+    sync all
+    call exit
     this%south_boundary = (grid%yimg == 1)
     this%east_boundary  = (grid%ximg == grid%ximages)
     this%west_boundary  = (grid%ximg == 1)
