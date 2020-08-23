@@ -18,9 +18,9 @@ program main
     ! parameters to setup test
     integer, parameter :: timesteps = 20 ! 500
     logical            :: report = .true.
-    logical, parameter :: convection = .true.
+    logical, parameter :: convection = .false.
     logical, parameter :: sounding   = .false.
-    logical, parameter :: print_timestep = .false.
+    logical, parameter :: print_timestep = .true.
 
     integer :: i,nz, ypos,xpos, n_particles
     type(timer_t) :: timer
@@ -32,9 +32,9 @@ program main
     if (convection .eqv. .false.) report = .false.
 
     ! call get_environment_variable('HOSTNAME',hostname)
-    call MPI_Get_processor_name( processorname, len, ierr );
-    print *, me, ': has processor name ', trim(processorname)
-    sync all
+    ! call MPI_Get_processor_name( processorname, len, ierr );
+    ! print *, me, ': has processor name ', trim(processorname)
+    ! sync all
     ! call exit
 
     if (me==1) print *,me,"domain%initialize_from_file('input-parameters.txt')"
