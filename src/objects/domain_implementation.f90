@@ -332,6 +332,10 @@ contains
         sync all
         print *, "real =",  real(me-1)
         sync all
+
+        print *, "xim  =",  this%ximages
+        sync all
+
         print *, "div  =",  real(me-1) / this%ximages
         sync all
 
