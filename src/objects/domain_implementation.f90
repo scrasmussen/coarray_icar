@@ -283,6 +283,7 @@ contains
         integer :: ysplit, xsplit, xs, ys, i, me
         real :: best, current, x, y
 
+        integer :: orig, neww
         multiplier=1
         if (present(ratio)) multiplier = ratio
 
@@ -327,6 +328,8 @@ contains
 
         this%ximg = mod(this_image()-1,  this%ximages)+1
         this%yimg = floor(real(this_image()-1) / this%ximages)+1
+
+        orig = floor(real(this_image()-1) / this%ximages)+1
         me = this_image()
         ! print *, "me   =", me
         ! sync all
@@ -347,10 +350,10 @@ contains
 
         ! print *, "```  =",  floor(real(me-1) / this%ximages)
         ! sync all
-
+        neww = nint(real(me-1) / real(this%ximages))
         do i=1,num_images()
            if (i == me) then
-              print *, me, ":", floor(real(me-1) / this%ximages), "vs" , nint(real(me-1) / real(this%ximages))
+              print *, me, ":", orig, "vs", neww
            end if
         end do
         sync all
