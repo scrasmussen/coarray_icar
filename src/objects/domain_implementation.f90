@@ -327,6 +327,9 @@ contains
 
         this%ximg = mod(this_image()-1,  this%ximages)+1
         this%yimg = floor(real(this_image()-1) / this%ximages)+1
+        print *, "_____ 1.0 / 1 = ", 1.0 / 1
+
+        sync all
         print *, this_image(), "read =", real(this_image()-1), "this%ximages", this%ximages
         print *, this_image(), "----- floor =", floor(real(this_image()-1) / this%ximages)
         print *, this_image(), "THIS YIMG = ", this%yimg
