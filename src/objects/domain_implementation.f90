@@ -280,7 +280,7 @@ contains
         integer,         intent(in)    :: nx, ny, nimages
         real,            intent(in), optional :: ratio
         real :: multiplier
-        integer :: ysplit, xsplit, xs, ys, i
+        integer :: ysplit, xsplit, xs, ys, i, me
         real :: best, current, x, y
 
         multiplier=1
@@ -327,6 +327,8 @@ contains
 
         this%ximg = mod(this_image()-1,  this%ximages)+1
         this%yimg = floor(real(this_image()-1) / this%ximages)+1
+        print *, "```",  floor(real(this_image()-1) / this%ximages)
+        sync all
         print *, "_____ 1.0 / 1 = ", 1.0 / 1
 
         sync all
