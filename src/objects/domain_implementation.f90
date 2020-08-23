@@ -328,19 +328,34 @@ contains
         this%ximg = mod(this_image()-1,  this%ximages)+1
         this%yimg = floor(real(this_image()-1) / this%ximages)+1
         me = this_image()
-        print *, "me   =", me
-        sync all
-        print *, "real =",  real(me-1)
+        ! print *, "me   =", me
+        ! sync all
+        ! print *, "real =",  real(me-1)
+        ! sync all
+
+        ! print *, "xim  =",  this%ximages
+        ! sync all
+
+        ! print *, "div  =",  real(me-1) / real(this%ximages)
+        ! sync all
+
+        ! print *, "int  =",  int(real(me-1) / real(this%ximages))
+        ! sync all
+
+        ! print *, "nint =",  nint(real(me-1) / real(this%ximages))
+        ! sync all
+
+        ! print *, "```  =",  floor(real(me-1) / this%ximages)
+        ! sync all
+
+        do i=1,num_images()
+           if (i == me) then
+              print *, me, ":", floor(real(me-1) / this%ximages), "vs" , nint(real(me-1) / real(this%ximages))
+           end if
+        end do
         sync all
 
-        print *, "xim  =",  this%ximages
-        sync all
-
-        print *, "div  =",  real(me-1) / this%ximages
-        sync all
-
-        print *, "```  =",  floor(real(me-1) / this%ximages)
-        sync all
+        call exit
         ! print *, "_____ 1.0 / 1 = ", 1.0 / 1
 
         ! sync all
