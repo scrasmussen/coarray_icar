@@ -9,31 +9,37 @@ program main
 
   integer :: me
   me = this_image()
+  ! call TAU_PROFILE_SET_NODE(me)
   if (me==1) print *,"Number of images = ",num_images()
 
   block
     type(domain_t), save :: domain
 
     ! parameters to setup test
-    integer, parameter :: timesteps = 500
+    integer, parameter :: timesteps = 20 ! 500
     logical            :: report = .true.
     logical, parameter :: convection = .true.
-    logical, parameter :: print_timestep = .true.
+    logical, parameter :: sounding   = .false.
+    logical, parameter :: print_timestep = .false.
 
     integer :: i,nz, ypos,xpos, n_particles
     type(timer_t) :: timer
     logical :: exist
     character(len=32) :: filename
-    character*32 hostname
+    integer :: len, ierr
+    character*32 processorname
 
     if (convection .eqv. .false.) report = .false.
 
     ! call get_environment_variable('HOSTNAME',hostname)
-    ! print *, me, ': has hostname ', trim(hostname)
-    ! sync all
+    call MPI_Get_processor_name( processorname, len, ierr );
+    print *, me, ': has processor name ', trim(processorname)
+    sync all
+    ! call exit
 
     if (me==1) print *,me,"domain%initialize_from_file('input-parameters.txt')"
-    call domain%initialize_from_file('input-parameters.txt', convection)
+    call domain%initialize_from_file('input-parameters.txt', convection) !, &
+          ! sounding)
 
     if (me==1) then
         nz = size(domain%pressure,2)
@@ -89,15 +95,16 @@ program main
                   "particles per image for a total of", &
                   n_particles * num_images()
         else
+            n_particles = 0
             print *, "With no particles"
         end if
         print *,"Model run time:",timer%as_string('(f8.3," seconds")')
-
+        print *,"Model get_time():", timer%get_time()
         me = this_image()
 
         ! handle opening of file
-        write (filename,"(A18)") "timing_results.txt"
         if (me .eq. 1) then
+            write (filename,"(A18)") "timing_results.txt"
             inquire(file=filename, exist=exist)
             if (exist) then
                 open(unit=me, file=filename, status='old', position='append')
@@ -106,7 +113,7 @@ program main
             end if
             write(me,*) domain%nx_global, domain%nz, domain%ny_global, &
                   num_images(), domain%ximages, domain%yimages, &
-                  n_particles, timesteps, timer%as_string('(f8.3)')
+                  0, timesteps, timer%get_time()
             close(me)
         end if
 
