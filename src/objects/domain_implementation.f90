@@ -327,15 +327,23 @@ contains
 
         this%ximg = mod(this_image()-1,  this%ximages)+1
         this%yimg = floor(real(this_image()-1) / this%ximages)+1
-        print *, "```",  floor(real(this_image()-1) / this%ximages)
+        me = this_image()
+        print *, "me   =", me
         sync all
-        print *, "_____ 1.0 / 1 = ", 1.0 / 1
+        print *, "real =",  real(me-1)
+        sync all
+        print *, "div  =",  real(me-1) / this%ximages
+        sync all
 
+        print *, "```  =",  floor(real(me-1) / this%ximages)
         sync all
-        print *, this_image(), "read =", real(this_image()-1), "this%ximages", this%ximages
-        print *, this_image(), "----- floor =", floor(real(this_image()-1) / this%ximages)
-        print *, this_image(), "THIS YIMG = ", this%yimg
-        sync all
+        ! print *, "_____ 1.0 / 1 = ", 1.0 / 1
+
+        ! sync all
+        ! print *, this_image(), "read =", real(this_image()-1), "this%ximages", this%ximages
+        ! print *, this_image(), "----- floor =", floor(real(this_image()-1) / this%ximages)
+        ! print *, this_image(), "THIS YIMG = ", this%yimg
+        ! sync all
 
         x = (nx/float(xs))
         y = (ny/float(ys))
