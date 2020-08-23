@@ -103,6 +103,7 @@ contains
 
   module subroutine send(this)
     class(exchangeable_t), intent(inout) :: this
+    print *, this_image(), "norht boundary", this%north_boundary
     if (.not. this%north_boundary) call this%put_north
     if (.not. this%south_boundary) call this%put_south
     if (.not. this%east_boundary)  call this%put_east
@@ -155,7 +156,9 @@ contains
       end if
 
       !dir$ pgas defer_sync
+      print *, this_image(), "is sending to", north_neighbor
       this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+      sync all
   end subroutine
 
   module subroutine put_south(this)

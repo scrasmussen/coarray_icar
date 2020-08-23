@@ -23,10 +23,10 @@ submodule(convection_exchangeable_interface) &
   integer, parameter :: default_buf_size=1
   integer, parameter :: default_halo_size=1
   integer, save, allocatable :: neighbors(:)
-  integer, save :: north_neighbor, south_neighbor, buf_size, halo_size
-  integer, save :: east_neighbor, west_neighbor
-  integer, save :: northeast_neighbor, northwest_neighbor
-  integer, save :: southeast_neighbor, southwest_neighbor
+  integer, save :: north_con_neighbor, south_con_neighbor, buf_size, halo_size
+  integer, save :: east_con_neighbor, west_con_neighbor
+  integer, save :: northeast_con_neighbor, northwest_con_neighbor
+  integer, save :: southeast_con_neighbor, southwest_con_neighbor
 
 contains
   module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
@@ -678,7 +678,7 @@ contains
       return
     end if
 
-    this%buf_south_in(this%south_i)[north_neighbor] = particle
+    this%buf_south_in(this%south_i)[north_con_neighbor] = particle
     particle%exists=.false.
     this%south_i = this%south_i + 1
   end subroutine
@@ -692,7 +692,7 @@ contains
       return
     end if
 
-    this%buf_north_in(this%north_i)[south_neighbor] = particle
+    this%buf_north_in(this%north_i)[south_con_neighbor] = particle
     particle%exists=.false.
     this%north_i = this%north_i + 1
   end subroutine
@@ -706,7 +706,7 @@ contains
       return
     end if
 
-    this%buf_west_in(this%west_i)[east_neighbor] = particle
+    this%buf_west_in(this%west_i)[east_con_neighbor] = particle
     particle%exists=.false.
     this%west_i = this%west_i + 1
   end subroutine
@@ -720,7 +720,7 @@ contains
       return
     end if
 
-    this%buf_east_in(this%east_i)[west_neighbor] = particle
+    this%buf_east_in(this%east_i)[west_con_neighbor] = particle
     particle%exists=.false.
     this%east_i = this%east_i + 1
   end subroutine
@@ -734,7 +734,7 @@ contains
       return
     end if
 
-    this%buf_southwest_in(this%southwest_i)[northeast_neighbor] = particle
+    this%buf_southwest_in(this%southwest_i)[northeast_con_neighbor] = particle
     particle%exists=.false.
     this%southwest_i = this%southwest_i + 1
   end subroutine
@@ -748,7 +748,7 @@ contains
       return
     end if
 
-    this%buf_southeast_in(this%southeast_i)[northwest_neighbor] = particle
+    this%buf_southeast_in(this%southeast_i)[northwest_con_neighbor] = particle
     particle%exists=.false.
     this%southeast_i = this%southeast_i + 1
   end subroutine
@@ -762,7 +762,7 @@ contains
       return
     end if
 
-    this%buf_northwest_in(this%northwest_i)[southeast_neighbor] = particle
+    this%buf_northwest_in(this%northwest_i)[southeast_con_neighbor] = particle
     particle%exists=.false.
     this%northwest_i = this%northwest_i + 1
   end subroutine
@@ -776,7 +776,7 @@ contains
       return
     end if
 
-    this%buf_northeast_in(this%northeast_i)[southwest_neighbor] = particle
+    this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
     particle%exists=.false.
     this%northeast_i = this%northeast_i + 1
   end subroutine
@@ -822,14 +822,14 @@ contains
 
     if (.not.allocated(neighbors)) then
       associate(me=>this_image())
-        north_neighbor = me + grid%ximages
-        south_neighbor = me - grid%ximages
-        east_neighbor  = me + 1
-        west_neighbor  = me - 1
-        northeast_neighbor = me + grid%ximages + 1
-        northwest_neighbor = me + grid%ximages - 1
-        southeast_neighbor = me - grid%ximages + 1
-        southwest_neighbor = me - grid%ximages - 1
+        north_con_neighbor = me + grid%ximages
+        south_con_neighbor = me - grid%ximages
+        east_con_neighbor  = me + 1
+        west_con_neighbor  = me - 1
+        northeast_con_neighbor = me + grid%ximages + 1
+        northwest_con_neighbor = me + grid%ximages - 1
+        southeast_con_neighbor = me - grid%ximages + 1
+        southwest_con_neighbor = me - grid%ximages - 1
 
         n_neighbors = merge(0,1,this%south_boundary)  &
             +merge(0,1,this%north_boundary)  &
@@ -841,19 +841,19 @@ contains
 
         current = 1
         if (.not. this%south_boundary) then
-          neighbors(current) = south_neighbor
+          neighbors(current) = south_con_neighbor
           current = current+1
         endif
         if (.not. this%north_boundary) then
-          neighbors(current) = north_neighbor
+          neighbors(current) = north_con_neighbor
           current = current+1
         endif
         if (.not. this%east_boundary) then
-          neighbors(current) = east_neighbor
+          neighbors(current) = east_con_neighbor
           current = current+1
         endif
         if (.not. this%west_boundary) then
-          neighbors(current) = west_neighbor
+          neighbors(current) = west_con_neighbor
           current = current+1
         endif
         ! if current = 1 then all of the boundaries were set, just store ourself as our "neighbor"
@@ -868,31 +868,31 @@ contains
             n_images = num_images()
             ! --- handle diagonals
             if (this%north_boundary .eqv. .true.) then
-              northeast_neighbor = modulo( (me+nx+1)-nimages, (nx+1))
-              if (northeast_neighbor .eq. 0) northeast_neighbor = 1
-              northwest_neighbor = (me+nx-1)-nimages
-              if (northwest_neighbor .eq. 0) northwest_neighbor = nx
+              northeast_con_neighbor = modulo( (me+nx+1)-nimages, (nx+1))
+              if (northeast_con_neighbor .eq. 0) northeast_con_neighbor = 1
+              northwest_con_neighbor = (me+nx-1)-nimages
+              if (northwest_con_neighbor .eq. 0) northwest_con_neighbor = nx
             else  if (this%east_boundary .eqv. .true.) then
-              northeast_neighbor = me + 1
+              northeast_con_neighbor = me + 1
             else  if (this%west_boundary .eqv. .true.) then
-              northwest_neighbor = me + nx * 2 - 1
+              northwest_con_neighbor = me + nx * 2 - 1
             end if
 
             if (this%south_boundary .eqv. .true.) then
-              southeast_neighbor = me + nimages - nx + 1
-              if (southeast_neighbor > nimages) then
-                southeast_neighbor = southeast_neighbor - nx
+              southeast_con_neighbor = me + nimages - nx + 1
+              if (southeast_con_neighbor > nimages) then
+                southeast_con_neighbor = southeast_con_neighbor - nx
               end if
-              southwest_neighbor = me + nimages - nx - 1
-              if (modulo(southwest_neighbor,nx) == 0) then
-                southwest_neighbor = nimages
+              southwest_con_neighbor = me + nimages - nx - 1
+              if (modulo(southwest_con_neighbor,nx) == 0) then
+                southwest_con_neighbor = nimages
               end if
-              ! southwest_neighbor = - 2
+              ! southwest_con_neighbor = - 2
             else  if (this%east_boundary .eqv. .true.) then
-              southeast_neighbor = me - nx * 2 + 1
+              southeast_con_neighbor = me - nx * 2 + 1
             else  if (this%west_boundary .eqv. .true.) then
-              southwest_neighbor = me - 1
-              ! southwest_neighbor = - 1
+              southwest_con_neighbor = me - 1
+              ! southwest_con_neighbor = - 1
             end if
             ! this%northeast_boundary = .false.
             ! this%northwest_boundary = .false.
@@ -901,22 +901,22 @@ contains
 
             ! --- handle up/down/left/right
             if (this%north_boundary .eqv. .true.) then
-              north_neighbor = north_neighbor - n_images
+              north_con_neighbor = north_con_neighbor - n_images
               this%north_boundary = .false.
               this%wrapped_north = .true.
             end if
             if (this%south_boundary .eqv. .true.) then
-              south_neighbor = south_neighbor + n_images
+              south_con_neighbor = south_con_neighbor + n_images
               this%south_boundary = .false.
               this%wrapped_south = .true.
             end if
             if (this%east_boundary .eqv. .true.) then
-              east_neighbor = east_neighbor - grid%ximages
+              east_con_neighbor = east_con_neighbor - grid%ximages
               this%east_boundary = .false.
               this%wrapped_east = .true.
             end if
             if (this%west_boundary .eqv. .true.) then
-              west_neighbor = west_neighbor + grid%ximages
+              west_con_neighbor = west_con_neighbor + grid%ximages
               this%west_boundary = .false.
               this%wrapped_west = .true.
             end if
