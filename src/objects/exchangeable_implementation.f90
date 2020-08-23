@@ -26,6 +26,9 @@ contains
     end if
 
     if (allocated(this%local)) deallocate(this%local)
+    print *, this_image(), "grid%yimg", grid%yimg, "grid%yimages", grid%yimages
+    print *, this_image(), "grid%ximg", grid%ximg, "grid%ximages", grid%ximages
+    sync all
     this%north_boundary = (grid%yimg == grid%yimages)
 
     print *, this_image(), "::", this%north_boundary
