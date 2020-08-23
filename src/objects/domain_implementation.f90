@@ -355,6 +355,7 @@ contains
            if (i == me) then
               print *, me, ":", orig, "vs", neww
            end if
+           sync all
         end do
         sync all
 
