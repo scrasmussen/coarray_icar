@@ -26,14 +26,7 @@ contains
     end if
 
     if (allocated(this%local)) deallocate(this%local)
-    print *, this_image(), "grid%yimg", grid%yimg, "grid%yimages", grid%yimages
-    print *, this_image(), "grid%ximg", grid%ximg, "grid%ximages", grid%ximages
-    sync all
     this%north_boundary = (grid%yimg == grid%yimages)
-
-    print *, this_image(), "::", this%north_boundary
-    sync all
-    call exit
     this%south_boundary = (grid%yimg == 1)
     this%east_boundary  = (grid%ximg == grid%ximages)
     this%west_boundary  = (grid%ximg == 1)
@@ -110,7 +103,6 @@ contains
 
   module subroutine send(this)
     class(exchangeable_t), intent(inout) :: this
-    print *, this_image(), "norht boundary", this%north_boundary
     if (.not. this%north_boundary) call this%put_north
     if (.not. this%south_boundary) call this%put_south
     if (.not. this%east_boundary)  call this%put_east
@@ -163,9 +155,7 @@ contains
       end if
 
       !dir$ pgas defer_sync
-      print *, this_image(), "is sending to", north_neighbor
       this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
-      sync all
   end subroutine
 
   module subroutine put_south(this)
