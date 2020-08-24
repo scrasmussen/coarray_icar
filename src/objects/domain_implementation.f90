@@ -350,7 +350,9 @@ contains
 
         ! print *, "```  =",  floor(real(me-1) / this%ximages)
         ! sync all
-        neww = nint(real(me-1) / real(this%ximages))
+        ! neww = (real(me) / this%ximages) + 1
+        neww = (me / (this%ximages+0.1)) + 1
+
         do i=1,num_images()
            if (i == me) then
               print *, me, ":", orig, "vs", neww
