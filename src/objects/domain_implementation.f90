@@ -4,7 +4,7 @@ submodule(domain_interface) domain_implementation
   ! use convection_object_interface, only : convection_object
   use assertions_interface, only : assert,assertions
   use iso_fortran_env, only : error_unit
-  use grid_interface, only : grid_t
+  ! use grid_interface, only : grid_t
   implicit none
 
 
@@ -329,7 +329,7 @@ contains
         this%ximg = mod(this_image()-1,  this%ximages) + 1
         ! original: works with GNU, not with Cray
         ! this%yimg = floor(real(this_image()-1) / this%ximages) + 1
-        this%yimg = (this_image() / (this%ximages + 0.1)) + 1
+        this%yimg = floor(this_image() / (this%ximages + 0.1)) + 1
 
         x = (nx/float(xs))
         y = (ny/float(ys))
