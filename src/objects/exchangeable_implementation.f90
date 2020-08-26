@@ -1,6 +1,6 @@
 submodule(exchangeable_interface) exchangeable_implementation
   use assertions_interface, only : assert, assertions
-  use grid_interface, only : grid_t
+  ! use grid_interface, only : grid_t
   implicit none
 
   integer, parameter :: default_halo_size=2
