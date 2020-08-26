@@ -7,16 +7,20 @@ program main
   use convection_exchangeable_interface, only : num_particles
   implicit none
 
-  integer :: me
+  integer :: me, ierrr
   me = this_image()
   ! call TAU_PROFILE_SET_NODE(me)
+#if _CRAYFTN
+  call assign('assign -S on -y on p:%.txt', ierrr)
+#endif
+
   if (me==1) print *,"Number of images = ",num_images()
 
   block
     type(domain_t), save :: domain
 
     ! parameters to setup test
-    integer, parameter :: timesteps = 20 ! 500
+    integer, parameter :: timesteps = 500
     logical            :: report = .true.
     logical, parameter :: convection = .false.
     logical, parameter :: sounding   = .false.
