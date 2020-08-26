@@ -1,10 +1,8 @@
 submodule(convection_exchangeable_interface) &
     convection_exchangeable_implementation
   use assertions_interface, only : assert, assertions
-  use exchangeable_interface, only : exchangeable_t
+  ! use exchangeable_interface, only : exchangeable_t
   use domain_interface, only : pressure_at_elevation, exner_function, sat_mr
-
-  use grid_interface, only : grid_t
   implicit none
 
   ! ----- PARAMETERS TO TUNE CONVECTION MODEL -----
