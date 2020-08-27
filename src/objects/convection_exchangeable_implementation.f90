@@ -1,16 +1,16 @@
 submodule(convection_exchangeable_interface) &
     convection_exchangeable_implementation
   use assertions_interface, only : assert, assertions
-  use exchangeable_interface, only : exchangeable_t
+  ! use exchangeable_interface, only : exchangeable_t
   use domain_interface, only : pressure_at_elevation, exner_function, sat_mr
 
-  use grid_interface, only : grid_t
+  ! use grid_interface, only : grid_t
   implicit none
 
   ! ----- PARAMETERS TO TUNE CONVECTION MODEL -----
   logical, parameter :: wrap_neighbors = .true.
-  logical, parameter :: convection = .true.
-  logical, parameter :: wind = .true.
+  logical, parameter :: convection = .false.
+  logical, parameter :: wind = .false.
   logical, parameter :: relative_humidity = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
