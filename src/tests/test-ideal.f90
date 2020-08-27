@@ -24,7 +24,7 @@ program main
     logical            :: report = .true.
     logical, parameter :: convection = .false.
     logical, parameter :: sounding   = .false.
-    logical, parameter :: print_timestep = .true.
+    logical, parameter :: print_timestep = .false.
 
     integer :: i,nz, ypos,xpos, n_particles
     type(timer_t) :: timer
