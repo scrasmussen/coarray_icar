@@ -9,14 +9,15 @@ submodule(convection_exchangeable_interface) &
 
   ! ----- PARAMETERS TO TUNE CONVECTION MODEL -----
   logical, parameter :: wrap_neighbors = .true.
-  logical, parameter :: convection = .false.
-  logical, parameter :: wind = .false.
+  logical, parameter :: convection = .true.
+  logical, parameter :: wind = .true.
+  logical, parameter :: fake_wind_correction = .false.
   logical, parameter :: relative_humidity = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: replacement = .true.
   logical, parameter :: random_init_flag = .false.
-  integer, parameter :: particles_per_image = 25
+  integer, parameter :: particles_per_image = 2 * 1000000
   integer, parameter :: local_buf_size = particles_per_image * 4
   ! -----------------------------------------------
 
@@ -52,16 +53,23 @@ contains
     integer :: x0, x1, z0, z1, y0, y1
     logical :: calc
     me = this_image()
-    if (present(input_buf_size)) then
-      buf_size = input_buf_size
-    else
-      buf_size = default_buf_size
-    end if
+    ! if (present(input_buf_size)) then
+    !   buf_size = input_buf_size
+    !   print *, 'using input_buf_size'
+    ! else
+    !   buf_size = default_buf_size
+    !   print *, 'using default_buf_size'
+    ! end if
+    buf_size = particles_per_image
+
     if (present(halo_width)) then
       halo_size = halo_width
     else
       halo_size = default_halo_size
     end if
+
+    ! if (me .eq. 1) print *, "Buf size is", buf_size
+
 
     if (allocated(this%local)) deallocate(this%local)
     this%north_boundary = (grid%yimg == grid%yimages)
@@ -160,7 +168,6 @@ contains
       z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
           A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
     end associate
-
 
     ! print *, "z meters =" , z_meters, "z =", z, "zm =", z_m(x0,z0,y0)
     ! print *, "z_interface_val =", z_interface_val, "try =", z*dz_val + z_interface_val -250
@@ -287,9 +294,7 @@ contains
                   particle%particle_id, T, T_prime
               particle%z = -1
               print *, p0, z_displacement, gravity, particle%temperature
-              cycle
-              ! call flush()
-              ! call exit
+              call exit
             else
               particle%z = particle%z + delta_z
               particle%velocity = z_displacement
@@ -305,6 +310,10 @@ contains
           !-----------------------------------------------------------------
           if (wind .eqv. .true.) then
             wind_correction = (1.0 / dz) ! real correction
+            wind_correction = (1.0 / 10) ! real correction
+            if (fake_wind_correction .eqv. .true.) then
+                wind_correction = 1.0
+            end if
             ! u: zonal velocity, wind towards the east
             particle%x = particle%x + (particle%u * wind_correction)
             ! v: meridional velocity, wind towards north
@@ -312,6 +321,7 @@ contains
             associate (A => z_interface, x=> particle%x, y=>particle%y)
               x0 = floor(x); x1 = ceiling(x)
               y0 = floor(y); y1 = ceiling(y)
+
               z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
                   A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
             end associate
@@ -354,8 +364,7 @@ contains
             ! cycle
           else if (particle%z .gt. kte) then
             particle%exists=.false.
-            print *, "----REPLACEMENT IS NEEDED !!----"
-            print *, present(z_m)
+            ! print *, "----REPLACEMENT IS NEEDED !!----", particle%particle_id
             particle = create_particle(particle%particle_id, &
                 its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                 z_m, potential_temp, z_interface, u_in, v_in, w_in)
@@ -385,10 +394,8 @@ contains
                   particle%particle_id, particle%temperature, &
                   exner_function(particle%pressure), particle%pressure, &
                   particle%potential_temp
-              print*, p0, z_displacement, gravity ,287.05,particle%temperature
-              particle%exists = .false.
-              ! call flush()
-              ! call exit
+              ! print*, p0, z_displacement, gravity ,287.05,particle%temperature
+              call exit
             end if
           end if
           !-----------------------------------------------------------------
@@ -510,15 +517,20 @@ contains
           ! Move particle if needed
           !-----------------------------------------------------------------
           associate (x => particle%x, y => particle%y, z => particle%z)
-            if (x .lt. its .or. x .gt. ite .or. &
-                z .lt. kms .or. z .gt. kme .or. &
-                y .lt. jts .or. y .gt. jte) then
-              if (caf_comm_message .eqv. .true.) then
-                print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
-                    "FROM", this_image(), "id:", particle%particle_id, &
-                    "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
-                print *, "------"
-              end if
+            if (caf_comm_message .eqv. .true.) then
+                if (  x .lt. its-1 .or. x .gt. ite+1 .or. &
+                      z .lt. kms-1 .or. z .gt. kme   .or. &
+                      y .lt. jts-1 .or. y .gt. jte+1 .or. &
+                      x .lt. 1 .or. x .gt. nx_global .or. &
+                      y .lt. 1 .or. y .gt. ny_global &
+                    ) then
+                    ! if (particle%particle_id .eq. 488208) then
+                    print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
+                          "FROM", this_image(), "id:", particle%particle_id, &
+                          "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
+                    print *, "------"
+                    ! end if
+                end if
             end if
 
             xx = x
@@ -527,42 +539,50 @@ contains
             ! properly updated
             if (wrap_neighbors .eqv. .true.) then
               if (x > nx_global) then
-                if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+                !     , particle%particle_id
                 x = x - nx_global + 1
+                xx = xx + 2
               else if (x < 1) then
-                if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+                !     , particle%particle_id
                 x = x + nx_global - 1
+                xx = xx - 2
               end if
 
               if (y > ny_global) then
-                if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+                !     , particle%particle_id
                 y = y - ny_global + 1
+                yy = yy + 2
               else if (y < 1) then
-                if (caf_comm_message .eqv. .true.) print *, "WRAPPED"
+                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+                !     , particle%particle_id
                 y = y + ny_global - 1
+                yy = yy - 2
               end if
             end if
 
             ! Check values to know where to send particle
-            if (yy .lt. jts) then      ! "jts  <   y    <  jte"
-              if (xx .lt. its) then
+            if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
+              if (xx .lt. its-1) then
                 call this%put_southwest(particle)
-              else if (xx .gt. ite) then
+              else if (xx .gt. ite+1) then
                 call this%put_southeast(particle)
               else
                 call this%put_south(particle)
               end if
-            else if (yy .gt. jte) then ! jts will be 1
-              if (xx .lt. its) then
+            else if (yy .gt. jte+1) then ! jts will be 1
+              if (xx .lt. its-1) then
                 call this%put_northwest(particle)
-              else if (xx .gt. ite) then
+              else if (xx .gt. ite+1) then
                 call this%put_northeast(particle)
               else
                 call this%put_north(particle)
               endif
-            else if (xx .lt. its) then ! "its  <   x    <  ite"
+            else if (xx .lt. its-1) then ! "its  <   x    <  ite"
               call this%put_west(particle)      ! need to double check this!
-            else if (xx .gt. ite) then
+            else if (xx .gt. ite+1) then
               call this%put_east(particle)
             end if
           end associate
