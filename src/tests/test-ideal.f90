@@ -22,7 +22,7 @@ program main
     ! parameters to setup test
     integer, parameter :: timesteps = 500
     logical            :: report = .true.
-    logical, parameter :: convection = .false.
+    logical, parameter :: convection = .true.
     logical, parameter :: sounding   = .false.
     logical, parameter :: print_timestep = .false.
 
