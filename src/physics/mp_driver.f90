@@ -1,7 +1,6 @@
 module module_mp_driver
     use domain_interface,   only: domain_t
     use module_mp_thompson, only: thompson_init, mp_gt_driver
-    use grid_interface, only : grid_t
     logical :: initialized = .false.
 contains
 
@@ -99,7 +98,6 @@ contains
         logical,        intent(in),   optional :: convected_particles
         logical                       :: convect_particles
         integer                       :: dz_lb(3)
-        type(grid_t) :: grid
 
         if (.not. initialized) call mp_init(domain)
 
@@ -112,21 +110,20 @@ contains
         if (present(subset)) then
 
           dz_lb = lbound(domain%dz_interface)
-          grid = domain%get_grid_dimensions()
 
           if (convect_particles .eqv. .true.) then
             if (domain%convection_obj%do_replacement() .eqv. .false.) then
               call domain%convection_obj%process( &
                   domain%nx_global, domain%ny_global, &
-                  grid%ims, grid%ime, grid%kms, grid%kme, grid%jms, grid%jme, &
+                  domain%ims, domain%ime, domain%kms, domain%kme, domain%jms, domain%jme, &
                   dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
                   domain%temperature, domain%z_interface(:,1,:), &
                   domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
                   domain%jte)
-            else
+          else
               call domain%convection_obj%process( &
                   domain%nx_global, domain%ny_global, &
-                  grid%ims, grid%ime, grid%kms, grid%kme, grid%jms, grid%jme, &
+                  domain%ims, domain%ime, domain%kms, domain%kme, domain%jms, domain%jme, &
                   dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
                   domain%temperature, domain%z_interface(:,1,:), &
                   domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
