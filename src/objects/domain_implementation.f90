@@ -79,9 +79,7 @@ contains
 
       ! this permits arrays to have starting indices that are not 1
       grid = this%get_grid_dimensions()
-      ! call  flush()
-      ! sync all
-      ! call exit
+
       this%its = grid%ims
       this%jts = grid%jms
       this%kts = grid%kms
@@ -97,20 +95,10 @@ contains
       this%kme = ubound(this%water_vapor%local,2)
       this%jme = ubound(this%water_vapor%local,3)
 
-      print *, this_image(),":::", this%ims, this%ime, "|", this%jms, this%jme
-      ! call flush()
-      sync all
-      ! call exit
-
       ! initially set the tile to process to be set in one from the edges of memory
       if (assertions) call assert((this%ime - this%ims+1) >= 2, "x dimension has too few elements")
       if (assertions) call assert((this%jme - this%jms+1) >= 2, "y dimension has too few elements")
       if (assertions) call assert((this%kme - this%kms+1) >= 2, "z dimension has too few elements")
-
-      ! ! print *, this_image(), ":j", this%jts, this%jte, this%jms, this%jme
-      ! call flush()
-      ! sync all
-      ! call exit
 
       ! The entire model domain begins at 1 and ends at nx,y,z
       this%ids = 1
@@ -174,7 +162,7 @@ contains
 
           if (convected_particles .eqv. .true.) then
             call this%convection_obj%initialize(this%potential_temperature, &
-                this%u, this%v, this%w, this%get_grid_dimensions(), this%z, &
+                this%u, this%v, this%w, grid, this%z, &
                 this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
                 this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
                 input_buf_size=8,halo_width=2)
@@ -615,8 +603,6 @@ contains
         if (image .eq. me) then
           open(unit=me, file=filename, status='old', position='append')
           do i=1,ubound(this%convection_obj%local,1)
-            ! print *, me, ":", this%convection_obj%local(i)%exists, i
-
             if (this%convection_obj%local(i)%exists .eqv. .true.) then
               write(me,*) me, step, this%convection_obj%local(i)
             end if
