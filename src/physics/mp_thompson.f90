@@ -422,7 +422,7 @@
       CHARACTER*256:: mp_debug
 
 
-      INTEGER:: i, j, k, l, m, n
+      INTEGER:: i, j, k, l, m, n, stat
       REAL:: h_01, niIN3, niCCN3, max_test
       LOGICAL:: micro_init, has_CCN, has_IN
       type(timer_t) :: timer
@@ -560,36 +560,84 @@
 !..Allocate space for lookup tables (J. Michalakes 2009Jun08).
 
       if (.NOT. ALLOCATED(tcg_racg) ) then
-         ALLOCATE(tcg_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
+         ALLOCATE(tcg_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
+         if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
          micro_init = .TRUE.
       endif
 
-      if (.NOT. ALLOCATED(tmr_racg)) ALLOCATE(tmr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcr_gacr)) ALLOCATE(tcr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tmg_gacr)) ALLOCATE(tmg_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_racg)) ALLOCATE(tnr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_gacr)) ALLOCATE(tnr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*])
+      if (.NOT. ALLOCATED(tmr_racg)) &
+           ALLOCATE(tmr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcr_gacr)) &
+           ALLOCATE(tcr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tmg_gacr)) &
+           ALLOCATE(tmg_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_racg)) &
+           ALLOCATE(tnr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_gacr)) &
+           ALLOCATE(tnr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
 
-      if (.NOT. ALLOCATED(tcs_racs1)) ALLOCATE(tcs_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tmr_racs1)) ALLOCATE(tmr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcs_racs2)) ALLOCATE(tcs_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tmr_racs2)) ALLOCATE(tmr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcr_sacr1)) ALLOCATE(tcr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tms_sacr1)) ALLOCATE(tms_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tcr_sacr2)) ALLOCATE(tcr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tms_sacr2)) ALLOCATE(tms_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_racs1)) ALLOCATE(tnr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_racs2)) ALLOCATE(tnr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_sacr1)) ALLOCATE(tnr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
-      if (.NOT. ALLOCATED(tnr_sacr2)) ALLOCATE(tnr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*])
+      if (.NOT. ALLOCATED(tcs_racs1)) &
+           ALLOCATE(tcs_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tmr_racs1)) &
+           ALLOCATE(tmr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcs_racs2)) &
+           ALLOCATE(tcs_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tmr_racs2)) &
+           ALLOCATE(tmr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcr_sacr1)) &
+           ALLOCATE(tcr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tms_sacr1)) &
+           ALLOCATE(tms_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcr_sacr2)) &
+           ALLOCATE(tcr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tms_sacr2)) &
+           ALLOCATE(tms_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_racs1)) &
+           ALLOCATE(tnr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_racs2)) &
+           ALLOCATE(tnr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_sacr1)) &
+           ALLOCATE(tnr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_sacr2)) &
+           ALLOCATE(tnr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
 
-      if (.NOT. ALLOCATED(tpi_qcfz)) ALLOCATE(tpi_qcfz(ntb_c,nbc,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tni_qcfz)) ALLOCATE(tni_qcfz(ntb_c,nbc,45,ntb_IN)[*])
 
-      if (.NOT. ALLOCATED(tpi_qrfz)) ALLOCATE(tpi_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tpg_qrfz)) ALLOCATE(tpg_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tni_qrfz)) ALLOCATE(tni_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
-      if (.NOT. ALLOCATED(tnr_qrfz)) ALLOCATE(tnr_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*])
+      if (.NOT. ALLOCATED(tpi_qcfz)) &
+           ALLOCATE(tpi_qcfz(ntb_c,nbc,45,ntb_IN)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tni_qcfz)) &
+           ALLOCATE(tni_qcfz(ntb_c,nbc,45,ntb_IN)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+
+      if (.NOT. ALLOCATED(tpi_qrfz)) &
+           ALLOCATE(tpi_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tpg_qrfz)) &
+           ALLOCATE(tpg_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tni_qrfz)) &
+           ALLOCATE(tni_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_qrfz)) &
+           ALLOCATE(tnr_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
+      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
 
       if (.NOT. ALLOCATED(tps_iaus)) ALLOCATE(tps_iaus(ntb_i,ntb_i1))
       if (.NOT. ALLOCATED(tni_iaus)) ALLOCATE(tni_iaus(ntb_i,ntb_i1))
