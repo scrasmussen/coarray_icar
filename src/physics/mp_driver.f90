@@ -102,9 +102,10 @@ contains
         if (.not. initialized) call mp_init(domain)
 
         convect_particles = .false.
-        if (present(convected_particles) .and. &
-            convected_particles .eqv. .true.) then
-          convect_particles = .true.
+        if (present(convected_particles)) then
+           if (convected_particles .eqv. .true.) then
+              convect_particles = .true.
+           end if
         end if
 
         if (present(subset)) then
