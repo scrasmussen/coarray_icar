@@ -93,9 +93,6 @@ contains
         if (current == 1) then
             neighbors(current) = me
         endif
-        print *, this_image(), ":: north", north_neighbor, ": east", &
-             east_neighbor, ": south", south_neighbor, &
-             ": west", west_neighbor
       end associate
     endif
 
@@ -248,6 +245,18 @@ contains
       ny = size(this%local,3)
 
       this%local(start:start+halo_size-1,:,:) = this%halo_west_in(1:halo_size,:,1:ny)
+  end subroutine
+
+  module subroutine print_neighbors(this)
+      class(exchangeable_t), intent(in) :: this
+      integer :: me, i
+      me = this_image()
+      if (me .eq. 1) print *, "num images = ", num_images()
+      do i=1,num_images()-1
+         if (me .eq. i) print *, me, ":", neighbors
+         sync all
+      end do
+      sync all
   end subroutine
 
 end submodule

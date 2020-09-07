@@ -17,7 +17,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: replacement = .true.
   logical, parameter :: random_init_flag = .false.
-  integer, parameter :: particles_per_image = 2 * 1000000
+  integer, parameter :: particles_per_image = 1 !2 * 1000000
   integer, parameter :: local_buf_size = particles_per_image * 4
   ! -----------------------------------------------
 
