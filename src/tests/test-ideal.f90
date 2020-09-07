@@ -21,8 +21,8 @@ program main
 
     ! parameters to setup test
     integer, parameter :: timesteps = 500
-    logical            :: report = .true.
-    logical, parameter :: convection = .true.
+    logical            :: report = .false.
+    logical, parameter :: convection = .false.
     logical, parameter :: sounding   = .false.
     logical, parameter :: print_timestep = .false.
 
@@ -60,6 +60,7 @@ program main
     ypos = ypos + lbound(domain%accumulated_precipitation,2)
 
     ! initialize microphysics before starting the timer
+    if (me==1) print*, "Initializing microphysics..."
     call microphysics(domain, dt = 20.0)
 
     if (me==1) print*, ""
