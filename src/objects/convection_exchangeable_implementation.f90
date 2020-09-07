@@ -17,7 +17,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: replacement = .true.
   logical, parameter :: random_init_flag = .false.
-  integer, parameter :: particles_per_image = 2 * 1000000
+  integer, parameter :: particles_per_image = 1 ! 2 * 1000000
   integer, parameter :: local_buf_size = particles_per_image * 4
   ! -----------------------------------------------
 
@@ -393,9 +393,10 @@ contains
               print *, me, ":: ~~~~~~NAN~~~~~~", &
                   particle%particle_id, particle%temperature, &
                   exner_function(particle%pressure), particle%pressure, &
-                  particle%potential_temp
+                  particle%potential_temp, p0, z_displacement
               ! print*, p0, z_displacement, gravity ,287.05,particle%temperature
-              call exit
+              particle%exists = .false.
+              ! call exit
             end if
           end if
           !-----------------------------------------------------------------
@@ -672,18 +673,19 @@ contains
     implicit none
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: buf(:)[*]
-    integer :: i, n, local_i, local_n
-    n = ubound(buf, dim=1)
+    integer :: i, buf_n, local_i, local_n
+    buf_n = ubound(buf, dim=1)
     local_n = ubound(this%local, dim=1)
-    do i=1,n
+    local_i = 1
+    do i=1,buf_n
       associate (particle=>buf(i))
         if (particle%exists .eqv. .true.) then
-          do local_i=1,local_n
-            if (this%local(local_i)%exists .eqv. .false.) then
-              call particle%move_to(this%local(local_i))
-              exit
-            end if
-          end do
+          if (this%local(local_i)%exists .eqv. .false.) then
+            call particle%move_to(this%local(local_i))
+            local_i = local_i + 1
+            exit
+          end if
+          local_i = local_i + 1
         end if
       end associate
     end do
