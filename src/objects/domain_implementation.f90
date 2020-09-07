@@ -269,7 +269,7 @@ contains
         real,            intent(in), optional :: ratio
         real :: multiplier
         integer :: ysplit, xsplit, xs, ys, i, me
-        real :: best, current, x, y
+        real :: best, current, x, y, infinitesimal
 
         integer :: orig, neww
         multiplier=1
@@ -317,7 +317,9 @@ contains
         this%ximg = mod(this_image()-1,  this%ximages) + 1
         ! original: works with GNU, not with Cray
         ! this%yimg = floor(real(this_image()-1) / this%ximages) + 1
-        this%yimg = floor(this_image() / (this%ximages + 0.1)) + 1
+        infinitesimal = 0.00000000000000000000000000000001
+        this%yimg = floor(real(this_image()-1) / (this%ximages+infinitesimal)) &
+             + 1
 
         x = (nx/float(xs))
         y = (ny/float(ys))

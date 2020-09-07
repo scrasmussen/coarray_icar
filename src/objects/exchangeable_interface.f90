@@ -24,6 +24,7 @@ module exchangeable_interface
     procedure, public :: send
     procedure, public :: retrieve
     procedure, public :: exchange
+    procedure, public :: print_neighbors
     generic,   public :: initialize=>const
 
     procedure :: put_north
@@ -105,7 +106,9 @@ module exchangeable_interface
         class(exchangeable_t), intent(inout) :: this
     end subroutine
 
-
+    module subroutine print_neighbors(this)
+        class(exchangeable_t), intent(in) :: this
+    end subroutine
   end interface
 
 end module
