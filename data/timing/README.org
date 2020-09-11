@@ -6,7 +6,8 @@ stopped at particle size 40 mill because it took more than 12 hours to complete,
 
 * removed plot points
 
-in cray_timing_results.txt, 24 images on 2x16 nodes muddles the point
+in cray_timing_results.txt, 64 images on 2x44 nodes muddles the point
+ 2000 30 2000 64 8 8 0 500 3983.52393 2
 
 in gcc9_timing_results.txt, 24 images on 2x16 nodes muddles the point
 -         500          30         500          24           4           6           0         500   8743.59668
