@@ -15,7 +15,15 @@ if (len(sys.argv) < 2):
 f = open(sys.argv[1])
 header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time']
-df = pd.read_csv(f, sep='\s+',header=None, names=header)
+header2 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+          'time', 'n_nodes']
+
+# df = pd.read_csv(f, sep='\s+',header=None, names=header)
+df = pd.read_csv(f, sep='\s+',header=None)
+if (len(df.columns) == 9):
+    df.columns = header
+elif (len(df.columns) == 10):
+    df.columns = header2
 
 
 # --- animation ----
@@ -52,7 +60,12 @@ plt.plot([1,max_np],[1,max_np],label="ideal speedup", linestyle='--')
 # --- plot strong scaling speedup ---
 amdahl_x=[]
 amdahl=[]
-s = 0.1
+if (f.name == 'timing_results.txt'):
+    s = 0.1
+elif (f.name == 'gcc9_timing_results.txt'):
+    s = 0.2
+elif (f.name == 'cray_timing_results.txt'):
+    s = 0.03
 p = 1 - s
 for n in range(1,max_np+1):
     amdahl_x.append(n)
@@ -63,7 +76,7 @@ plt.plot(amdahl_x,amdahl,label="Amdahl's Law s="+str(s), linestyle=':')
 plt.legend(title="Dimensions")
 plt.xlabel("number of images")
 plt.ylabel("speedup")
-plt.title("Speedup")
+# plt.title("Speedup")
 
 # plt.xscale('log', basex=2)
 # ax.set_xticklabels([])

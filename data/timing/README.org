@@ -3,3 +3,10 @@
 small size
 stopped at particle size 40 mill because it took more than 12 hours to complete,
  - job failed
+
+* removed plot points
+
+in cray_timing_results.txt, 24 images on 2x16 nodes muddles the point
+
+in gcc9_timing_results.txt, 24 images on 2x16 nodes muddles the point
+-         500          30         500          24           4           6           0         500   8743.59668

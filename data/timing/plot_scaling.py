@@ -13,9 +13,25 @@ if (len(sys.argv) < 2):
 
 # ---- read input data ----
 f = open(sys.argv[1])
+plot_title = ""
+if (len(sys.argv) > 2):
+    if (sys.argv[2] == '-t' ):
+        plot_title=sys.argv[3]
+    else:
+        plot_title="Strong Scaling"
+
+
 header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time']
-df = pd.read_csv(f, sep='\s+',header=None, names=header)
+header2 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+          'time', 'n_nodes']
+
+# df = pd.read_csv(f, sep='\s+',header=None, names=header)
+df = pd.read_csv(f, sep='\s+',header=None)
+if (len(df.columns) == 9):
+    df.columns = header
+elif (len(df.columns) == 10):
+    df.columns = header2
 
 
 # --- animation ----
@@ -42,7 +58,7 @@ for i,size in enumerate(df.nx.unique()):
 plt.legend(title="Dimensions")
 plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
-plt.title("Strong Scaling")
+plt.title(plot_title)
 
 # plt.xscale('log', basex=2)
 # ax.set_xticklabels([])

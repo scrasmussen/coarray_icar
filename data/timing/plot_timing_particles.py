@@ -59,7 +59,7 @@ def format_xaxis(value, tick_num):
 ax = plt.gca()
 ax.ticklabel_format(axis="x",style='plain')
 ax.xaxis.set_major_formatter(plt.FuncFormatter(format_xaxis))
-# plt.title("Particle Scaling, 500 timesteps, 16 images")
+plt.title("Particle Scaling, 500 timesteps, 16 images")
 
 model = LinearRegression()
 model.fit(df.n_particles.values.reshape(-1,1), df.time.values.reshape(-1,1))
