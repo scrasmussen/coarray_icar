@@ -118,7 +118,8 @@ program main
             end if
             write(me,*) domain%nx_global, domain%nz, domain%ny_global, &
                   num_images(), domain%ximages, domain%yimages, &
-                  0, timesteps, timer%get_time()
+                  0, timesteps, timer%get_time(), &
+                  domain%water_vapor%get_halo_depth()
             close(me)
         end if
 

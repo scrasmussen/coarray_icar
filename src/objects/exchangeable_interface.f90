@@ -25,6 +25,7 @@ module exchangeable_interface
     procedure, public :: retrieve
     procedure, public :: exchange
     procedure, public :: print_neighbors
+    procedure, public :: get_halo_depth
     generic,   public :: initialize=>const
 
     procedure :: put_north
@@ -109,6 +110,10 @@ module exchangeable_interface
     module subroutine print_neighbors(this)
         class(exchangeable_t), intent(in) :: this
     end subroutine
-  end interface
 
+    module function get_halo_depth(this) result(num)
+      class(exchangeable_t), intent(in) :: this
+      integer :: num
+    end function
+  end interface
 end module

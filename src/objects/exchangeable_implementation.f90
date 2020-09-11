@@ -259,4 +259,9 @@ contains
       sync all
   end subroutine
 
+  module function get_halo_depth(this) result(num)
+      class(exchangeable_t), intent(in) :: this
+      integer :: num
+      num = halo_size
+  end function
 end submodule
