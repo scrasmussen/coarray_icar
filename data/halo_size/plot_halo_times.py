@@ -54,12 +54,13 @@ discrete_cmap = plt.get_cmap('tab20b')
 for i,nodes in enumerate(df.n_nodes.unique()):
     if (nodes == 1):
         label = str(nodes) + " node"
-    label = str(nodes) + " nodes"
+    else:
+        label = str(nodes) + " nodes"
     plt.plot(df[df.n_nodes == nodes].halo_depth, df[df.n_nodes == nodes].time, marker = '.',
              label=label)
              # color=discrete_cmap(i*4))
 
-plt.legend(title="Dimensions")
+plt.legend(title="Number of nodes")
 plt.xlabel("halo depth")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
