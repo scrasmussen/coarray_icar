@@ -21,6 +21,7 @@ contains
 
     if (present(halo_width)) then
         halo_size = halo_width
+        ! print *, this_image(), ": non-default halo_size =", halo_size
     else
         halo_size = default_halo_size
     end if
