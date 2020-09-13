@@ -27,6 +27,8 @@ header2 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time', 'n_nodes']
 header3 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time',  'halo_depth', 'n_nodes']
+header4 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+          'time',  'halo_depth', 'n_nodes', 'compiler_flags']
 
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
 df = pd.read_csv(f, sep='\s+',header=None)
@@ -36,6 +38,8 @@ elif (len(df.columns) == 10):
     df.columns = header2
 elif (len(df.columns) == 11):
     df.columns = header3
+elif (len(df.columns) == 12):
+    df.columns = header4
 
 # --- animation ----
 gif    = True
@@ -49,16 +53,21 @@ repeat = False if gif else True
 
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')
-
+c_flags = [0,3]
 # --- plot data ---
-for i,nodes in enumerate(df.n_nodes.unique()):
-    if (nodes == 1):
-        label = str(nodes) + " node"
-    else:
-        label = str(nodes) + " nodes"
-    plt.plot(df[df.n_nodes == nodes].halo_depth, df[df.n_nodes == nodes].time, marker = '.',
-             label=label)
-             # color=discrete_cmap(i*4))
+for c_flag in c_flags:
+    for i,nodes in enumerate(df.n_nodes.unique()):
+        if (nodes == 1):
+            label = str(nodes) + " node, optimization -O" + str(c_flag)
+        else:
+            label = str(nodes) + " nodes, optimization -O" + str(c_flag)
+        plt.plot(df[(df.n_nodes == nodes) &
+                    (df.compiler_flags == c_flag)].halo_depth,
+                 df[(df.n_nodes == nodes) &
+                    (df.compiler_flags == c_flag)].time,
+                 marker = '.',
+                 label=label)
+        # color=discrete_cmap(i*4))
 
 plt.legend(title="Number of nodes")
 plt.xlabel("halo depth")
