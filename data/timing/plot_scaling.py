@@ -25,6 +25,8 @@ header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time']
 header2 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time', 'n_nodes']
+header3 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+          'time',  'halo_size', 'n_nodes']
 
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
 df = pd.read_csv(f, sep='\s+',header=None)
@@ -32,7 +34,8 @@ if (len(df.columns) == 9):
     df.columns = header
 elif (len(df.columns) == 10):
     df.columns = header2
-
+elif (len(df.columns) == 11):
+    df.columns = header3
 
 # --- animation ----
 gif    = True

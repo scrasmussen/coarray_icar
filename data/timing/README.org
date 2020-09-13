@@ -4,6 +4,13 @@ small size
 stopped at particle size 40 mill because it took more than 12 hours to complete,
  - job failed
 
+
+* cray dataframe
+in the past dataframe has not had n_nodes or halo_size
+header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+          'time', 'halo_size', 'n_nodes']
+
+
 * removed plot points
 
 in cray_timing_results.txt, 64 images on 2x44 nodes muddles the point
