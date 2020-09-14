@@ -700,6 +700,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_south_in(this%south_i)[north_con_neighbor] = particle
     particle%exists=.false.
     this%south_i = this%south_i + 1
@@ -714,6 +715,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_north_in(this%north_i)[south_con_neighbor] = particle
     particle%exists=.false.
     this%north_i = this%north_i + 1
@@ -728,6 +730,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_west_in(this%west_i)[east_con_neighbor] = particle
     particle%exists=.false.
     this%west_i = this%west_i + 1
@@ -742,6 +745,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_east_in(this%east_i)[west_con_neighbor] = particle
     particle%exists=.false.
     this%east_i = this%east_i + 1
@@ -756,6 +760,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_southwest_in(this%southwest_i)[northeast_con_neighbor] = particle
     particle%exists=.false.
     this%southwest_i = this%southwest_i + 1
@@ -770,6 +775,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_southeast_in(this%southeast_i)[northwest_con_neighbor] = particle
     particle%exists=.false.
     this%southeast_i = this%southeast_i + 1
@@ -784,6 +790,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_northwest_in(this%northwest_i)[southeast_con_neighbor] = particle
     particle%exists=.false.
     this%northwest_i = this%northwest_i + 1
@@ -798,6 +805,7 @@ contains
       return
     end if
 
+    !dir$ pgas defer_sync
     this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
     particle%exists=.false.
     this%northeast_i = this%northeast_i + 1
