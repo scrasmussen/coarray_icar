@@ -53,20 +53,31 @@ repeat = False if gif else True
 
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')
-c_flags = [0,3]
+c_flags = ['O0','O3']
 # --- plot data ---
+# df = df[df.timesteps == 200]
 for c_flag in c_flags:
     for i,nodes in enumerate(df.n_nodes.unique()):
-        if (nodes == 1):
-            label = str(nodes) + " node, optimization -O" + str(c_flag)
-        else:
-            label = str(nodes) + " nodes, optimization -O" + str(c_flag)
-        plt.plot(df[(df.n_nodes == nodes) &
-                    (df.compiler_flags == c_flag)].halo_depth,
-                 df[(df.n_nodes == nodes) &
-                    (df.compiler_flags == c_flag)].time,
-                 marker = '.',
-                 label=label)
+        for i,nx in enumerate(df.nx.unique()):
+            if (nodes == 1):
+                label = str(nodes) + " node, optimization -" + str(c_flag)
+            else:
+                label = str(nodes) + " nodes, optimization -" + str(c_flag)
+            label = label + " " + str(nx) + "x" + str(nx) + "x30"
+
+            if (c_flag == 'O0'):
+                marker = 'x'
+            else:
+                marker = 's'
+            print("-")
+            plt.plot(df[(df.n_nodes == nodes) &
+                        (df.compiler_flags == c_flag)&
+                        (df.nx == nx)].halo_depth,
+                     df[(df.n_nodes == nodes) &
+                        (df.compiler_flags == c_flag)&
+                        (df.nx == nx)].time,
+                     marker = marker,
+                     label=label)
         # color=discrete_cmap(i*4))
 
 plt.legend(title="Number of nodes")
