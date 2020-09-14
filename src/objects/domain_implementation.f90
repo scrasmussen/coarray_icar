@@ -318,8 +318,15 @@ contains
         ! original: works with GNU, not with Cray
         ! this%yimg = floor(real(this_image()-1) / this%ximages) + 1
         infinitesimal = 0.00000000000000000000000000000001
-        this%yimg = floor(real(this_image()-1) / (this%ximages+infinitesimal)) &
-             + 1
+        ! this%yimg = floor(real(this_image()-1) / (this%ximages+infinitesimal)) &
+        !      + 1
+        this%yimg = (this_image()-1) / (this%ximages) + 1
+
+        ! do i=1,num_images()
+        !    if (this_image() == i)  print *, this_image(), ":", this%ximg,",", this%yimg
+        !    sync all
+        ! end do
+        ! call exit
 
         x = (nx/float(xs))
         y = (ny/float(ys))
