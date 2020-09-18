@@ -11,6 +11,7 @@ input=particles/ideal-no-rh-40p-400ts.txt
 input=particles/ideal-no-rh-40p-500ts.txt
 input=particles/ideal-no-rh-40p-500ts-rinit.txt
 input=particles/ideal-no-rh-40p-1000ts-rinit-5velocity.txt
+input=particles/ideal-rh-500ts.txt
 
 all: build
 
