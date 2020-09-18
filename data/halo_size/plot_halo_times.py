@@ -54,18 +54,21 @@ repeat = False if gif else True
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')
 c_flags = ['O0','O3']
+c_flags = ['O3']
 # --- plot data ---
-# df = df[df.timesteps == 200]
+df = df[df.timesteps == 200]
 for c_flag in c_flags:
     for i,nodes in enumerate(df.n_nodes.unique()):
         for i,nx in enumerate(df.nx.unique()):
+            if (nx == 2000):
+                continue
             if (nodes == 1):
-                label = str(nodes) + " node, optimization -" + str(c_flag)
+                label = str(nodes) + " node"#, optimization -" + str(c_flag)
             else:
-                label = str(nodes) + " nodes, optimization -" + str(c_flag)
-            label = label + " " + str(nx) + "x" + str(nx) + "x30"
+                label = str(nodes) + " nodes"#, optimization -" + str(c_flag)
+            label = label + ", " + str(nx) + "x" + str(nx) + "x30"
 
-            if (c_flag == 'O0'):
+            if (nodes == 1):
                 marker = 'x'
             else:
                 marker = 's'
@@ -80,7 +83,7 @@ for c_flag in c_flags:
                      label=label)
         # color=discrete_cmap(i*4))
 
-plt.legend(title="Number of nodes")
+plt.legend(title="Number of nodes, problem size")
 plt.xlabel("halo depth")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)

@@ -29,6 +29,8 @@ header3 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time',  'halo_size', 'n_nodes']
 header4 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time',  'halo_depth', 'n_nodes', 'compiler_flags']
+header5 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+          'time',  'halo_depth', 'n_nodes', 'compiler_flags', 'scaling_run']
 
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
 df = pd.read_csv(f, sep='\s+',header=None)
@@ -40,6 +42,8 @@ elif (len(df.columns) == 11):
     df.columns = header3
 elif (len(df.columns) == 12):
     df.columns = header4
+elif (len(df.columns) == 13):
+    df.columns = header5
 
 # --- animation ----
 gif    = True
@@ -55,7 +59,7 @@ repeat = False if gif else True
 discrete_cmap = plt.get_cmap('tab20b')
 
 # --- plot data ---
-if (len(df.columns) != 12):
+if (len(df.columns) != 13):
     for i,size in enumerate(df.nx.unique()):
         l = df.loc[df.nx == size, ['nx','ny','nz']].iloc[0]
         label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
@@ -66,24 +70,23 @@ else:
     c_flags = ['O0','O3']
     c_flags = ['O3']
     for c_flag in c_flags:
-        for i,size in enumerate(df.nx.unique()):
-            if (size == 500):
+        for i,run in enumerate(df.scaling_run.unique()):
+            print(run)
+            if (run == 1):
                 marker = 'x'
+                label = 20*20*30 / 1000
             else:
                 marker = 's'
-            l = df.loc[df.nx == size, ['nx','ny','nz']].iloc[0]
-            label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
-            # label = label + ", optimization -" + str(c_flag)
-            plt.plot(df[(df.nx == size) &
-                    (df.compiler_flags == c_flag)].np,
-                     df[(df.nx == size) &
-                    (df.compiler_flags == c_flag)].time,
+                label = 160*160*30 / 1000
+            label = str(int(label)) + "k"
+            plt.plot(df[(df.scaling_run == run)].np,
+                     df[(df.scaling_run == run)].time,
                      marker = marker,
                      label=label)
 
 
 
-plt.legend(title="Dimension and Optimization")
+plt.legend(title="Problem size per image")
 plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
