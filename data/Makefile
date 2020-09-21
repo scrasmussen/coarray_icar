@@ -1,15 +1,5 @@
 lc=python3
 
-input=ideal-rh-100p-500ts.txt
-# input=ideal-no-rh-100p-500ts.txt
-input=particles/old/ideal-no-rh-100p-500ts-replacement.txt
-# input=ideal-no-rh-100p-500ts-both-replacement.txt
-# input=cray-ideal-no-rh-100p-500ts.txt
-# input=ideal-no-rh-100p-200ts.txt
-# input=ideal-no-rh-10p-300ts.txt
-input=particles/ideal-no-rh-40p-400ts.txt
-input=particles/ideal-no-rh-40p-500ts.txt
-input=particles/ideal-no-rh-40p-500ts-rinit.txt
 input=particles/ideal-no-rh-40p-1000ts-rinit-5velocity.txt
 input=particles/ideal-rh-500ts.txt
 
@@ -34,3 +24,8 @@ temp:
 a: altitude
 altitude:
 	$(lc) altitude_plot.py $(input)
+
+r: random
+
+random:
+	$(lc) random_plot.py $(input)

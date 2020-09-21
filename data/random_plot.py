@@ -6,10 +6,11 @@ import matplotlib.animation as animation
 import numpy as np
 import pandas as pd
 import sys
-
 # from pubplot import Document
 # from pubplot.document_classes import acm_sigconf
+
 # doc = Document(acm_sigconf)
+
 # plt.style.use('./publication.style')
 
 
@@ -17,7 +18,7 @@ if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
 
 turn_off_graphs=True
-turn_off_graphs=False
+# turn_off_graphs=False
 
 # ---- read input data ----
 f = open(sys.argv[1])
@@ -64,7 +65,11 @@ cmap_c = cmap(norm(particles.temperature.values))
 fig = plt.figure(figsize=plt.figaspect(0.5))
 # fig, ax = doc.subfigures()
 
-ax = fig.add_subplot(1,2,1)
+if not turn_off_graphs:
+    ax = fig.add_subplot(1,2,1,projection='3d')
+else:
+    # ax = fig.add_subplot(1,1,1,projection='3d')
+    ax = fig.add_subplot(1,1,1)
 
 def set_limits():
     ax.set_xlim(0,particles.timestep.max());  # time
@@ -96,6 +101,52 @@ for i in range(0,num_particles):
     particles.replace({'identifier' : change_i}, i, inplace=True)
 
 
+if not turn_off_graphs:
+    # --- set up second graph ---
+    second_graph_title  = 'temperature'
+    second_graph_entity = second_graph_title.replace(' ', '_')
+    second_graph        = fig.add_subplot(2,2,2)
+    second_graph_max    = particles[second_graph_entity].max()
+    if (particles[second_graph_entity].min() < 0):
+        second_graph_min = particles[second_graph_entity].min()
+    else:
+        second_graph_min = 0
+    second_graph_max   *= 1.1
+    second_graph_min   *= 1.1
+
+
+    # --- set up third graph ---
+    # choose type
+    third_graph_title = "density"
+    third_graph_title = "water vapor"
+    third_graph_title = "potential temperature"
+    # third_graph_title = "mixing ratio"
+
+    third_graph_entity = third_graph_title.replace(' ', '_')
+    third_graph = fig.add_subplot(2,2,4)
+    third_graph_max = particles[third_graph_entity].max()
+    if (particles[third_graph_entity].min() < 0):
+        third_graph_min = particles[third_graph_entity].min()
+    else:
+        third_graph_min = 0
+    third_graph_max *= 1.1
+    third_graph_min *= 1.1
+
+
+# --- set graph limits ---
+def set_graph_lim():
+    return
+    if turn_off_graphs:
+        return
+
+    second_graph.set_title(second_graph_title)
+    second_graph.set_xlim(0,num_t)
+    second_graph.set_ylim(second_graph_min,second_graph_max)
+    third_graph.set_title(third_graph_title, y=-0.3)
+    third_graph.set_xlim(0,num_t)
+    third_graph.set_ylim(third_graph_min,third_graph_max)
+
+
 # print(particles)
 # print(particles['z_meters'].max())
 # sys.exit()
@@ -106,16 +157,49 @@ def set_old(p):
 
 
 oparticles = particles[['timestep','x','y','z_meters', 'identifier', 'image']]
-particles = particles[['timestep','identifier','temperature','z_meters','pressure']]
+# particles = particles[['timestep','identifier','temperature','z_meters','pressure']]
 
 
 # --- function that gets run every animation timestep ---
 blue_cmap = plt.cm.Blues
 discrete_cmap = plt.get_cmap('tab20b')
 
+def updateFig(*args):
+    global t, old, time
+
+    ax.set_title("Particle Movement t="+str(t), y=1.05)
+    if (t == num_t):
+        ax.cla()
+        set_limits()
+        # plot_image_lines(time)
+        time += 1
+        t = 0
+    else:
+        # old.remove()
+        pass
+
+    p = particles[ (particles.timestep == t) ]
+
+    # p.water_vapor = np.ma.masked_where(p.water_vapor == 0.0, p.water_vapor)
+    # p.water
+
+    p_color = "black"
+    # print(type(p.water_vapor))
+    # if (p.water_vapor > 0.0):
+    #     p_color = "blue"
+    old = set_old(p)
+    #                    c=p.cloud_water, cmap=blue_cmap, vmin=0.00000)
+                       # c=p.water_vapor, cmap=blue_cmap, vmin=0.0)
+                       # color=cmap_c[t]) edgecolor='black')
+
+    t += 1
+    return old
+
+
 # --- animation ----
 # - setup graphs
 # plot_image_lines(time)
+# set_graph_lim()
 
 gif    = True
 gif    = False
@@ -131,36 +215,17 @@ plot_temperature = False # plot_pressure = True
 plot_temperature = True
 particles.z_meters /= 1000
 
-if (plot_temperature == True):
-    filename='elevation_temp_dry'
-    # particles.temperature -= 273.15
-    ax.scatter(particles.temperature, particles.z_meters,
-    # ax.scatter(particles.z_meters, particles.temperature,
-               cmap=discrete_cmap, c=particles.identifier, marker='.')
-    ax.set_xlabel("temperature (K)")
-    ax.set_ylabel("elevation (km)")
-    # ax.set_xlabel("elevation (km)")
-    # ax.set_ylabel("temperature (K)")
 
-if True:
-    # -----plot pressure-----
-    ax2 = fig.add_subplot(1,2,2)
-    filename='elevation_pressure_dry'
-    particles.pressure /= 1000
-    ax2.scatter(particles.pressure, particles.z_meters,
-    # ax2.scatter(particles.z_meters, particles.pressure,
-                cmap=discrete_cmap, c=particles.identifier, marker='.')
-    # ax2.set_xlabel("elevation (km)")
-    # ax2.set_ylabel("pressure")
-
-    ax2.set_xlabel("pressure (kPa)")
-    # ax2.set_ylabel("elevation (km)")
-    plt.setp(ax2,yticklabels=[])
-    plt.setp(ax2.get_yticklabels(), visible=False)
+for i in range(1,max(particles.timestep)):
+    # print (i)
+    ax.scatter(i, len(particles[particles.timestep == i]), color='black')
 
 
-title="Temperature and Pressure of \n" + f.name.split('/')[1]
+ax.set_xlabel("num timesteps")
+ax.set_ylabel("num particles")
+title=f.name.split('/')[1]
 plt.suptitle(title)
+
 
 plt.show()
 # fig.save(filename, pdf=False, pgf=True)

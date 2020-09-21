@@ -19,6 +19,7 @@ if (len(sys.argv) == 3):
 
 
 frame_delay_ms=5 # 25
+frame_delay_ms=25
 # frame_delay_ms=200
 turn_off_graphs=True
 
@@ -185,7 +186,7 @@ t_interval = 1
 def updateFig(*args):
     global t, scatter, time
 
-    # ax.set_title("Particle Movement t="+str(t), y=1.05)
+    ax.set_title("Particle Movement t="+str(t), y=1.05)
     if (t == num_t):
         ax.cla()
         ax.set_xlim(1,nx); ax.set_ylim(1,ny); ax.set_zlim(1,particles['z_meters'].max())
