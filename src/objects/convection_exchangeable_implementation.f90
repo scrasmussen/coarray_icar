@@ -17,7 +17,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: replacement = .true.
   logical, parameter :: random_init_flag = .false.
-  integer, parameter :: particles_per_image = 1 ! 2 * 1000000
+  integer, parameter :: particles_per_image = 10 ! 2 * 1000000
   integer, parameter :: local_buf_size = particles_per_image * 4
   ! -----------------------------------------------
 
@@ -368,11 +368,10 @@ contains
             ! cycle
           else if (particle%z .gt. kte) then
             particle%exists = .false.
-            print *, "----replacing??!!----", particle%particle_id
+            ! print *, "----replacing??!!----", particle%particle_id
             particle = create_particle(particle%particle_id, &
                 its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                 z_m, potential_temp, z_interface, u_in, v_in, w_in)
-
             ! call exit
             ! cycle
           end if
@@ -542,7 +541,7 @@ contains
                       x .lt. 1 .or. x .gt. nx_global .or. &
                       y .lt. 1 .or. y .gt. ny_global &
                     ) then
-                    ! if (particle%particle_id .eq. 488208) then
+                    ! if (particle%particle_id .eq. 1879048182) then
                     print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
                           "FROM", this_image(), "id:", particle%particle_id, &
                           "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
@@ -715,7 +714,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", north_con_neighbor
+       print*, "from", this_image(), "to", north_con_neighbor, particle%particle_id
     end if
 
     if (this%north_boundary) then
@@ -733,7 +732,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", south_con_neighbor
+       print*, "from", this_image(), "to", south_con_neighbor, particle%particle_id
     end if
 
     if (this%south_boundary) then
@@ -751,7 +750,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", east_con_neighbor
+       print*, "from", this_image(), "to", east_con_neighbor, particle%particle_id
     end if
 
     if (this%east_boundary) then
@@ -769,7 +768,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", west_con_neighbor
+       print*, "from", this_image(), "to", west_con_neighbor, particle%particle_id
     end if
 
     if (this%west_boundary) then
@@ -787,7 +786,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", northeast_con_neighbor
+       print*, "from", this_image(), "to", northeast_con_neighbor, particle%particle_id
     end if
 
     if (this%northeast_boundary) then
@@ -805,7 +804,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", northwest_con_neighbor
+       print*, "from", this_image(), "to", northwest_con_neighbor, particle%particle_id
     end if
 
     if (this%northwest_boundary) then
@@ -823,7 +822,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", southeast_con_neighbor
+       print*, "from", this_image(), "to", southeast_con_neighbor, particle%particle_id
     end if
 
     if (this%southeast_boundary) then
@@ -841,7 +840,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
-       print*, "from", this_image(), "to", southwest_con_neighbor
+       print*, "from", this_image(), "to", southwest_con_neighbor, particle%particle_id
     end if
 
     if (this%southwest_boundary) then
@@ -968,10 +967,10 @@ contains
               southwest_con_neighbor = me - 1
               ! southwest_con_neighbor = - 1
             end if
-            ! this%northeast_boundary = .false.
-            ! this%northwest_boundary = .false.
-            ! this%southeast_boundary = .false.
-            ! this%southwest_boundary = .false.
+            this%northeast_boundary = .false.
+            this%northwest_boundary = .false.
+            this%southeast_boundary = .false.
+            this%southwest_boundary = .false.
 
             ! --- handle up/down/left/right
             if (this%north_boundary .eqv. .true.) then
