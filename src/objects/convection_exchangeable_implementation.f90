@@ -12,7 +12,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
   logical, parameter :: fake_wind_correction = .false.
-  logical, parameter :: relative_humidity = .false.
+  logical, parameter :: relative_humidity = .true.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: replacement = .true.
@@ -131,7 +131,7 @@ contains
     real :: random_start(3), x, z, y
     integer :: x0, x1, z0, z1, y0, y1
     real :: pressure_val, exner_val, temp_val, water_vapor_val
-    real :: u_val, v_val, w_val
+    real :: u_val, v_val, w_val, velocity, cloud_water
     call random_number(random_start)
     x = its + (random_start(1) * (ite-its))
     z = kts + (random_start(3) * (kte-kts))
@@ -196,9 +196,13 @@ contains
     v_val = v_in%local(x0, z0, y0)
     w_val = 0
 
+
+    velocity = 5
+    cloud_water = 0
     particle = convection_particle(particle_id, .true., .false., &
         x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
-        pressure_val, temp_val, theta_val, 0, water_vapor_val, 0)
+        pressure_val, temp_val, theta_val, velocity, water_vapor_val, &
+        cloud_water)
 
   end function
 
@@ -363,8 +367,8 @@ contains
             ! call exit
             ! cycle
           else if (particle%z .gt. kte) then
-            particle%exists=.false.
-            ! print *, "----REPLACEMENT IS NEEDED !!----", particle%particle_id
+            particle%exists = .false.
+            print *, "----replacing??!!----", particle%particle_id
             particle = create_particle(particle%particle_id, &
                 its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                 z_m, potential_temp, z_interface, u_in, v_in, w_in)
@@ -440,6 +444,7 @@ contains
               RH = particle%water_vapor / saturate
               T1 = particle%temperature
               p1 = particle%pressure
+
               ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
               ! specific latent heat for condensation and evaporation
               specific_latent_heat = 2.5 * 10**6 ! J kg^-1
@@ -460,14 +465,14 @@ contains
                 particle%water_vapor = particle%water_vapor + vapor
                 ! heat required by phase change
                 Q_heat = specific_latent_heat * vapor ! kJ
-                ! c_p = (1004 * (1 + 1.84 * vapor)) ! 3.3
-                c_p = 1004 ! specific heat of dry air at 0C
+                c_p = (1004 * (1 + 1.84 * vapor)) ! 3.3
+                ! c_p = 1004 ! specific heat of dry air at 0C
                 delta_t = Q_heat / c_p   ! 3.2c
                 particle%temperature = T1 - delta_t
 
                 ! update potential temperature, assumming pressure is constant
-                particle%potential_temp = exner_function(particle%pressure) * &
-                    particle%temperature
+                particle%potential_temp = particle%temperature / exner_function(particle%pressure)
+
 
 
               ! Particle is raising and condensation is occurring
@@ -475,6 +480,9 @@ contains
                 condensate = particle%water_vapor - saturate
                 particle%water_vapor = particle%water_vapor - condensate
                 particle%cloud_water = particle%cloud_water + condensate
+
+
+                ! print *, "condensate", condensate, "water_vapor", particle%water_vapor, "cloud water", particle%cloud_water
 
                 !--------------------------------------------------------------
                 ! a different way to calculate specific latent heat
@@ -497,14 +505,23 @@ contains
                 !--------------------------------------------------------------
                 ! Stull: Practical Meteorology
                 c_p = (1004 * (1 + 1.84 * condensate)) ! 3.3
-                c_p = 1004 ! specific heat of dry air at 0C
+                ! c_p = 1004 ! specific heat of dry air at 0C
+                ! print *, "c_p", c_p
                 delta_T = Q_heat / c_p   ! 3.2c
+                ! print *, "delta_T", delta_t
                 particle%temperature = T1 + delta_T
 
+                ! print *, "new temp", particle%temperature
+                ! print *, "old potential temp", particle%potential_temp
+                ! print *, "pressure", particle%pressure, "exner function", exner_function(particle%pressure)
                 ! update potential temperature, assumming pressure is constant
-                particle%potential_temp = exner_function(particle%pressure) * &
-                    particle%temperature
+                ! particle%potential_temp = exner_function(particle%pressure) / &
+                !      particle%temperature
+                particle%potential_temp = particle%temperature / exner_function(particle%pressure)
 
+
+                ! print *, "new potential temp", particle%potential_temp
+                ! stop
                 ! -- is pressure constant during this process?
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
@@ -529,7 +546,7 @@ contains
                     print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
                           "FROM", this_image(), "id:", particle%particle_id, &
                           "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
-                    print *, "------"
+                    ! print *, "------"
                     ! end if
                 end if
             end if
@@ -679,14 +696,17 @@ contains
     local_i = 1
     do i=1,buf_n
       associate (particle=>buf(i))
-        if (particle%exists .eqv. .true.) then
+        do while (particle%exists .eqv. .true.)
+          if (local_i .gt. local_n) then
+            stop "retrieve_buf is out of bounds"
+          end if
           if (this%local(local_i)%exists .eqv. .false.) then
             call particle%move_to(this%local(local_i))
             local_i = local_i + 1
             exit
           end if
           local_i = local_i + 1
-        end if
+       end do
       end associate
     end do
   end subroutine
@@ -694,6 +714,9 @@ contains
   module subroutine put_north(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", north_con_neighbor
+    end if
 
     if (this%north_boundary) then
       particle%exists = .false.
@@ -702,13 +725,16 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_south_in(this%south_i)[north_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%south_i = this%south_i + 1
   end subroutine
 
   module subroutine put_south(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", south_con_neighbor
+    end if
 
     if (this%south_boundary) then
       particle%exists = .false.
@@ -717,13 +743,16 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_north_in(this%north_i)[south_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%north_i = this%north_i + 1
   end subroutine
 
   module subroutine put_east(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", east_con_neighbor
+    end if
 
     if (this%east_boundary) then
       particle%exists = .false.
@@ -732,13 +761,16 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_west_in(this%west_i)[east_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%west_i = this%west_i + 1
   end subroutine
 
   module subroutine put_west(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", west_con_neighbor
+    end if
 
     if (this%west_boundary) then
       particle%exists = .false.
@@ -747,13 +779,16 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_east_in(this%east_i)[west_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%east_i = this%east_i + 1
   end subroutine
 
   module subroutine put_northeast(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", northeast_con_neighbor
+    end if
 
     if (this%northeast_boundary) then
       particle%exists = .false.
@@ -762,13 +797,16 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_southwest_in(this%southwest_i)[northeast_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%southwest_i = this%southwest_i + 1
   end subroutine
 
   module subroutine put_northwest(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", northwest_con_neighbor
+    end if
 
     if (this%northwest_boundary) then
       particle%exists = .false.
@@ -777,13 +815,16 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_southeast_in(this%southeast_i)[northwest_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%southeast_i = this%southeast_i + 1
   end subroutine
 
   module subroutine put_southeast(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", southeast_con_neighbor
+    end if
 
     if (this%southeast_boundary) then
       particle%exists = .false.
@@ -792,13 +833,16 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_northwest_in(this%northwest_i)[southeast_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%northwest_i = this%northwest_i + 1
   end subroutine
 
   module subroutine put_southwest(this, particle)
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
+    if (caf_comm_message .eqv. .true.) then
+       print*, "from", this_image(), "to", southwest_con_neighbor
+    end if
 
     if (this%southwest_boundary) then
       particle%exists = .false.
@@ -807,7 +851,7 @@ contains
 
     !dir$ pgas defer_sync
     this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
-    particle%exists=.false.
+    particle%exists = .false.
     this%northeast_i = this%northeast_i + 1
   end subroutine
 
