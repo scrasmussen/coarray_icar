@@ -35,13 +35,14 @@ for i in range(0,num_particles):
 oparticles = particles[['timestep','x','y','z_meters', 'identifier', 'image']]
 # particles = particles[['timestep','identifier','temperature','z_meters','pressure']]
 # particles = particles[particles.identifier < 600000000]
-particles = particles[particles.identifier < -14]
+# particles = particles[particles.identifier < -14]
 
 
 
 # --- function that gets run every animation timestep ---
 blue_cmap = plt.cm.Blues
 discrete_cmap = plt.get_cmap('tab20b')
+rh_cmap = plt.get_cmap('gist_gray')
 # discrete_cmap = plt.get_cmap('tab10')
 # discrete_cmap = plt.get_cmap('Set1')
 # discrete_cmap = plt.get_cmap('Paired')
@@ -94,20 +95,49 @@ if True:
     plt.setp(ax2.get_yticklabels(), visible=False)
 
 
-if True:
+relative_humidity = True
+
+if relative_humidity == False:
     # -----plot temp over time-----
     ax3 = fig.add_subplot(2,2,3)
     ax3.scatter(particles.timestep, particles.temperature,
                     cmap=discrete_cmap, c=particles.identifier, marker='.')
     ax3.set_xlabel("timesteps")
     ax3.set_ylabel("temp (K)")
-
-
-if True:
     # -----plot pressure over time-----
     ax4 = fig.add_subplot(2,2,4)
     ax4.scatter(particles.timestep, particles.pressure,
                 cmap=discrete_cmap, c=particles.identifier, marker='.')
+    ax4.set_xlabel("timesteps")
+    ax4.set_ylabel("pressure")
+
+if relative_humidity == True:
+    rh = particles[particles.relative_humidity >= 1.0]
+    no_rh = particles[particles.relative_humidity < 1.0]
+    # ------- no rh -------
+    # -----plot temp over time-----
+    ax3 = fig.add_subplot(2,2,3)
+    ax3.scatter(no_rh.timestep, no_rh.temperature,
+                cmap=discrete_cmap, c=no_rh.identifier, marker='.')
+    ax3.set_xlabel("timesteps")
+    ax3.set_ylabel("temp (K)")
+    # -----plot pressure over time-----
+    ax4 = fig.add_subplot(2,2,4)
+    ax4.scatter(no_rh.timestep, no_rh.pressure,
+                cmap=discrete_cmap, c=no_rh.identifier, marker='.')
+    ax4.set_xlabel("timesteps")
+    ax4.set_ylabel("pressure")
+    # -------- rh ---------
+    # -----plot temp over time-----
+    ax3 = fig.add_subplot(2,2,3)
+    ax3.scatter(rh.timestep, rh.temperature,
+                cmap=rh_cmap, c=rh.identifier, marker='.')
+    ax3.set_xlabel("timesteps")
+    ax3.set_ylabel("temp (K)")
+    # -----plot pressure over time-----
+    ax4 = fig.add_subplot(2,2,4)
+    ax4.scatter(rh.timestep, rh.pressure,
+                cmap=rh_cmap, c=rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
     ax4.set_ylabel("pressure")
 
