@@ -11,6 +11,7 @@ module convection_type_interface
      real :: z_meters, z_interface
      real :: pressure, temperature, potential_temp
      real :: velocity, water_vapor, cloud_water
+     real :: relative_humidity
    contains
      procedure :: move_to
   end type convection_particle
@@ -26,7 +27,6 @@ contains
     ! handle the from
     from%exists = .false.
     from%moved  = .false.
-
     ! handle the to
     to%exists = .true.
     to%moved  = .true.
@@ -41,6 +41,7 @@ contains
     to%velocity = from%velocity
     to%water_vapor = from%water_vapor
     to%cloud_water = from%cloud_water
+    to%relative_humidity = from%relative_humidity
   end subroutine move_to
 
   ! not being used right now

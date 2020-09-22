@@ -17,7 +17,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: replacement = .true.
   logical, parameter :: random_init_flag = .false.
-  integer, parameter :: particles_per_image = 10 ! 2 * 1000000
+  integer, parameter :: particles_per_image = 1 ! 2 * 1000000
   integer, parameter :: local_buf_size = particles_per_image * 4
   ! -----------------------------------------------
 
@@ -127,6 +127,7 @@ contains
     class(exchangeable_t), intent(in)    :: potential_temp
     real, intent(in)              :: z_interface(ims:ime,jms:jme)
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
+    real :: relative_humidity_in
     real :: z_meters, z_interface_val, theta_val
     real :: random_start(3), x, z, y
     integer :: x0, x1, z0, z1, y0, y1
@@ -190,6 +191,7 @@ contains
     temp_val = exner_val * theta_val
 
     water_vapor_val = sat_mr(temp_val, pressure_val)
+    relative_humidity_in = water_vapor_val
 
     ! wind is constant in this system, ignoring w wind (aka z-direction)
     u_val = u_in%local(x0, z0, y0)
@@ -199,10 +201,11 @@ contains
 
     velocity = 5
     cloud_water = 0
+    cloud_water = 0
     particle = convection_particle(particle_id, .true., .false., &
         x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
         pressure_val, temp_val, theta_val, velocity, water_vapor_val, &
-        cloud_water)
+        cloud_water, relative_humidity_in)
 
   end function
 
@@ -314,7 +317,7 @@ contains
           !-----------------------------------------------------------------
           if (wind .eqv. .true.) then
             wind_correction = (1.0 / dz) ! real correction
-            wind_correction = (1.0 / 10) ! real correction
+            ! wind_correction = (1.0 / 10) ! real correction
             if (fake_wind_correction .eqv. .true.) then
                 wind_correction = 1.0
             end if
@@ -339,39 +342,30 @@ contains
           !-----------------------------------------------------------------
           particle%z_meters = particle%z_meters + z_displacement
           if (particle%z .lt. kts) then
-            ! particle%exists=.false.
-            ! cycle
-            ! print *, "z", particle%z
-            ! print *, "z_meters", particle%z_meters
-            ! print *, "z_displacement", z_displacement
-            ! print *, "z_interface_val", z_interface_val
-            ! print *, "-----------"
-            ! print *, "adding = ", dz * (1-particle%z)
-            ! print *, "couldbe = ", particle%z_meters + dz * (1-particle%z)
-            z_displacement = z_displacement + dz * (1-particle%z)
-            particle%z = 1
-            particle%z_meters = z_interface_val + dz/2
-            particle%velocity = 0
+            ! ---- hits the ground and stops  ----
+            ! z_displacement = z_displacement + dz * (1-particle%z)
+            ! particle%z = 1
+            ! particle%z_meters = z_interface_val + dz/2
+            ! particle%velocity = 0
 
-            ! print *, "z", particle%z
-            ! print *, "z_meters", particle%z_meters
-            ! print *, "z_displacement", z_displacement
-            ! print *, "z_interface_val", z_interface_val
-            ! print *, "velocity", particle%velocity
-            ! print *, "-----------"
-            ! x0 = floor(particle%x); x1 = ceiling(particle%x)
-            ! y0 = floor(particle%y); y1 = ceiling(particle%y)
-            ! print *, "z_interface(x,z,y)", z_interface(x0,y0),z_interface(x0,y1)&
-            !     ,z_interface(x1,y0),z_interface(x1,y1)
-            ! print *, ""
-            ! call exit
-            ! cycle
+            ! ---- replacement code ----
+            particle%exists = .false.
+            ! print *, "-replacing??!!-", particle%particle_id
+            if (replacement .eqv. .true.) then
+               particle = create_particle(particle%particle_id, &
+                  its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+                  z_m, potential_temp, z_interface, u_in, v_in, w_in)
+            end if
+
+
           else if (particle%z .gt. kte) then
             particle%exists = .false.
-            ! print *, "----replacing??!!----", particle%particle_id
-            particle = create_particle(particle%particle_id, &
-                its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-                z_m, potential_temp, z_interface, u_in, v_in, w_in)
+            ! print *, "--replacing??!!--", particle%particle_id
+            if (replacement .eqv. .true.) then
+               particle = create_particle(particle%particle_id, &
+                  its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+                  z_m, potential_temp, z_interface, u_in, v_in, w_in)
+            end if
             ! call exit
             ! cycle
           end if
@@ -444,6 +438,7 @@ contains
               T1 = particle%temperature
               p1 = particle%pressure
 
+              particle%relative_humidity = RH
               ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
               ! specific latent heat for condensation and evaporation
               specific_latent_heat = 2.5 * 10**6 ! J kg^-1
@@ -524,7 +519,11 @@ contains
                 ! -- is pressure constant during this process?
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
-              end if
+             end if
+             ! saturate = sat_mr(particle%temperature, particle%pressure)
+             ! RH = particle%water_vapor / saturate
+             ! particle%relative_humidity = RH
+
             end block
           end if ! ---- end of relative humidity seciton ----
 
