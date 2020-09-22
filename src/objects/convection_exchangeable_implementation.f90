@@ -8,6 +8,7 @@ submodule(convection_exchangeable_interface) &
   implicit none
 
   ! ----- PARAMETERS TO TUNE CONVECTION MODEL -----
+  logical, parameter :: debug = .true.
   logical, parameter :: wrap_neighbors = .true.
   logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
@@ -447,6 +448,9 @@ contains
               ! Particle is falling, using evaporation of cloud water to keep
               ! the relative humidity at 1 if possible
               if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0) then
+                 if (debug .eqv. .true.) then
+                    print*, "==== cloud_water .gt. 0, rh .lt. 1 ===="
+                 end if
                 vapor_needed = saturate - particle%water_vapor
                 if (vapor_needed > particle%cloud_water) then
                   vapor = particle%cloud_water
@@ -471,12 +475,20 @@ contains
 
               ! Particle is raising and condensation is occurring
               else if (RH .ge. 1.0) then
+               if (debug .eqv. .true.) then
+                  print*, "==== rh .gt. 1 ===="
+                  print *, "water_vapor", particle%water_vapor, &
+                       "cloud water", particle%cloud_water
+               end if
                 condensate = particle%water_vapor - saturate
                 particle%water_vapor = particle%water_vapor - condensate
                 particle%cloud_water = particle%cloud_water + condensate
 
-
-                ! print *, "condensate", condensate, "water_vapor", particle%water_vapor, "cloud water", particle%cloud_water
+                if (debug .eqv. .true.) then
+                   print *, "condensate", condensate, &
+                        "new water_vapor", particle%water_vapor, &
+                        "new cloud water", particle%cloud_water
+                end if
 
                 !--------------------------------------------------------------
                 ! a different way to calculate specific latent heat
@@ -505,16 +517,23 @@ contains
                 ! print *, "delta_T", delta_t
                 particle%temperature = T1 + delta_T
 
-                ! print *, "new temp", particle%temperature
-                ! print *, "old potential temp", particle%potential_temp
-                ! print *, "pressure", particle%pressure, "exner function", exner_function(particle%pressure)
+
+                if (debug .eqv. .true.) then
+                   print *, 'Q_heat', Q_heat, 'c_p', c_p
+                   print *, 'T1', T1, 'T new', particle%temperature, &
+                        'delta_T', delta_T
+                   print *, "old potential temp", particle%potential_temp, &
+                        'pressure remains at', particle%pressure, &
+                        "exner function", exner_function(particle%pressure)
+                end if
                 ! update potential temperature, assumming pressure is constant
                 ! particle%potential_temp = exner_function(particle%pressure) / &
                 !      particle%temperature
                 particle%potential_temp = particle%temperature / exner_function(particle%pressure)
 
-
-                ! print *, "new potential temp", particle%potential_temp
+                if (debug .eqv. .true.) then
+                   print *, "new potential temp", particle%potential_temp
+                end if
                 ! stop
                 ! -- is pressure constant during this process?
                 ! using Poisson's equation
