@@ -19,7 +19,8 @@ nz += 1
 
 header = ['image','timestep','identifier', 'exists','moved', 'x', 'y', 'z',
           'u', 'v', 'w', 'z_meters', 'z_interface', 'pressure','temperature',
-          'potential_temperature', 'velocity', 'water_vapor','cloud_water']
+          'potential_temperature', 'velocity', 'water_vapor','cloud_water',
+          'relative_humidity']
 
 
 particles = pd.read_csv(f, sep='\s+',header=None, names=header)

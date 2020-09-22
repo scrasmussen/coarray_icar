@@ -81,12 +81,12 @@ particles.z_meters /= 1000
 plen = len(particles[particles.timestep == 1])
 set1 = set(particles[particles.timestep == 1].identifier)
 for i in range(1,max(particles.timestep)):
-    if (plen > len(particles[particles.timestep == i])):
-        print("DIFF! at "+str(i)+" of "+str(len(particles[particles.timestep == i])))
-        set2 = set(particles[particles.timestep == i].identifier)
-        set_diff = set1 - set2
-        print(set_diff)
-    plen = len(particles[particles.timestep == i])
+    # if (plen > len(particles[particles.timestep == i])):
+    #     print("DIFF! at "+str(i)+" of "+str(len(particles[particles.timestep == i])))
+    #     set2 = set(particles[particles.timestep == i].identifier)
+    #     set_diff = set1 - set2
+    #     print(set_diff)
+    # plen = len(particles[particles.timestep == i])
 
     ax.scatter(i, len(particles[particles.timestep == i]), color='black')
 
