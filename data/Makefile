@@ -1,15 +1,18 @@
 lc=python3
-
 input=particles/ideal-no-rh-40p-1000ts-rinit-5velocity.txt
 input=particles/ideal-rh-500ts.txt
-input=particles/ideal-rh-test.txt
 # input=particles/ideal-rh-test-pre.txt
+input=particles/ideal-rh-test.txt
 input=particles/ideal-no-rh-test.txt
 
 all: build
 
 build:
 	$(lc) plot.py $(input)
+
+b: brunt
+brunt:
+	$(lc) brunt_vaisala.py $(input)
 
 g: gif
 gif:

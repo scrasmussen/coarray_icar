@@ -5,6 +5,7 @@ import matplotlib.colors
 import matplotlib.animation as animation
 import numpy as np
 import pandas as pd
+import math
 import copy
 import sys
 
@@ -30,15 +31,8 @@ for i in range(0,num_particles):
     change_i = q.iloc[i].identifier
     new_i = i * (-1) - 1
     particles.replace({'identifier' : change_i}, new_i, inplace=True)
+
 # sys.exit()
-
-
-# oparticles = particles[['timestep','x','y','z_meters', 'identifier', 'image']]
-# particles = particles[['timestep','identifier','temperature','z_meters','pressure']]
-# particles = particles[particles.identifier < 600000000]
-# particles = particles[particles.identifier < -14]
-
-
 
 # --- function that gets run every animation timestep ---
 blue_cmap = plt.cm.Blues
@@ -49,6 +43,33 @@ rh_cmap = plt.get_cmap('gist_gray')
 # discrete_cmap = plt.get_cmap('Paired')
 
 
+g = 9.81
+dtype = type(particles.timestep[0])
+
+bv_all = pd.DataFrame(columns=['timestep','identifier','n'])
+for id in particles.identifier.unique():
+    bv = pd.DataFrame(columns=['timestep','identifier','n'])
+    theta = particles[particles.identifier == id].potential_temperature.values
+    z = particles[particles.identifier == id].z_meters.values
+
+    # print(len(z))
+
+    dln_dz = np.diff(np.log(theta)) / np.diff(z)
+    n2 = g * dln_dz
+    n = np.sqrt(n2)
+
+    bv.n = n
+    bv.timestep = np.arange(len(n),dtype=dtype)
+    bv.identifier = id
+
+    bv_all = bv_all.append(bv)
+    # particles = particles.merge(bv, how='outer')
+    # print(bv.n)
+
+
+particles = particles.merge(bv_all, how='outer')
+# sys.exit()
+
 particles.z_meters /= 1000
 particles.pressure /= 1000
 
@@ -57,30 +78,24 @@ cols = 2
 fig = plt.figure()
 ax = fig.add_subplot(rows,cols,1)
 
-if True: # -----plot temperature-----
-    filename='elevation_temp_dry'
-    # particles.temperature -= 273.15
-    ax.scatter(particles.temperature, particles.z_meters,
-    # ax.scatter(particles.z_meters, particles.temperature,
-               cmap=discrete_cmap, c=particles.identifier, marker='.')
-    ax.set_xlabel("temperature (K)")
-    ax.set_ylabel("elevation (km)")
-    # ax.set_xlabel("elevation (km)")
-    # ax.set_ylabel("temperature (K)")
+# -----plot temperature-----
+# particles.temperature -= 273.15
+ax.scatter(particles.timestep, particles.potential_temperature,
+           # ax.scatter(particles.z_meters, particles.temperature,
+           cmap=discrete_cmap, c=particles.identifier, marker='.')
+# ax.set_xlabel("timesteps")
+ax.set_ylabel("potential temperature (K)")
+# ax.set_xlabel("elevation (km)")
+# ax.set_ylabel("temperature (K)")
 
-if True: # -----plot pressure-----
-    ax2 = fig.add_subplot(2,2,2)
-    filename='elevation_pressure_dry'
-    ax2.scatter(particles.pressure, particles.z_meters,
-    # ax2.scatter(particles.z_meters, particles.pressure,
-                cmap=discrete_cmap, c=particles.identifier, marker='.')
-    # ax2.set_xlabel("elevation (km)")
-    # ax2.set_ylabel("pressure")
-
-    ax2.set_xlabel("pressure (kPa)")
-    # ax2.set_ylabel("elevation (km)")
-    plt.setp(ax2,yticklabels=[])
-    plt.setp(ax2.get_yticklabels(), visible=False)
+# -----plot pressure-----
+ax2 = fig.add_subplot(2,2,2)
+ax2.scatter(particles.timestep, particles.n,
+            # ax2.scatter(particles.z_meters, particles.pressure,
+            cmap=discrete_cmap, c=particles.identifier, marker='.')
+ax2.set_xlabel("Brunt-Vaisala freq.")
+plt.setp(ax2,yticklabels=[])
+plt.setp(ax2.get_yticklabels(), visible=False)
 
 
 comparison = particles[particles.timestep == 0].relative_humidity.values == particles[particles.timestep == 1].relative_humidity.values
