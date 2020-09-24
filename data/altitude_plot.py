@@ -17,7 +17,11 @@ turn_off_graphs=False
 original = copy.deepcopy(particles)
 
 fig = plt.figure()
-ax = fig.add_subplot(2,2,1)
+
+
+rows=2 # 2
+cols = 2
+ax = fig.add_subplot(rows,cols,1)
 
 for i in range(0,num_particles):
     if any(particles.identifier == i):
@@ -97,6 +101,7 @@ if True:
 
 relative_humidity = True
 
+
 if relative_humidity == False:
     # -----plot temp over time-----
     ax3 = fig.add_subplot(2,2,3)
@@ -129,17 +134,16 @@ if relative_humidity == True:
     ax4.set_ylabel("pressure")
     # -------- rh ---------
     # -----plot temp over time-----
-    ax3 = fig.add_subplot(2,2,3)
     ax3.scatter(rh.timestep, rh.temperature,
                 cmap=rh_cmap, c=rh.identifier, marker='.')
     ax3.set_xlabel("timesteps")
     ax3.set_ylabel("temp (K)")
     # -----plot pressure over time-----
-    ax4 = fig.add_subplot(2,2,4)
     ax4.scatter(rh.timestep, rh.pressure,
                 cmap=rh_cmap, c=rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
     ax4.set_ylabel("pressure")
+    fig.legend(['Grey Scale when relative humidity < 1.0'], loc='lower left')
 
 
 

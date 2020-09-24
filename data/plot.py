@@ -3,9 +3,11 @@ from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import matplotlib.animation as animation
+import matplotlib.ticker as ticker
 from matplotlib import rcParams
 import numpy as np
 import pandas as pd
+import copy
 import sys
 
 from tools.my_setup import *
@@ -21,7 +23,7 @@ if (len(sys.argv) == 3):
 
 frame_delay_ms=5 # 25
 frame_delay_ms=25
-# frame_delay_ms=200
+frame_delay_ms=200
 turn_off_graphs=True
 
 # ---- Set up colors ----
@@ -29,7 +31,7 @@ norm = matplotlib.colors.Normalize(vmin=particles['temperature'].min()-10,
                                    vmax=particles['temperature'].max())
 cmap = plt.cm.Blues # cmap = plt.cm.Greens
 cmap_c = cmap(norm(particles.temperature.values))
-blue_cmap = plt.cm.Blues
+blue_cmap = copy.copy(plt.cm.Blues)
 blue_cmap.set_under(color='black')
 
 
@@ -40,9 +42,6 @@ if not turn_off_graphs:
 else:
     ax = fig.add_subplot(1,1,1,projection='3d')
 ax.set_xlim(1,nx); ax.set_ylim(1,ny); ax.set_zlim(1,particles['z_meters'].max())
-ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-ax.zaxis.set_major_locator(MaxNLocator(integer=True))
 
 ax.set_zlabel("meters")
 ax.set_xticklabels([])
@@ -63,7 +62,15 @@ hillZ = (np.sin((hillX-ids)/((ide-ids)/n_hills)*2*3.14159-3.14159/2)+1)/2 *\
         (np.sin((hillY-jds)/((jde-jds)/n_hills)*2*3.14159-3.14159/2)+1)/2
 hillZ = ((hillZ * hill_height ) + (surface_z + dz_value / 2.0))
 hillcolor='black' # hillcolor='darkolivegreen'
+zticks=[0,2500,5000,7500,10000,12500,15000]
+ztick_labels = ['0k','2.5k','5k','7.5k','10k','12.5k','15k']
+# zticks=[0,1500,3000,4500,6000,7500,9000,10.5]
+# ztick_labels = ['0k','1.5k','3k','4.5k','6k','7.5k','9k','10.5k']
+def z_func(z,something):
+    z = z / 1000
+    return str(z)+'k'
 
+formatter = ticker.FuncFormatter(z_func)
 
 # --- plot image lines ---
 def plot_image_lines(time):
@@ -73,9 +80,11 @@ def plot_image_lines(time):
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.zaxis.set_major_locator(MaxNLocator(integer=True))
-    z_labels = ax.get_zticklabels()
+
     ax.set_zlabel("meters")
-    ax.set_zticklabels(['0k','1.5k','3k','4.5k','6k','7.5k','9k','10.5k'])
+    ax.zaxis.set_major_formatter(formatter)
+
+
     ax.grid(b=None)
     for i in range (1,ximages):
         ax.plot(xs=[(i*nx)/ximages,(i*nx)/ximages], ys=[0,ny], color='black')
