@@ -30,8 +30,7 @@ for i in range(0,num_particles):
     change_i = q.iloc[i].identifier
     new_i = i * (-1) - 1
     particles.replace({'identifier' : change_i}, new_i, inplace=True)
-# sys.exit()
-
+particles.identifier *= -1
 
 # oparticles = particles[['timestep','x','y','z_meters', 'identifier', 'image']]
 # particles = particles[['timestep','identifier','temperature','z_meters','pressure']]
@@ -52,7 +51,7 @@ rh_cmap = plt.get_cmap('gist_gray')
 particles.z_meters /= 1000
 particles.pressure /= 1000
 
-rows=2 # 2
+rows=3 # 2
 cols = 2
 fig = plt.figure()
 ax = fig.add_subplot(rows,cols,1)
@@ -69,7 +68,7 @@ if True: # -----plot temperature-----
     # ax.set_ylabel("temperature (K)")
 
 if True: # -----plot pressure-----
-    ax2 = fig.add_subplot(2,2,2)
+    ax2 = fig.add_subplot(3,2,2)
     filename='elevation_pressure_dry'
     ax2.scatter(particles.pressure, particles.z_meters,
     # ax2.scatter(particles.z_meters, particles.pressure,
@@ -92,13 +91,13 @@ else:
 
 if relative_humidity == False:
     # -----plot temp over time-----
-    ax3 = fig.add_subplot(2,2,3)
+    ax3 = fig.add_subplot(3,2,3)
     ax3.scatter(particles.timestep, particles.temperature,
                     cmap=discrete_cmap, c=particles.identifier, marker='.')
     ax3.set_xlabel("timesteps")
     ax3.set_ylabel("temp (K)")
     # -----plot pressure over time-----
-    ax4 = fig.add_subplot(2,2,4)
+    ax4 = fig.add_subplot(3,2,4)
     ax4.scatter(particles.timestep, particles.pressure,
                 cmap=discrete_cmap, c=particles.identifier, marker='.')
     ax4.set_xlabel("timesteps")
@@ -109,13 +108,13 @@ if relative_humidity == True:
     no_rh = particles[particles.relative_humidity < 1.0]
     # ------- no rh -------
     # -----plot temp over time-----
-    ax3 = fig.add_subplot(2,2,3)
+    ax3 = fig.add_subplot(3,2,3)
     ax3.scatter(no_rh.timestep, no_rh.temperature,
                 cmap=discrete_cmap, c=no_rh.identifier, marker='.')
     ax3.set_xlabel("timesteps")
     ax3.set_ylabel("temp (K)")
     # -----plot pressure over time-----
-    ax4 = fig.add_subplot(2,2,4)
+    ax4 = fig.add_subplot(3,2,4)
     ax4.scatter(no_rh.timestep, no_rh.pressure,
                 cmap=discrete_cmap, c=no_rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
@@ -133,13 +132,26 @@ if relative_humidity == True:
     ax4.set_ylabel("pressure")
     fig.legend(['Grey Scale when relative humidity < 1.0'], loc='lower left')
 
-
-
-
 title="Temperature and Pressure of \n"
 title += str(num_particles) + " particles, " + str(num_t) + " timesteps"
 title += ", " + f.name.split('/')[1]
 plt.suptitle(title)
+
+
+# ---- plot table ----
+ax5 = fig.add_subplot(3,2,6)
+table_data = np.empty((2,1), dtype=float)
+for row in range(1,num_particles+1):
+    table_data = np.c_[table_data, [0,1]]
+table_data = table_data[:,1:]
+
+table_data = table_data.transpose()
+table_df = pd.DataFrame(data=table_data, columns=['frequency','period'])
+table_df.index += 1
+pd.plotting.table(ax5,table_df.transpose(), rowLabels=None, loc='center')
+ax5.axis("off")
+
+
 
 plt.show()
 # fig.save(filename, pdf=False, pgf=True)

@@ -34,6 +34,14 @@ for i in range(0,num_particles):
 
 # sys.exit()
 
+comparison = particles[particles.timestep == 0].relative_humidity.values == particles[particles.timestep == 1].relative_humidity.values
+if (comparison.all()):
+    relative_humidity = False
+else:
+    relative_humidity = True
+
+
+
 # --- function that gets run every animation timestep ---
 blue_cmap = plt.cm.Blues
 discrete_cmap = plt.get_cmap('tab20b')
@@ -49,15 +57,22 @@ dtype = type(particles.timestep[0])
 bv_all = pd.DataFrame(columns=['timestep','identifier','n'])
 for id in particles.identifier.unique():
     bv = pd.DataFrame(columns=['timestep','identifier','n'])
-    theta = particles[particles.identifier == id].potential_temperature.values
     z = particles[particles.identifier == id].z_meters.values
+    # theta = particles[particles.identifier == id].potential_temperature.values
+    theta = particles[particles.identifier == id].temperature.values
 
-    # print(len(z))
+    dz = np.diff(z)
 
-    dln_dz = np.diff(np.log(theta)) / np.diff(z)
+    # -------- N^2_d = g* (dln(theta) / dz) ---------
+    # if (relative_humidity == False):
+    dln_dz = np.diff(np.log(theta)) / dz
     n2 = g * dln_dz
-    n = np.sqrt(n2)
 
+    # -------- N^2_m = g/T (dT/Dz + gamma_m)(1+Lq_s/RT) - g/(1-q_w) dq_w/dz ----
+    # else:
+
+
+    n = np.sqrt(n2)
     bv.n = n
     bv.timestep = np.arange(len(n),dtype=dtype)
     bv.identifier = id
@@ -97,12 +112,6 @@ ax2.set_xlabel("Brunt-Vaisala freq.")
 plt.setp(ax2,yticklabels=[])
 plt.setp(ax2.get_yticklabels(), visible=False)
 
-
-comparison = particles[particles.timestep == 0].relative_humidity.values == particles[particles.timestep == 1].relative_humidity.values
-if (comparison.all()):
-    relative_humidity = False
-else:
-    relative_humidity = True
 
 
 if relative_humidity == False:
