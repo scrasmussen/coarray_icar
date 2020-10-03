@@ -19,17 +19,36 @@ import sys
 f = open(sys.argv[1])
 l = f.readline()
 
-header = ['image','timestep','identifier', 'exists','moved', 'x', 'y', 'z',
-          'u', 'v', 'w', 'z_meters', 'z_interface', 'pressure','temperature',
-          'potential_temperature', 'velocity', 'water_vapor','cloud_water',
-          'relative_humidity']
+header = ['n','time','job', 'machine']
+
 df = pd.read_csv(f, sep='\s+',header=None, names=header)
 
 fig, (ax0, ax1) = plt.subplots(2,1)
 
+machine='delta'
+job='put-latency-1-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax0.plot(x, y, label='1 node '+machine)
+job='put-latency-2-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax0.plot(x, y, label='2 node '+machine)
+machine='cray'
+job='put-latency-1-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax0.plot(x, y, label='1 node '+machine)
+job='put-latency-2-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax0.plot(x, y, label='2 node '+machine)
 
-# fig, ax = plt.subplots()
-# ax1.stem(freqs, np.abs(X))
+ax0.set_xlabel('Size')
+ax0.set_ylabel('Put Latency (us)')
+ax0.legend()
+# ax0.set_title('Put Latency')
+
 # ax.set_xlabel('Frequency in Hertz [Hz]')
 # ax.set_ylabel('Frequency Domain (Spectrum) Magnitude')
 # ax.set_xlim(-f_s / 2, f_s / 2)
@@ -38,5 +57,28 @@ fig, (ax0, ax1) = plt.subplots(2,1)
 
 # ax1.plot(freqs, sy.log10(abs(FFT)), '.')
 
+machine='delta'
+job='pt2pt-latency-1-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax1.plot(x, y, label='1 node '+machine)
+job='pt2pt-latency-2-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax1.plot(x, y, label='2 node '+machine)
+machine='cray'
+job='pt2pt-latency-1-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax1.plot(x, y, label='1 node '+machine)
+job='pt2pt-latency-2-node'
+x=df[(df.job == job) & (df.machine == machine)].n
+y=df[(df.job == job) & (df.machine == machine)].time
+ax1.plot(x, y, label='2 node '+machine)
 
+ax1.set_xlabel('Size')
+ax1.set_ylabel('Point2Point Latency (us)')
+ax1.legend()
+
+ax0.set_title('MVAPICH MPI Benchmarks')
 plt.show()

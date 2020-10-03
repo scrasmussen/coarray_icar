@@ -1,5 +1,6 @@
 lc=python3
 input=data.txt
+input=new-data.txt
 
 
 all: build
