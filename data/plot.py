@@ -214,5 +214,6 @@ if (gif):
     # --- NOTE: not working on OSX, version too old? ---
     # ani.save('giftest.gif', writer=animation.ImageMagickWriter)
 else:
+    plt.tight_layout()
     plt.show()
 print("Fin!")

@@ -69,5 +69,5 @@ ax1.set_xlim(-0.002, 0.002)
 
 # ax1.plot(freqs, sy.log10(abs(FFT)), '.')
 
-
+plt.tight_layout()
 plt.show()

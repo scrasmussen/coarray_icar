@@ -97,7 +97,7 @@ ax.set_ylabel("num particles")
 title=f.name.split('/')[1]
 plt.suptitle(title)
 
-
+plt.tight_layout()
 plt.show()
 # fig.save(filename, pdf=False, pgf=True)
 print("Fin!")

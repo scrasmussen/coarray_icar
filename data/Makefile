@@ -3,7 +3,11 @@ input=particles/ideal-no-rh-40p-1000ts-rinit-5velocity.txt
 input=particles/ideal-rh-500ts.txt
 # input=particles/ideal-rh-test-pre.txt
 input=particles/ideal-rh-test.txt
+# input=particles/ideal-rh-test.txt.1
 input=particles/ideal-no-rh-test.txt
+# input=particles/ideal-no-rh-test2.txt
+input=particles/ideal-no-rh-test-check.txt
+
 
 all: build
 
@@ -14,9 +18,18 @@ b: brunt
 brunt:
 	$(lc) brunt_vaisala.py $(input)
 
+f: fft
+fft:
+	$(lc) fft.py $(input)
+
 g: gif
 gif:
 	$(lc) plot.py $(input) gif
+
+p: plot
+plot:
+	$(lc) pub.py $(input)
+
 
 .PHONY: s sounding
 s: sounding

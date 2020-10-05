@@ -51,7 +51,7 @@ rh_cmap = plt.get_cmap('gist_gray')
 particles.z_meters /= 1000
 particles.pressure /= 1000
 
-rows=3 # 2
+rows = 3 # 2
 cols = 2
 fig = plt.figure()
 ax = fig.add_subplot(rows,cols,1)
@@ -138,6 +138,11 @@ title += ", " + f.name.split('/')[1]
 plt.suptitle(title)
 
 
+
+# def
+
+
+
 # ---- plot table ----
 ax5 = fig.add_subplot(3,2,6)
 table_data = np.empty((2,1), dtype=float)
@@ -152,7 +157,7 @@ pd.plotting.table(ax5,table_df.transpose(), rowLabels=None, loc='center')
 ax5.axis("off")
 
 
-
+plt.tight_layout()
 plt.show()
 # fig.save(filename, pdf=False, pgf=True)
 print("Fin!")

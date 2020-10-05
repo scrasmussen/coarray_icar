@@ -211,5 +211,6 @@ if (gif):
     # ani.save('test.gif', writer=animation.PillowWriter, fps=None,dpi=20) # fps was 5
     # ani.save('test.gif', writer=animation.ImageMagickWriter, fps=None) # fps was 5
 else:
+    plt.tight_layout()
     plt.show()
 print("Fin!")
