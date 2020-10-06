@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 import copy
 import sys
+import scipy as sy
+from scipy import fftpack
+
 
 from tools.my_setup import *
 
@@ -59,7 +62,7 @@ ax = fig.add_subplot(rows,cols,1)
 if True: # -----plot temperature-----
     filename='elevation_temp_dry'
     # particles.temperature -= 273.15
-    ax.scatter(particles.temperature, particles.z_meters,
+    sc = ax.scatter(particles.temperature, particles.z_meters,
     # ax.scatter(particles.z_meters, particles.temperature,
                cmap=discrete_cmap, c=particles.identifier, marker='.')
     ax.set_xlabel("temperature (K)")
@@ -144,17 +147,43 @@ plt.suptitle(title)
 
 
 # ---- plot table ----
+t = particles[particles.identifier == 1].timestep.to_numpy()
+
 ax5 = fig.add_subplot(3,2,6)
-table_data = np.empty((2,1), dtype=float)
+t_x = 3
+t_y = 1
+table_dim = (t_x,t_y)
+table_data = np.zeros(table_dim, dtype=float)
 for row in range(1,num_particles+1):
-    table_data = np.c_[table_data, [0,1]]
+    x = particles[particles.identifier == row].temperature.to_numpy()
+    x = x[~np.isnan(x)]
+    x = x - x[0]  # center data
+    period = np.diff(np.where(np.diff(np.sign(x)) < 0))
+    ave_period = np.average(np.diff(np.where(np.diff(np.sign(x)) < 0)))
+    ave_freq = 1 / ave_period
+    X = fftpack.fft(x)
+    freqs = fftpack.fftfreq(len(x))
+    # print(table_data)
+
+    table_data = np.c_[table_data, ['{:,.5f}'.format(ave_freq), ave_period, '']]
 table_data = table_data[:,1:]
 
+
+col_names = ['ave. frequency','ave. period','particle color']
 table_data = table_data.transpose()
-table_df = pd.DataFrame(data=table_data, columns=['frequency','period'])
+table_df = pd.DataFrame(data=table_data, columns=col_names)
 table_df.index += 1
-pd.plotting.table(ax5,table_df.transpose(), rowLabels=None, loc='center')
+c_table = pd.plotting.table(ax5,table_df.transpose(), rowLabels=None, loc='center')
+                  # cellColours=table_colors)
 ax5.axis("off")
+
+table_colors = np.chararray((t_y + 2,num_particles))
+for particle in range(0,num_particles):
+    c_table.get_celld()[(3,particle)].set_color(matplotlib.colors.to_hex(sc.to_rgba(particle+1)))
+
+
+
+
 
 
 plt.tight_layout()

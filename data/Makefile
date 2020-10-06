@@ -26,9 +26,14 @@ g: gif
 gif:
 	$(lc) plot.py $(input) gif
 
-p: plot
-plot:
+p: pub
+pub:
 	$(lc) pub.py $(input)
+
+p2: plot_2d
+plot_2d:
+	$(lc) plot_2d.py $(input)
+
 
 
 .PHONY: s sounding
