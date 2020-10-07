@@ -13,11 +13,14 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
   logical, parameter :: fake_wind_correction = .false.
-  logical, parameter :: relative_humidity = .true.
+  logical, parameter :: relative_humidity = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  logical, parameter :: replacement = .true.
-  logical, parameter :: random_init_flag = .false.
+  logical, parameter :: brunt_vaisala = .true.
+  logical, parameter :: replacement = .false.
+  logical, parameter :: replacement_message = .true.
+  logical, parameter :: init_theta = .false.
+  logical, parameter :: init_velocity = .true.
   integer, parameter :: particles_per_image = 1 ! 2 * 1000000
   integer, parameter :: local_buf_size = particles_per_image * 4
   ! -----------------------------------------------
@@ -31,8 +34,8 @@ submodule(convection_exchangeable_interface) &
   integer, save :: southeast_con_neighbor, southwest_con_neighbor
 
 contains
-  module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
-      z_interface, ims, ime, kms, kme, jms, jme, dz_val, &
+  module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid,&
+      z_m, z_interface, ims, ime, kms, kme, jms, jme, dz_val, &
       its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
     class(exchangeable_t), intent(in)    :: potential_temp
@@ -184,11 +187,19 @@ contains
     exner_val = exner_function(pressure_val)
 
     ! call random_number(rand)
-    if (random_init_flag .eqv. .true.) then
+    if (init_theta .eqv. .true.) then
       theta_val = theta_val * (1 + 1.0 / 100) ! random 0-1% change
     else
       theta_val = theta_val ! * (1 + 0.01) ! increase by 1%
-    end if
+   end if
+
+   if (init_velocity .eqv. .true.) then
+      velocity = 5
+   else
+      velocity = 0
+   end if
+
+
     temp_val = exner_val * theta_val
 
     water_vapor_val = sat_mr(temp_val, pressure_val)
@@ -200,7 +211,6 @@ contains
     w_val = 0
 
 
-    velocity = 5
     cloud_water = 0
     cloud_water = 0
     particle = convection_particle(particle_id, .true., .false., &
@@ -213,7 +223,8 @@ contains
 
   module subroutine process(this, nx_global, ny_global, &
       ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
-      its, ite, kts, kte, jts, jte, z_m, potential_temp, u_in, v_in, w_in)
+      its, ite, kts, kte, jts, jte, z_m, potential_temp, u_in, v_in, w_in, &
+      timestep)
     implicit none
     class(convection_exchangeable_t), intent(inout) :: this
     integer, intent(in) :: nx_global, ny_global
@@ -225,23 +236,29 @@ contains
     real, intent(in), optional :: z_m(ims:ime,kms:kme,jms:jme)
     class(exchangeable_t), intent(in), optional :: potential_temp
     class(exchangeable_t), intent(in), optional :: u_in, v_in, w_in
+    integer, intent(in), optional :: timestep
 
     real, parameter :: gravity = 9.80665
     type(convection_particle) :: new_particle
     real :: Gamma
     real :: a_prime, z_displacement, t, t_prime, buoyancy
     real :: ws, wind_correction, delta_z, z_interface_val, z_wind_change
-    integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me
+    integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me, iter
     real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
     real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
     real :: vapor_p, sat_p, T_C, T_K, mr, T_squared, T_original, tmp
     real :: xx, yy
-    real :: rate_of_temp_change
-    integer :: x0, x1, z0, z1, y0, y1
+    real :: rate_of_temp_change, bv(local_buf_size)
+    integer :: x0, x1, z0, z1, y0, y1, bv_i, image, particle_id(local_buf_size)
     integer :: u_bound(3)
-    logical :: calc, calc_x, calc_y
+    logical :: calc, calc_x, calc_y, exist
+    character(len=32) :: filename
+
 
     me = this_image()
+    bv_i = 1
+    bv = 0
+    particle_id = 0
 
     do i=1,ubound(this%local,1)
       associate (particle=>this%local(i))
@@ -288,12 +305,16 @@ contains
                 A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
           end associate
 
+
           if (convection .eqv. .true.) then
             buoyancy = (T - T_prime) / T_prime
             ! print *, "T", T, "T_prime", T_prime, "% dif", buoyancy * 100
             a_prime = buoyancy * gravity
-            ! time step is 1 so t and t^2 go away
-            z_displacement = particle%velocity + 0.5 * a_prime
+            ! d = v_0 * t + 1/2 * a * t^2
+            z_displacement = particle%velocity * dt + 0.5 * a_prime * dt * dt
+            ! z_displacement = particle%velocity + 0.5 * a_prime
+
+
             ! number from dz_interface, currently always 500
             delta_z = z_displacement / dz
             if (z_displacement /= z_displacement) then
@@ -356,6 +377,8 @@ contains
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                   z_m, potential_temp, z_interface, u_in, v_in, w_in)
+            else if (replacement_message .eqv. .true.) then
+               print *, me,":",particle%particle_id, "hit the ground"
             end if
 
 
@@ -366,49 +389,41 @@ contains
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                   z_m, potential_temp, z_interface, u_in, v_in, w_in)
+            else if (replacement_message .eqv. .true.) then
+               print *, me,":",particle%particle_id, "went off the top"
             end if
             ! call exit
             ! cycle
           end if
 
-
+          !-----------------------------------------------------------------
+          ! Dry Lapse Rate
           !-----------------------------------------------------------------
           ! p = p_0 * e^( ((9.81/287.058)*dz) / t_mean )
           !-----------------------------------------------------------------
           ! Method one: physics
           !        a) change pressure         b) update temperature
           !-----------------------------------------------------------------
-          if (1 .eq. 1) then
-            p0 = particle%pressure
-            particle%pressure = p0 - z_displacement * &
-                gravity / (287.05 * particle%temperature) * p0
+          if (relative_humidity .eqv. .false.) then
+             call dry_lapse_rate(particle%pressure, particle%temperature, &
+                  particle%potential_temp, z_displacement)
 
-            T_original = particle%temperature
-            particle%temperature = exner_function(particle%pressure) * &
-                particle%potential_temp
+             if (brunt_vaisala .eqv. .true.) then
+                associate (A => potential_temp%local, x => particle%x, &
+                     z => particle%z , y => particle%y)
+                  x0 = floor(x); z0 = floor(z); y0 = floor(y);
+                  x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
 
-            if (particle%temperature /= particle%temperature) then
-              print *, me, ":: ~~~~~~NAN~~~~~~", &
-                  particle%particle_id, particle%temperature, &
-                  exner_function(particle%pressure), particle%pressure, &
-                  particle%potential_temp, p0, z_displacement
-              ! print*, p0, z_displacement, gravity ,287.05,particle%temperature
-              particle%exists = .false.
-              ! call exit
-            end if
-          end if
-          !-----------------------------------------------------------------
-          ! Method two: adiabatic lapse rate, not using
-          !-----------------------------------------------------------------
-          if (0 .eq. 1) then
-            if (particle%cloud_water .gt. 0.0) then
-              gamma = 0.006 ! 6 celsius, not sure if this conversion is correct
-            else
-              gamma = 0.01 ! 10 celcius
-            end if
-          end if
+                  bv(bv_i) = trilinear_interpolation( &
+                       x, x0, x1, z, z0, z1, y, y0,y1, &
+                       A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+                       A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+                  particle_id(bv_i) = particle%particle_id
+                  bv_i = bv_i + 1
+                end associate
+             end if
 
-
+          else
           !-----------------------------------------------------------------
           ! Relative Humidity and physics of Moist Adiabatic Lapse Rate
           !-----------------------------------------------------------------
@@ -422,7 +437,6 @@ contains
           !   delta_T = Q_heat / c_p   ! c_p is specific heat capacity
           !   temperature += delta_T
           !-----------------------------------------------------------------
-          if (relative_humidity .eqv. .true.) then
             block
               real :: saturate, condensate, vapor, vapor_needed, RH
               ! specific latent heat values, calculating using formula
@@ -433,7 +447,7 @@ contains
               real :: C_vv, c_p
               real :: specific_latent_heat, Q_heat, temp_c, delta_t, T1, p1
               integer :: repeat
-
+              do iter = 1,5
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
               T1 = particle%temperature
@@ -538,14 +552,17 @@ contains
                 ! -- is pressure constant during this process?
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
+             else if (iter .eq. 1) then
+                call dry_lapse_rate(particle%pressure, particle%temperature, &
+                     particle%potential_temp, z_displacement)
              end if
+             end do
              ! saturate = sat_mr(particle%temperature, particle%pressure)
              ! RH = particle%water_vapor / saturate
              ! particle%relative_humidity = RH
 
             end block
           end if ! ---- end of relative humidity seciton ----
-
 
 
           !-----------------------------------------------------------------
@@ -624,6 +641,26 @@ contains
         end if
       end associate
     end do
+
+    if (brunt_vaisala .eqv. .true.) then
+      do image=1,num_images()
+      if (me .eq. image) then
+         write (filename,"(A17)") "brunt_vaisala.txt"
+         inquire(file=filename, exist=exist)
+         if (exist) then
+            open(unit=me, file=filename, status='old', position='append')
+         else
+            open(unit=me, file=filename, status='new')
+         end if
+         do i=1,bv_i-1
+            write(me,*) me, timestep, particle_id(i), bv(i)
+         end do
+         close(me)
+      end if
+      sync all
+      end do
+
+    end if
   end subroutine process
 
 
@@ -1084,5 +1121,43 @@ contains
   !   a = -1
   !   ! print *, "hi!"
   ! end subroutine create_particle
+
+
+
+  !-----------------------------------------------------------------
+  ! p = p_0 * e^( ((9.81/287.058)*dz) / t_mean )
+  !-----------------------------------------------------------------
+  ! Method one: physics
+  !        a) change pressure         b) update temperature
+  !-----------------------------------------------------------------
+  module procedure dry_lapse_rate
+  real, parameter :: gravity = 9.80665
+  real ::  p0, T_original
+  p0 = pressure
+  pressure = p0 - z_displacement * &
+       gravity / (287.05 * temperature) * p0
+
+  T_original = temperature
+  temperature = exner_function(pressure) * &
+       potential_temp
+
+  if (temperature /= temperature) then
+     print *, this_image(), ":: ~~~~~~NAN~~~~~~", &
+          ! particle%particle_id, particle%temperature, &
+          temperature, exner_function(pressure), pressure, &
+          potential_temp, p0, z_displacement
+     ! print*, p0, z_displacement, gravity ,287.05,particle%temperature
+     ! particle%exists = .false.
+     ! call exit
+  end if
+  end procedure dry_lapse_rate
+  !-----------------------------------------------------------------
+  ! Method two: adiabatic lapse rate, not using
+  !-----------------------------------------------------------------
+  ! if (particle%cloud_water .gt. 0.0) then
+  !    gamma = 0.006 ! 6 celsius, not sure if this conversion is correct
+  ! else
+  !    gamma = 0.01 ! 10 celcius
+  ! end if
 
 end submodule

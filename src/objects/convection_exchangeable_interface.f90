@@ -72,7 +72,8 @@ module convection_exchangeable_interface
   interface
      module subroutine process(this, nx_global, ny_global, &
          ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
-         its, ite, kts, kte, jts, jte, z_m, potential_temp, u_in, v_in, w_in)
+         its, ite, kts, kte, jts, jte, z_m, potential_temp, u_in, v_in, w_in, &
+         timestep)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
        integer, intent(in) :: nx_global, ny_global
@@ -84,6 +85,7 @@ module convection_exchangeable_interface
        real, intent(in), optional :: z_m(ims:ime,kms:kme,jms:jme)
        class(exchangeable_t), intent(in), optional :: potential_temp
        class(exchangeable_t), intent(in), optional :: u_in, v_in, w_in
+       integer, intent(in), optional :: timestep
      end subroutine
 
      module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
@@ -210,5 +212,11 @@ module convection_exchangeable_interface
        class(convection_exchangeable_t), intent(inout) :: this
        logical :: do_replacement
      end function do_replacement
+
+     module subroutine dry_lapse_rate(pressure, temperature, potential_temp, &
+          z_displacement)
+       real, intent(inout) :: pressure, temperature, potential_temp
+       real, intent(in) :: z_displacement
+     end subroutine
   end interface
 end module convection_exchangeable_interface

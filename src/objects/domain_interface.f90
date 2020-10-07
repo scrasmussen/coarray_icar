@@ -162,6 +162,11 @@ module domain_interface
       real,intent(in) :: temperature,pressure
       real :: sat_mr
     end function sat_mr
+
+    subroutine load_sounding(sounding, sounding_n, sounding_start, sounding_max)
+      real, allocatable, intent(out) :: sounding(:)
+      integer, intent(out) :: sounding_n, sounding_start, sounding_max
+    end subroutine load_sounding
   end interface
 
 

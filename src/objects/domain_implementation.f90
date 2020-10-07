@@ -36,7 +36,8 @@ contains
     subroutine master_initialize(this, convected_particles)
       class(domain_t), intent(inout) :: this
       logical, intent(in) :: convected_particles
-      integer :: i,j, halo_width
+      integer :: i,j, halo_width, sounding_n, sounding_start, sounding_max
+      real, allocatable :: sounding(:)
       real :: sine_curve
       type(grid_t) :: grid
       ! halo_width = 1
@@ -150,11 +151,27 @@ contains
 
           this%dz_mass(:,kms,:)     = this%dz_mass(:,kms,:)/2
           this%pressure(:,kms,:)    = pressure_at_elevation(sealevel_pressure, this%z(:,kms,:))
+
+          call load_sounding(sounding, sounding_n, sounding_start, sounding_max)
+          ! call load_sounding( sounding_n, sounding_start, sounding_max)
+
+          call exit
           do i=kms+1,kme
               this%z(:,i,:)           = this%z(:,i-1,:)           + this%dz_mass(:,i,:)
               this%z_interface(:,i,:) = this%z_interface(:,i-1,:) + this%dz_interface(:,i,:)
               this%pressure(:,i,:)    = pressure_at_elevation(sealevel_pressure, this%z(:,i,:))
+              if (this_image() .eq. 1) then
+                 print*, this%z_interface(:,i,:)
+                 print*, "---------"
+                 ! print*, set_potential_temp(this%z_interface(:,i,:))
+                 ! call set_potential_temp(4.0)
+                 print*, "========="
+              end if
           enddo
+          sync all
+          print *, this_image(), ": ending", maxval(this%z_interface)
+          sync all
+          call exit
           this%exner       = exner_function(this%pressure)
           this%temperature = this%exner * this%potential_temperature%local
           this%water_vapor%local = sat_mr(this%temperature,this%pressure)
@@ -591,7 +608,6 @@ contains
       integer :: me, i, image
       logical :: exist
       me = this_image()
-
       ! handle opening of file
       write (filename,"(A10)") "output.txt"
       if (me .eq. 1 .and. step .eq. 0) then
@@ -621,4 +637,35 @@ contains
         sync all
       end do
     end subroutine
+
+    subroutine load_sounding(sounding, sounding_n, sounding_start, sounding_max)
+      real, allocatable, intent(out) :: sounding(:)
+      integer, intent(out) :: sounding_n, sounding_start, sounding_max
+      character(len=32) :: filename
+      integer :: me, i
+      me = this_image()
+      ! if (me == 1) then
+      write (filename,"(A27)") "sounding-potential-temp.txt"
+      open(unit=me, file=filename, status = 'old')
+      read(me,*) sounding_n, sounding_start, sounding_max
+
+      allocate(sounding(sounding_start:sounding_max))
+      sounding = -1
+
+      do i=sounding_start,sounding_max, 500
+         print *, "i = ", i
+         read(me,*) sounding(i)
+      end do
+
+      close(me)
+
+      print*, "n,start,max ", sounding_n, sounding_start, sounding_max
+      print*, sounding
+    end subroutine load_sounding
+
+    subroutine set_potential_temp(height)
+      real, intent(inout) :: height
+
+      height = 0.0001 * height
+    end subroutine set_potential_temp
 end submodule
