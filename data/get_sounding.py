@@ -42,13 +42,15 @@ n_type = 'float'
 points = df.HGHT[1:].to_numpy(n_type)
 values = df.THTA[1:].to_numpy(n_type)
 
-grid_x = np.mgrid[500:15500+1:500]
+start=500
+end=15500
+grid_x = np.mgrid[start:end+1:1]
 grid_data = griddata(points, values, grid_x, method='cubic')
 
 filename = 'sounding/sounding-potential-temp.txt'
 f = open(filename, 'w')
-f.write(str(grid_data.size) + '\n')
-grid_x.tofile(f, "\n")
+f.write(str(grid_data.size) +" " + str(start) + " " + str(end) + '\n')
+grid_data.tofile(f, "\n")
 
 # ------------------------------------------------------------------------------
 # Save dataframe to file
