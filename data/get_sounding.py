@@ -1,8 +1,10 @@
 import pandas as pd
+import numpy as np
 import requests
 import sys
 from bs4 import BeautifulSoup
 from datetime import date
+from scipy.interpolate import griddata
 
 
 # ------------------------------------------------------------------------------
@@ -16,6 +18,7 @@ day_i = today.strftime("%d")
 day   = '&FROM=' + day_i + '12&TO=' + day_i + '12'
 end   = '&STNM=72469'
 url  += year + month + day + end
+url = 'http://weather.uwyo.edu/cgi-bin/sounding?region=naconf&TYPE=TEXT%3ALIST&YEAR=2020&MONTH=10&FROM=0612&TO=0612&STNM=72597'
 
 
 # ------------------------------------------------------------------------------
@@ -31,16 +34,32 @@ df = pd.DataFrame(data,columns=names).fillna('-999')
 
 print("Data retrieved for " + today.isoformat())
 
+
+# ------------------------------------------------------------------------------
+# Interpolate
+# ------------------------------------------------------------------------------
+n_type = 'float'
+points = df.HGHT[1:].to_numpy(n_type)
+values = df.THTA[1:].to_numpy(n_type)
+
+grid_x = np.mgrid[500:15500+1:500]
+grid_data = griddata(points, values, grid_x, method='cubic')
+
+filename = 'sounding/sounding-potential-temp.txt'
+f = open(filename, 'w')
+f.write(str(grid_data.size) + '\n')
+grid_x.tofile(f, "\n")
+
 # ------------------------------------------------------------------------------
 # Save dataframe to file
 # ------------------------------------------------------------------------------
-f = open('sounding/sounding-README.txt', 'w')
-f.write("Sounding from the date " + str(date.today()))
-for col in df.columns:
-    # filename = 'sounding/sounding-' + str(date.today()) + '-' + col + '.txt'
-    filename = 'sounding/sounding-' + col + '.txt'
-    f = open(filename, 'w')
-    f.write(str(df.shape[0]) + '\n')
-    f.write(df[col].to_csv(header=False, index=False))
+# f = open('sounding/sounding-README.txt', 'w')
+# f.write("Sounding from the date " + str(date.today()))
+# for col in df.columns:
+#     # filename = 'sounding/sounding-' + str(date.today()) + '-' + col + '.txt'
+#     filename = 'sounding/sounding-' + col + '.txt'
+#     f = open(filename, 'w')
+#     f.write(str(df.shape[0]) + '\n')
+#     f.write(df[col].to_csv(header=False, index=False))
 
 print('File written')
