@@ -20,11 +20,11 @@ program main
     type(domain_t), save :: domain
 
     ! parameters to setup test
-    integer, parameter :: timesteps = 500
-    logical            :: report = .false.
-    logical, parameter :: convection = .false.
-    logical, parameter :: sounding   = .false.
-    logical, parameter :: print_timestep = .false.
+    integer, parameter :: timesteps = 200
+    logical            :: report = .true.
+    logical, parameter :: convection = .true.
+    logical, parameter :: use_sounding   = .false.
+    logical, parameter :: print_timestep = .true.
 
     integer :: i,nz, ypos,xpos, n_particles
     type(timer_t) :: timer
@@ -42,8 +42,8 @@ program main
     ! call exit
 
     if (me==1) print *,me,"domain%initialize_from_file('input-parameters.txt')"
-    call domain%initialize_from_file('input-parameters.txt', convection) !, &
-          ! sounding)
+    call domain%initialize_from_file('input-parameters.txt', convection, &
+          use_sounding)
 
     if (me==1) then
         nz = size(domain%pressure,2)
@@ -81,11 +81,11 @@ program main
               convected_particles = convection)
         call domain%halo_send()
         call microphysics(domain, dt = 20.0, subset=1, &
-              convected_particles = convection)
+              convected_particles = convection, t=i)
         ! call domain%halo_send()
         call domain%halo_retrieve(convection)
 
-        if (report .eqv. .true.) call domain%report_convection(i)
+        ! if (report .eqv. .true.) call domain%report_convection(i)
 
         call domain%advect(dt = 1.0)
     end do
