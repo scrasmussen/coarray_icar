@@ -90,14 +90,15 @@ contains
 
     end subroutine process_halo
 
-    subroutine microphysics(domain, dt, halo, subset, convected_particles)
+    subroutine microphysics(domain, dt, halo, subset, convected_particles, t)
         implicit none
         type(domain_t), intent(inout) :: domain
         real,           intent(in)    :: dt
         integer,        intent(in),   optional :: halo, subset
         logical,        intent(in),   optional :: convected_particles
+        integer,        intent(in),   optional :: t
         logical                       :: convect_particles
-        integer                       :: dz_lb(3)
+        integer                       :: dz_lb(3), i
 
         if (.not. initialized) call mp_init(domain)
 
@@ -113,24 +114,46 @@ contains
           dz_lb = lbound(domain%dz_interface)
 
           if (convect_particles .eqv. .true.) then
-            if (domain%convection_obj%do_replacement() .eqv. .false.) then
-              call domain%convection_obj%process( &
+          !  if (domain%convection_obj%do_replacement() .eqv. .false.) then
+          !     print *, "---Artless: unsure why this is needed now---"
+          !     stop
+          !     call domain%convection_obj%process( &
+          !         domain%nx_global, domain%ny_global, &
+          !         domain%ims, domain%ime, domain%kms, domain%kme, domain%jms, domain%jme, &
+          !         dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
+          !         domain%temperature, domain%z_interface(:,1,:), &
+          !         domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
+          !         domain%jte)
+             ! else
+
+             if (1 .eq. 1 ) then  ! take every time step
+             do i=1,int(dt)
+                ! if (this_image() .eq. 1) print*, "dt_in = ", dt_in, "dt", dt
+                call domain%convection_obj%process( &
                   domain%nx_global, domain%ny_global, &
-                  domain%ims, domain%ime, domain%kms, domain%kme, domain%jms, domain%jme, &
-                  dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
+                  domain%ims, domain%ime, domain%kms, &
+                  domain%kme, domain%jms, domain%jme, &
+                  1.0, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
                   domain%temperature, domain%z_interface(:,1,:), &
                   domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
-                  domain%jte)
-          else
-              call domain%convection_obj%process( &
+                  domain%jte, domain%z, domain%potential_temperature, &
+                  domain%u, domain%v, domain%w, int((t-1)*dt + i) )
+                call domain%report_convection(int((t-1)*dt + i))
+             end do
+             end if
+             ! end if
+             if (0 .eq. 1 ) then  ! no extra time steps taken
+                call domain%convection_obj%process( &
                   domain%nx_global, domain%ny_global, &
-                  domain%ims, domain%ime, domain%kms, domain%kme, domain%jms, domain%jme, &
+                  domain%ims, domain%ime, domain%kms, &
+                  domain%kme, domain%jms, domain%jme, &
                   dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
                   domain%temperature, domain%z_interface(:,1,:), &
                   domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
                   domain%jte, domain%z, domain%potential_temperature, &
                   domain%u, domain%v, domain%w)
-            end if
+             end if
+
           end if
 
             call process_subdomain(domain, dt,                               &
