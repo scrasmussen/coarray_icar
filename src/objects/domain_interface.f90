@@ -9,7 +9,7 @@ module domain_interface
 
   private
   public :: domain_t
-  public :: pressure_at_elevation, exner_function, sat_mr
+  public :: pressure_at_elevation, exner_function, sat_mr, exner_function2
 
   type domain_t
     ! private
@@ -131,11 +131,12 @@ module domain_interface
     end function
 
     ! Input domain_t object from file
-    module subroutine initialize_from_file(this,file_name,convected_particles)
+    module subroutine initialize_from_file(this,file_name,convected_particles,&
+         use_sounding)
       implicit none
       class(domain_t), intent(inout) :: this
       character(len=*), intent(in) :: file_name
-      logical, intent(in) :: convected_particles
+      logical, intent(in) :: convected_particles, use_sounding
     end subroutine
 
     module subroutine report_convection(this, step)
@@ -155,6 +156,12 @@ module domain_interface
       real, intent(in) :: pressure
       real :: exner
     end function exner_function
+
+    elemental module function exner_function2(pressure) result(exner)
+      implicit none
+      real, intent(in) :: pressure
+      real :: exner
+    end function exner_function2
 
     elemental module function sat_mr(temperature,pressure)
       ! Calculate the saturated mixing ratio at a temperature (K), pressure (Pa)

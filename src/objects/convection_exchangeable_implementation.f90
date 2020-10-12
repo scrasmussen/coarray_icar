@@ -13,7 +13,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
   logical, parameter :: fake_wind_correction = .false.
-  logical, parameter :: relative_humidity = .false.
+  logical, parameter :: moist_air_parcels = .true.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: brunt_vaisala = .true.
@@ -205,13 +205,16 @@ contains
     water_vapor_val = sat_mr(temp_val, pressure_val)
     relative_humidity_in = water_vapor_val
 
+    ! ARTLESS: Testing, set to 0
+    water_vapor_val = 0
+    relative_humidity_in = 0
+
     ! wind is constant in this system, ignoring w wind (aka z-direction)
     u_val = u_in%local(x0, z0, y0)
     v_val = v_in%local(x0, z0, y0)
     w_val = 0
 
 
-    cloud_water = 0
     cloud_water = 0
     particle = convection_particle(particle_id, .true., .false., &
         x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
@@ -247,7 +250,7 @@ contains
     real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
     real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
     real :: vapor_p, sat_p, T_C, T_K, mr, T_squared, T_original, tmp
-    real :: xx, yy
+    real :: xx, yy, z_0, z_1
     real :: rate_of_temp_change, bv(local_buf_size)
     integer :: x0, x1, z0, z1, y0, y1, bv_i, image, particle_id(local_buf_size)
     integer :: u_bound(3)
@@ -362,7 +365,9 @@ contains
           !-----------------------------------------------------------------
           ! Move particle, remove particle if beyond the z axis
           !-----------------------------------------------------------------
-          particle%z_meters = particle%z_meters + z_displacement
+          z_0 = particle%z_meters
+          z_1 = particle%z_meters + z_displacement
+          particle%z_meters = z_1
           if (particle%z .lt. kts) then
             ! ---- hits the ground and stops  ----
             ! z_displacement = z_displacement + dz * (1-particle%z)
@@ -396,6 +401,25 @@ contains
             ! cycle
           end if
 
+
+
+
+
+          if (brunt_vaisala .eqv. .true.) then
+             associate (A => potential_temp%local, x => particle%x, &
+                  z => particle%z , y => particle%y)
+               x0 = floor(x); z0 = floor(z); y0 = floor(y);
+               x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
+
+               bv(bv_i) = trilinear_interpolation( &
+                    x, x0, x1, z, z0, z1, y, y0,y1, &
+                    A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+                    A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+               particle_id(bv_i) = particle%particle_id
+               bv_i = bv_i + 1
+             end associate
+          end if
+
           !-----------------------------------------------------------------
           ! Dry Lapse Rate
           !-----------------------------------------------------------------
@@ -404,24 +428,9 @@ contains
           ! Method one: physics
           !        a) change pressure         b) update temperature
           !-----------------------------------------------------------------
-          if (relative_humidity .eqv. .false.) then
+          if (moist_air_parcels .eqv. .false.) then
              call dry_lapse_rate(particle%pressure, particle%temperature, &
                   particle%potential_temp, z_displacement)
-
-             if (brunt_vaisala .eqv. .true.) then
-                associate (A => potential_temp%local, x => particle%x, &
-                     z => particle%z , y => particle%y)
-                  x0 = floor(x); z0 = floor(z); y0 = floor(y);
-                  x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
-
-                  bv(bv_i) = trilinear_interpolation( &
-                       x, x0, x1, z, z0, z1, y, y0,y1, &
-                       A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
-                       A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
-                  particle_id(bv_i) = particle%particle_id
-                  bv_i = bv_i + 1
-                end associate
-             end if
 
           else
           !-----------------------------------------------------------------
@@ -446,11 +455,13 @@ contains
               ! real, parameter :: C_vv = 1.0 / 1390.0
               real :: C_vv, c_p
               real :: specific_latent_heat, Q_heat, temp_c, delta_t, T1, p1
+              real :: potential_T1
               integer :: repeat
-              do iter = 1,5
+              do iter = 1,1
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
               T1 = particle%temperature
+              potential_T1 = particle%potential_temp
               p1 = particle%pressure
 
               particle%relative_humidity = RH
@@ -461,10 +472,19 @@ contains
 
               ! Particle is falling, using evaporation of cloud water to keep
               ! the relative humidity at 1 if possible
-              if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0) then
-                 if (debug .eqv. .true.) then
-                    print*, "==== cloud_water .gt. 0, rh .lt. 1 ===="
-                 end if
+              vapor_needed = saturate - particle%water_vapor
+
+              if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0 &
+                   .and. vapor_needed .gt. 0.0000001) then
+                if (debug .eqv. .true.) then
+                   print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
+                   print *, "RH", RH, &
+                        "water_vapor", particle%water_vapor, &
+                        "saturate", saturate, &
+                        "cloud water", particle%cloud_water
+
+                   print*,"vapor_needed", vapor_needed
+                end if
                 vapor_needed = saturate - particle%water_vapor
                 if (vapor_needed > particle%cloud_water) then
                   vapor = particle%cloud_water
@@ -475,6 +495,14 @@ contains
                 end if
 
                 particle%water_vapor = particle%water_vapor + vapor
+
+                if (debug .eqv. .true.) then
+                   print *, "vapor_needed", vapor_needed, &
+                        "new water_vapor", particle%water_vapor, &
+                        "new cloud water", particle%cloud_water
+                end if
+
+
                 ! heat required by phase change
                 Q_heat = specific_latent_heat * vapor ! kJ
                 c_p = (1004 * (1 + 1.84 * vapor)) ! 3.3
@@ -482,16 +510,36 @@ contains
                 delta_t = Q_heat / c_p   ! 3.2c
                 particle%temperature = T1 - delta_t
 
+
+                if (debug .eqv. .true.) then
+                   print *, 'Q_heat', Q_heat, 'c_p', c_p
+                   print *, 'T1', T1, 'T new', particle%temperature, &
+                        'delta_T', delta_T
+                   print *, "old potential temp", particle%potential_temp, &
+                        'pressure remains at', particle%pressure, &
+                        "exner function", exner_function(particle%pressure)
+                end if
+
                 ! update potential temperature, assumming pressure is constant
                 particle%potential_temp = particle%temperature / exner_function(particle%pressure)
 
-
+                if (debug .eqv. .true.) then
+                   print *, "new potential temp", particle%potential_temp
+                end if
 
               ! Particle is raising and condensation is occurring
-              else if (RH .ge. 1.0) then
+             else if (RH .gt. 1.0) then
+           ! ==== rh .gt. 1 ====
+           ! water_vapor 5.271018017E-4 saturate 5.271018017E-4 cloud water 0.
+           ! condensate 0. new water_vapor 5.271018017E-4 new cloud water 0.
+           ! Q_heat 0.
+           ! ============= process done ===============
+
                if (debug .eqv. .true.) then
-                  print*, "==== rh .gt. 1 ===="
-                  print *, "water_vapor", particle%water_vapor, &
+                  print*, "==== rh .gt. 1, wet ===="
+                  print *, "RH", RH, &
+                       "water_vapor", particle%water_vapor, &
+                       "saturate", saturate, &
                        "cloud water", particle%cloud_water
                end if
                 condensate = particle%water_vapor - saturate
@@ -520,6 +568,8 @@ contains
 
                 ! heat from phase change
                 Q_heat = specific_latent_heat * condensate ! kJ
+                ! print *, "Q_heat", Q_heat
+                ! exit
                 !--------------------------------------------------------------
                 ! calculate change in heat using specific heat (c_p)
                 !--------------------------------------------------------------
@@ -553,10 +603,21 @@ contains
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
              else if (iter .eq. 1) then
+                if (debug .eqv. .true.) print*, "==== dry physics  ===="
                 call dry_lapse_rate(particle%pressure, particle%temperature, &
                      particle%potential_temp, z_displacement)
              end if
-             end do
+
+             if (debug .eqv. .true.) then
+                print*, "old  pressure,temp,potential_temp,z_displacement", &
+                     p1, t1, &
+                     potential_t1, z_displacement
+                print*, "new  pressure,temp,potential_temp,diff          ", &
+                     particle%pressure, particle%temperature, &
+                     particle%potential_temp, abs(t1-particle%temperature)
+             end if
+
+            end do
              ! saturate = sat_mr(particle%temperature, particle%pressure)
              ! RH = particle%water_vapor / saturate
              ! particle%relative_humidity = RH
@@ -660,7 +721,8 @@ contains
       sync all
       end do
 
-    end if
+   end if
+   if (debug .eqv. .true.) print *, "============= process done ==============="
   end subroutine process
 
 

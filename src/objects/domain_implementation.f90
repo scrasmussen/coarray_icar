@@ -33,10 +33,10 @@ contains
 
     end subroutine print_in_image_order
 
-    subroutine master_initialize(this, convected_particles)
+    subroutine master_initialize(this, convected_particles, use_sounding)
       class(domain_t), intent(inout) :: this
-      logical, intent(in) :: convected_particles
-      integer :: i,j, halo_width, sounding_n, sounding_start, sounding_max
+      logical, intent(in) :: convected_particles, use_sounding
+      integer :: i,j,k, halo_width, sounding_n, sounding_start, sounding_max
       real, allocatable :: sounding(:)
       real :: sine_curve
       type(grid_t) :: grid
@@ -116,8 +116,8 @@ contains
           surface_z            => 0.0,              &   ! elevation of the first model level [m]
           dz_value             => 500.0,            &   ! thickness of each model gridcell   [m]
           sealevel_pressure    => 100000.0,         &   ! pressure at sea level              [Pa]
-          ! hill_height          => 0.0,           &   ! height of the ideal hill(s)        [m]
-          hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
+          hill_height          => 0.0,           &   ! height of the ideal hill(s)        [m]
+          ! hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
           n_hills              => 1.0,              &   ! number of hills across the domain  []
           ids=>this%ids, ide=>this%ide,             &
           jds=>this%jds, jde=>this%jde,             &
@@ -152,29 +152,47 @@ contains
           this%dz_mass(:,kms,:)     = this%dz_mass(:,kms,:)/2
           this%pressure(:,kms,:)    = pressure_at_elevation(sealevel_pressure, this%z(:,kms,:))
 
-          call load_sounding(sounding, sounding_n, sounding_start, sounding_max)
-          ! call load_sounding( sounding_n, sounding_start, sounding_max)
 
-          call exit
           do i=kms+1,kme
               this%z(:,i,:)           = this%z(:,i-1,:)           + this%dz_mass(:,i,:)
               this%z_interface(:,i,:) = this%z_interface(:,i-1,:) + this%dz_interface(:,i,:)
               this%pressure(:,i,:)    = pressure_at_elevation(sealevel_pressure, this%z(:,i,:))
-              if (this_image() .eq. 1) then
-                 print*, this%z_interface(:,i,:)
-                 print*, "---------"
-                 ! print*, set_potential_temp(this%z_interface(:,i,:))
-                 ! call set_potential_temp(4.0)
-                 print*, "========="
-              end if
+
+
+              ! idealized temperature gradient for dry air parcel
+              ! print*, "----------"
+              ! print*, this%z_interface(:,i,:)
+              this%temperature(:,i,:) = 290 - (0.0065 * this%z_interface(:,i,:))
+              ! print*, this%temperature(:,i,:)
+              ! print*, "----------"
+              ! 0 meters = 290 K
+              !
+              ! this%temperature =
           enddo
-          sync all
-          print *, this_image(), ": ending", maxval(this%z_interface)
-          sync all
-          call exit
+
+          if (use_sounding .eqv. .true.) then
+             call load_sounding(sounding, sounding_n, sounding_start, sounding_max)
+             do k=kms+1,kme
+                do i=ims,ime
+                   do j=jms,jme
+                      this%potential_temperature%local(i,k,j) = &
+                           sounding(nint(this%z_interface(i,k,j)))
+                   end do
+                end do
+             end do
+          end if
+
           this%exner       = exner_function(this%pressure)
-          this%temperature = this%exner * this%potential_temperature%local
-          this%water_vapor%local = sat_mr(this%temperature,this%pressure)
+          print *, "----pressure----", this%exner(10,:,10)
+
+          print *, "----pressure----", this%exner(10,:,10)
+          call exit
+          ! commented out for idealized test
+          ! this%temperature = this%exner * this%potential_temperature%local
+          ! this%water_vapor%local = sat_mr(this%temperature,this%pressure)
+
+          ! --- dry environment ---
+          this%water_vapor%local = 0
 
 
           if (convected_particles .eqv. .true.) then
@@ -261,6 +279,16 @@ contains
     !!
     !! -------------------------------
     elemental module function exner_function(pressure) result(exner)
+        implicit none
+        real, intent(in) :: pressure
+        real :: exner
+
+        associate(po=>100000, Rd=>287.058, cp=>1003.5)
+            exner = (pressure / po) ** (Rd/cp)
+        end associate
+    end function
+
+    elemental module function exner_function2(pressure) result(exner)
         implicit none
         real, intent(in) :: pressure
         real :: exner
@@ -357,10 +385,11 @@ contains
     !! Initialize the domain reading grid dimensions from an input file
     !!
     !! -------------------------------
-    module subroutine initialize_from_file(this,file_name,convected_particles)
+    module subroutine initialize_from_file(this,file_name,convected_particles, &
+         use_sounding)
       class(domain_t), intent(inout) :: this
       character(len=*), intent(in) :: file_name
-      logical, intent(in) :: convected_particles
+      logical, intent(in) :: convected_particles, use_sounding
       integer :: nx,ny,nz
       real    :: preferred_ratio
       integer :: my_unit,stat
@@ -395,7 +424,7 @@ contains
       this%ny = my_n(ny, this%yimg, this%yimages)
       this%nz = nz
       if (this_image()==1) print *,"call master_initialize(this)"
-      call master_initialize(this, convected_particles)
+      call master_initialize(this, convected_particles, use_sounding)
     end subroutine
 
     !> -------------------------------
@@ -412,7 +441,8 @@ contains
       this%nx = my_n(nx_global, this%ximg, this%ximages)
       this%ny = my_n(ny_global, this%yimg, this%yimages)
       this%nz = nz_global
-      call master_initialize(this, .false.)
+      call master_initialize(this, .false., .false.) ! no convected particles or
+                                                     ! sounding
     end subroutine
 
 
@@ -652,15 +682,15 @@ contains
       allocate(sounding(sounding_start:sounding_max))
       sounding = -1
 
-      do i=sounding_start,sounding_max, 500
-         print *, "i = ", i
+      do i=sounding_start,sounding_max, 1
+         ! print *, "i = ", i
          read(me,*) sounding(i)
       end do
 
       close(me)
 
-      print*, "n,start,max ", sounding_n, sounding_start, sounding_max
-      print*, sounding
+      ! print*, "n,start,max ", sounding_n, sounding_start, sounding_max
+      ! print*, sounding
     end subroutine load_sounding
 
     subroutine set_potential_temp(height)
