@@ -40,17 +40,30 @@ print("Data retrieved for " + today.isoformat())
 # ------------------------------------------------------------------------------
 n_type = 'float'
 points = df.HGHT[1:].to_numpy(n_type)
-values = df.THTA[1:].to_numpy(n_type)
+theta_values = df.THTA[1:].to_numpy(n_type)
+pres_values  = df.PRES.to_numpy(n_type)
+# sys.exit()
 
 start=500
 end=15500
 grid_x = np.mgrid[start:end+1:1]
-grid_data = griddata(points, values, grid_x, method='cubic')
+theta_data = griddata(points, theta_values, grid_x, method='cubic')
+pres_data  = griddata(points,  pres_values, grid_x, method='cubic')
 
-filename = 'sounding/sounding-potential-temp.txt'
-f = open(filename, 'w')
-f.write(str(grid_data.size) +" " + str(start) + " " + str(end) + '\n')
-grid_data.tofile(f, "\n")
+
+def write_data(filename, data, start, end):
+    filename = 'sounding/' + filename
+    f = open(filename, 'w')
+    f.write(str(data.size) +" " + str(start) + " " + str(end) + '\n')
+    data.tofile(f, "\n")
+
+write_data('sounding-potential-temp.txt', theta_data, start, end)
+write_data('sounding-pressure.txt', pres_data, start, end)
+
+
+
+
+
 
 # ------------------------------------------------------------------------------
 # Save dataframe to file
