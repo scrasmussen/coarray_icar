@@ -142,13 +142,35 @@ plt.suptitle(title)
 
 
 
-# def
+
+# --- plot potential temperature ---
+ax55 = fig.add_subplot(3,2,6)
+ax55.scatter(particles.timestep, particles.potential_temperature,
+            cmap=discrete_cmap, c=particles.identifier, marker='.')
+ax55.set_xlabel("timestep")
+ax55.set_ylabel("potential temperature (K)")
+
+
+ax6 = fig.add_subplot(3,2,5)
+ax6.scatter(particles.potential_temperature, particles.z_meters,
+            cmap=discrete_cmap, c=particles.identifier, marker='.')
+ax6.set_xlabel("potential temp (K)")
+ax6.set_ylabel("elevation (km)")
+
+
+plt.tight_layout()
+plt.show()
+# fig.save(filename, pdf=False, pgf=True)
+print("Fin!")
+
+sys.exit()
 
 
 
 # ---- plot table ----
 t = particles[particles.identifier == 1].timestep.to_numpy()
 
+# ax5 = fig.add_subplot(3,1,3)
 ax5 = fig.add_subplot(3,2,6)
 t_x = 3
 t_y = 1
@@ -165,7 +187,12 @@ for row in range(1,num_particles+1):
     freqs = fftpack.fftfreq(len(x))
     # print(table_data)
 
-    table_data = np.c_[table_data, ['{:,.5f}'.format(ave_freq), ave_period, '']]
+    # table_data = np.c_[table_data, ['{:,.5f}'.format(ave_freq), ave_period, '']]
+    table_data = np.c_[table_data, ['{:,.5f}'.format(ave_freq),
+                                    '{:,.2f}'.format(ave_period),
+                                    '']]
+
+
 table_data = table_data[:,1:]
 
 

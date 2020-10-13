@@ -1,12 +1,14 @@
 lc=python3
-input=particles/ideal-no-rh-40p-1000ts-rinit-5velocity.txt
-input=particles/ideal-rh-500ts.txt
-# input=particles/ideal-rh-test-pre.txt
-input=particles/ideal-rh-test.txt
-# input=particles/ideal-rh-test.txt.1
-input=particles/ideal-no-rh-test.txt
-# input=particles/ideal-no-rh-test2.txt
-input=particles/ideal-no-rh-test-check.txt
+
+# ----- one particle runs for testing -----
+input=particles/single-200ts-no-sounding-dry.txt
+input=particles/single-200ts-sounding-dry.txt
+# input=particles/single-200ts-no-sounding-wet.txt
+# input=particles/single-200ts-no-sounding-wet-16p.txt
+input=particles/single-sounding-wet.txt
+input=particles/single-sounding-dry.txt
+input=particles/eight-wet-dry.txt
+input=particles/eight-dry.txt
 
 
 all: build
