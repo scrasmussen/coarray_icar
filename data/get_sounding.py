@@ -36,29 +36,29 @@ print("Data retrieved for " + today.isoformat())
 
 
 # ------------------------------------------------------------------------------
-# Interpolate
+# Interpolate and write to file
 # ------------------------------------------------------------------------------
-n_type = 'float'
-points = df.HGHT[1:].to_numpy(n_type)
-theta_values = df.THTA[1:].to_numpy(n_type)
-pres_values  = df.PRES.to_numpy(n_type)
-# sys.exit()
-
-start=500
-end=15500
-grid_x = np.mgrid[start:end+1:1]
-theta_data = griddata(points, theta_values, grid_x, method='cubic')
-pres_data  = griddata(points,  pres_values, grid_x, method='cubic')
-
-
 def write_data(filename, data, start, end):
     filename = 'sounding/' + filename
     f = open(filename, 'w')
     f.write(str(data.size) +" " + str(start) + " " + str(end) + '\n')
     data.tofile(f, "\n")
 
-write_data('sounding-potential-temp.txt', theta_data, start, end)
-write_data('sounding-pressure.txt', pres_data, start, end)
+def interpolate_and_write(filename,  values, points):
+    start=500
+    end=15500
+    grid_x = np.mgrid[start:end+1:1]
+    data = griddata(points, values, grid_x, method='cubic')
+    write_data(filename, data, start, end)
+
+
+n_type = 'float'
+points = df.HGHT[1:].to_numpy(n_type)
+theta_values = df.THTA[1:].to_numpy(n_type)
+pres_values  = df.PRES.to_numpy(n_type)
+
+interpolate_and_write('sounding-potential-temp.txt', theta_values, points)
+interpolate_and_write('sounding-pressure.txt', pres_values, points)
 
 
 
