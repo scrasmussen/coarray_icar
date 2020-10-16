@@ -46,7 +46,7 @@ def write_data(filename, data, start, end):
 
 def interpolate_and_write(filename,  values, points):
     start=500
-    end=15500
+    end=16500
     grid_x = np.mgrid[start:end+1:1]
     data = griddata(points, values, grid_x, method='cubic')
     write_data(filename, data, start, end)
@@ -55,7 +55,7 @@ def interpolate_and_write(filename,  values, points):
 n_type = 'float'
 points = df.HGHT[1:].to_numpy(n_type)
 theta_values = df.THTA[1:].to_numpy(n_type)
-pres_values  = df.PRES.to_numpy(n_type)
+pres_values  = df.PRES[1:].to_numpy(n_type) * 100
 
 interpolate_and_write('sounding-potential-temp.txt', theta_values, points)
 interpolate_and_write('sounding-pressure.txt', pres_values, points)
