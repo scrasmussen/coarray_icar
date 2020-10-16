@@ -137,7 +137,8 @@ contains
                   domain%temperature, domain%z_interface(:,1,:), &
                   domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
                   domain%jte, domain%z, domain%potential_temperature, &
-                  domain%u, domain%v, domain%w, int((t-1)*dt + i) )
+                  domain%pressure, domain%u, domain%v, domain%w, &
+                  int((t-1)*dt + i) )
                 call domain%report_convection(int((t-1)*dt + i))
              end do
              end if
@@ -151,7 +152,7 @@ contains
                   domain%temperature, domain%z_interface(:,1,:), &
                   domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
                   domain%jte, domain%z, domain%potential_temperature, &
-                  domain%u, domain%v, domain%w)
+                  domain%pressure, domain%u, domain%v, domain%w)
              end if
 
           end if
