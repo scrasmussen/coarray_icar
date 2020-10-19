@@ -20,10 +20,10 @@ program main
     type(domain_t), save :: domain
 
     ! parameters to setup test
-    integer, parameter :: timesteps = 200
+    integer, parameter :: timesteps = 100
     logical            :: report = .true.
     logical, parameter :: convection = .true.
-    logical, parameter :: use_sounding   = .false.
+    logical, parameter :: use_sounding   = .true.
     logical, parameter :: print_timestep = .true.
 
     integer :: i,nz, ypos,xpos, n_particles
