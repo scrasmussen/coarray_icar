@@ -114,14 +114,14 @@ contains
     !   allocate(this%transfer_array_3d(this%nx, this%nz, this%ny_global)[*])
 
       associate(                                    &
-           ! surface_z            => 0.0,              &   ! elevation of the first model level [m]
-          surface_z            => 500.0,              & ! Wont work with dry bv test
+           surface_z            => 0.0,              &   ! elevation of the first model level [m]
+          ! surface_z            => 500.0,              & ! Wont work with dry bv test
           dz_value             => 500.0,            &   ! thickness of each model gridcell   [m]
           sealevel_pressure    => 100000.0,         &   ! pressure at sea level              [Pa]
           hill_height          => 0.0,           &   ! height of the ideal hill(s)        [m]
           ! hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
-          ! n_hills              => 1.0,              &   ! number of hills across the domain  []
-          n_hills              => 0.0,              &   ! number of hills across the domain  []
+          n_hills              => 1.0,              &   ! number of hills across the domain  []
+          ! n_hills              => 0.0,              &   ! number of hills across the domain  []
           ids=>this%ids, ide=>this%ide,             &
           jds=>this%jds, jde=>this%jde,             &
           kds=>this%kds, kde=>this%kde,             &
@@ -232,8 +232,8 @@ contains
                 this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
                 this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
                 this%pressure, input_buf_size=8,halo_width=2)
+            print *, "Domain_Implementation.f90: Convected Particles Initialized"
           end if
-          print *, "Domain_Implementation.f90: Convected Particles Initialized"
       end associate
     end subroutine
 
