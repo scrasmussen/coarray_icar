@@ -7,6 +7,14 @@ import numpy as np
 import pandas as pd
 import sys
 
+plt.rc('font', family='serif')
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.linewidth'] = 2
+# --- be sure to add ---
+# AND fig = plt.figure(figsize=(4,3))
+# AND plt.tight_layout() before plt.show()
+
+
 
 if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
@@ -88,8 +96,8 @@ plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
 
-# plt.xscale('log', basex=2)
-# plt.yscale('log', basey=2)
+plt.xscale('log', basex=2)
+plt.yscale('log', basey=2)
 # ax.set_xticklabels([])
 # ax.set_yticklabels([])
 
@@ -104,5 +112,6 @@ if (gif):
     # ani.save('test.gif', writer=animation.PillowWriter, fps=None,dpi=20) # fps was 5
     # ani.save('test.gif', writer=animation.ImageMagickWriter, fps=None) # fps was 5
 else:
+    plt.tight_layout()
     plt.show()
 print("Fin!")
