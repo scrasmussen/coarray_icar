@@ -50,27 +50,27 @@ function run_n_images {
 if [[ "$strong_scaling" = true ]]; then
     echo "- running strong scaling tests on ${nodes} nodes"
     if [[ ${nodes} == 1 ]]; then
-	create_input 500 500
-	run_n_images 1
-	run_n_images 2
-	run_n_images 4
-	run_n_images 8
-	run_n_images 16
-	run_n_images 36
+  create_input 500 500
+  run_n_images 1
+  run_n_images 2
+  run_n_images 4
+  run_n_images 8
+  run_n_images 16
+  run_n_images 36
 
-	create_input 2000 2000
-	run_n_images 1
-	run_n_images 2
-	run_n_images 4
-	run_n_images 8
-	run_n_images 16
-	run_n_images 36
+  create_input 2000 2000
+  run_n_images 1
+  run_n_images 2
+  run_n_images 4
+  run_n_images 8
+  run_n_images 16
+  run_n_images 36
 
     else
-	create_input 500 500
-	run_n_images ${n}
-	create_input 2000 2000
-	run_n_images ${n}
+  create_input 500 500
+  run_n_images ${n}
+  create_input 2000 2000
+  run_n_images ${n}
     fi
 fi
 # Problem size table for strong scaling
@@ -92,44 +92,44 @@ fi
 if [[ "$weak_scaling" = true ]]; then
     echo "- running weak scaling tests on ${nodes} nodes"
     if [[ ${nodes} == 1 ]]; then
-	# 12k per image
-	create_input 20 20
-	run_n_images 1
-	create_input 120 120
-	run_n_images 36
-	# 768k per image
-	create_input 160 160
-	run_n_images 1
-	create_input 960 960
-	run_n_images 36
+        # 12k per image
+        create_input 20 20
+        run_n_images 1
+        create_input 120 120
+        run_n_images 36
+        # 768k per image
+        create_input 160 160
+        run_n_images 1
+        create_input 960 960
+        run_n_images 36
     elif [[ ${nodes} == 2 ]] ; then
-	# 12000 per image
-	create_input 160 180
-	run_n_images ${n}
-	# 768k per image
-	create_input 1280 1440
-	run_n_images ${n}
+        # 12000 per image
+        create_input 160 180
+        run_n_images ${n}
+        # 768k per image
+        create_input 1280 1440
+        run_n_images ${n}
     elif [[ ${nodes} == 5 ]] ; then
-	# 12000 per image
-	create_input 250 288
-	run_n_images ${n}
-	# 768k per image
-	create_input 2250 2048
-	run_n_images ${n}
+        # 12000 per image
+        create_input 250 288
+        run_n_images ${n}
+        # 768k per image
+        create_input 2250 2048
+        run_n_images ${n}
     elif [[ ${nodes} == 10 ]] ; then
-	# 12000 per image
-	create_input 375 384
-	run_n_images ${n}
-	# 768k per image
-	create_input 3000 3072
-	run_n_images ${n}
+        # 12000 per image
+        create_input 375 384
+        run_n_images ${n}
+        # 768k per image
+        create_input 3000 3072
+        run_n_images ${n}
     elif [[ ${nodes} == 20 ]] ; then
-	# 12000 per image
-	create_input 500 576
-	run_n_images ${n}
-	# 768k per image
-	create_input 4096 4500
-	run_n_images ${n}
+        # 12000 per image
+        create_input 500 576
+        run_n_images ${n}
+        # 768k per image
+        create_input 4096 4500
+        run_n_images ${n}
     fi
 fi
 
