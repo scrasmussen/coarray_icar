@@ -8,14 +8,16 @@
 #PBS -l walltime=01:00:00
 #PBS -l select=1:ncpus=32:mpiprocs=32
 
-set -e  # stop running on error
-
-# --- fill in parameters ---
+# --------------------------
+# --- FILL IN PARAMETERS ---
+# --------------------------
 nodes=2
 strong_scaling=true
 weak_scaling=true
 exe=./test-ideal
+# -------------------------------------------
 # --- parameters automatically calculated ---
+# -------------------------------------------
 n=$((${nodes} * 18))
 echo "--- VARIABLES CHOSEN ---"
 echo " nodes=${nodes}"
@@ -26,7 +28,7 @@ echo " executable=${exe}"
 echo "------------------------"
 
 
-
+set -e  # stop running on error
 # --- define user functions ---
 file=input-parameters.txt
 function create_input {
@@ -71,7 +73,7 @@ if [[ "$strong_scaling" = true ]]; then
 	run_n_images ${n}
     fi
 fi
-#
+# Problem size table for strong scaling
 # | Nodes | Num Images |
 # |     1 |          1 |
 # |     1 |          2 |
@@ -150,3 +152,4 @@ fi
 # |     5 |        180 | 2250 | 2048 | 30 |
 # |    10 |        360 | 3000 | 3072 | 30 |
 # |    20 |        720 | 4096 | 4500 | 30 |
+# ---- end weak scaling ----
