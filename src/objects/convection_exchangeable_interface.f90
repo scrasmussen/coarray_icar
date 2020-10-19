@@ -72,8 +72,8 @@ module convection_exchangeable_interface
   interface
      module subroutine process(this, nx_global, ny_global, &
          ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
-         its, ite, kts, kte, jts, jte, z_m, potential_temp, u_in, v_in, w_in, &
-         timestep)
+         its, ite, kts, kte, jts, jte, z_m, potential_temp, pressure, u_in, &
+         v_in, w_in, timestep)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
        integer, intent(in) :: nx_global, ny_global
@@ -82,20 +82,22 @@ module convection_exchangeable_interface
        integer, intent(in) :: its, ite, kts, kte, jts, jte
        real, intent(in) :: temperature(ims:ime,kms:kme,jms:jme)
        real, intent(in) :: z_interface(ims:ime,jms:jme)
-       real, intent(in), optional :: z_m(ims:ime,kms:kme,jms:jme)
-       class(exchangeable_t), intent(in), optional :: potential_temp
+       real, intent(in) :: pressure(ims:ime,kms:kme,jms:jme)
+       real, intent(in) :: z_m(ims:ime,kms:kme,jms:jme)
+       class(exchangeable_t), intent(in) :: potential_temp
        class(exchangeable_t), intent(in), optional :: u_in, v_in, w_in
        integer, intent(in), optional :: timestep
      end subroutine
 
      module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid, z_m, &
          z_interface, ims, ime, kms, kme, jms, jme, dz_val, &
-         its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
+         its, ite, kts, kte, jts, jte, pressure, input_buf_size, halo_width)
        class(convection_exchangeable_t), intent(inout) :: this
        class(exchangeable_t), intent(in)    :: potential_temp
        class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
        type(grid_t), intent(in)      :: grid
        real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+       real, intent(in)              :: pressure(ims:ime,kms:kme,jms:jme)
        real, intent(in)              :: z_interface(ims:ime,jms:jme)
        integer, intent(in)           :: ims, ime, kms, kme, jms, jme
        integer, intent(in)           :: its, ite, kts, kte, jts, jte
@@ -197,12 +199,13 @@ module convection_exchangeable_interface
 
      module function create_particle(particle_id, its, ite, kts, kte, jts, jte,&
          ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
-         u_in, v_in, w_in) result(particle)
+         pressure, u_in, v_in, w_in) result(particle)
        integer :: particle_id
        type(convection_particle) :: particle
        integer, intent(in)           :: its, ite, kts, kte, jts, jte
        integer, intent(in)           :: ims, ime, kms, kme, jms, jme
        real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+       real, intent(in)              :: pressure(ims:ime,kms:kme,jms:jme)
        class(exchangeable_t), intent(in) :: potential_temp
        real, intent(in)              :: z_interface(ims:ime,jms:jme)
        class(exchangeable_t), intent(in)    :: u_in, v_in, w_in

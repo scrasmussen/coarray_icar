@@ -36,10 +36,11 @@ contains
     subroutine master_initialize(this, convected_particles, use_sounding)
       class(domain_t), intent(inout) :: this
       logical, intent(in) :: convected_particles, use_sounding
-      integer :: i,j,k, halo_width, sounding_n, sounding_start, sounding_max
-      real, allocatable :: sounding(:)
+      integer :: i,j,k, halo_width, sounding_type
+      real, allocatable :: potential_temp_sounding(:), pressure_sounding(:)
       real :: sine_curve
       type(grid_t) :: grid
+      logical, parameter :: dry_environment = .false.
       ! halo_width = 1
       associate(                                            &
         u_test_val=>0.5, v_test_val=>0.5, w_test_val=>0.0,  &
@@ -113,12 +114,14 @@ contains
     !   allocate(this%transfer_array_3d(this%nx, this%nz, this%ny_global)[*])
 
       associate(                                    &
-          surface_z            => 0.0,              &   ! elevation of the first model level [m]
+           ! surface_z            => 0.0,              &   ! elevation of the first model level [m]
+          surface_z            => 500.0,              & ! Wont work with dry bv test
           dz_value             => 500.0,            &   ! thickness of each model gridcell   [m]
           sealevel_pressure    => 100000.0,         &   ! pressure at sea level              [Pa]
           hill_height          => 0.0,           &   ! height of the ideal hill(s)        [m]
           ! hill_height          => 1000.0,           &   ! height of the ideal hill(s)        [m]
-          n_hills              => 1.0,              &   ! number of hills across the domain  []
+          ! n_hills              => 1.0,              &   ! number of hills across the domain  []
+          n_hills              => 0.0,              &   ! number of hills across the domain  []
           ids=>this%ids, ide=>this%ide,             &
           jds=>this%jds, jde=>this%jde,             &
           kds=>this%kds, kde=>this%kde,             &
@@ -157,42 +160,70 @@ contains
               this%z(:,i,:)           = this%z(:,i-1,:)           + this%dz_mass(:,i,:)
               this%z_interface(:,i,:) = this%z_interface(:,i-1,:) + this%dz_interface(:,i,:)
               this%pressure(:,i,:)    = pressure_at_elevation(sealevel_pressure, this%z(:,i,:))
+          end do
 
 
-              ! idealized temperature gradient for dry air parcel
-              ! print*, "----------"
-              ! print*, this%z_interface(:,i,:)
-              this%temperature(:,i,:) = 290 - (0.0065 * this%z_interface(:,i,:))
-              ! print*, this%temperature(:,i,:)
-              ! print*, "----------"
-              ! 0 meters = 290 K
-              !
-              ! this%temperature =
-          enddo
+
+
+          ! --- idealized dry environment, for testing Brunt-Vaisala Freq. of
+          !     dry air parcels ---
+          !   MAKE SURE TO SET STARTING ALTITUDE TO 0 !!!!!!!
+          if (1 .eq. 0) then
+             do i=kms,kme
+                this%temperature(:,i,:) = &
+                     290 - (0.0065 * this%z_interface(:,i,:))
+             enddo
+             this%potential_temperature%local(:,:,:) = &
+                  this%temperature(:,:,:) / exner_function(this%pressure(:,:,:))
+             this%water_vapor%local = 0
+          end if
+
 
           if (use_sounding .eqv. .true.) then
-             call load_sounding(sounding, sounding_n, sounding_start, sounding_max)
+             if ((surface_z .ne. 500.0) .or. (n_hills .ne. 0)) then
+                print *, "ERROR: turn off hills and/or increase surface to 500"
+                call exit
+             end if
+
+             sounding_type = 1 ! potential_temp
+             call load_sounding(potential_temp_sounding, sounding_type)
+             do i=ims,ime
+                do j=jms,jme
+                   k = 1
+                   this%potential_temperature%local(i,k,j) = &
+                        potential_temp_sounding(nint(this%z_interface(i,k+1,j)))
+                end do
+             end do
+
              do k=kms+1,kme
                 do i=ims,ime
                    do j=jms,jme
                       this%potential_temperature%local(i,k,j) = &
-                           sounding(nint(this%z_interface(i,k,j)))
+                          potential_temp_sounding(nint(this%z_interface(i,k,j)))
+                   end do
+                end do
+             end do
+             ! print *, "===SOUNDING DONE==="
+
+             sounding_type = 2 ! pressure
+             call load_sounding(pressure_sounding, sounding_type)
+             do k=kms+1,kme
+                do i=ims,ime
+                   do j=jms,jme
+                      this%pressure(i,k,j) = &
+                           pressure_sounding(nint(this%z_interface(i,k,j)))
                    end do
                 end do
              end do
           end if
 
-          this%exner       = exner_function(this%pressure)
-          print *, "----pressure----", this%exner(10,:,10)
 
-          print *, "----pressure----", this%exner(10,:,10)
-          call exit
-          ! commented out for idealized test
-          ! this%temperature = this%exner * this%potential_temperature%local
-          ! this%water_vapor%local = sat_mr(this%temperature,this%pressure)
+          this%exner = exner_function(this%pressure)
 
-          ! --- dry environment ---
-          this%water_vapor%local = 0
+          ! --- commented out for idealized test --
+          this%temperature = this%exner * this%potential_temperature%local
+          this%water_vapor%local = sat_mr(this%temperature,this%pressure)
+          ! this%water_vapor%local = 0
 
 
           if (convected_particles .eqv. .true.) then
@@ -200,9 +231,9 @@ contains
                 this%u, this%v, this%w, grid, this%z, &
                 this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
                 this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
-                input_buf_size=8,halo_width=2)
+                this%pressure, input_buf_size=8,halo_width=2)
           end if
-
+          print *, "Domain_Implementation.f90: Convected Particles Initialized"
       end associate
     end subroutine
 
@@ -288,15 +319,6 @@ contains
         end associate
     end function
 
-    elemental module function exner_function2(pressure) result(exner)
-        implicit none
-        real, intent(in) :: pressure
-        real :: exner
-
-        associate(po=>100000, Rd=>287.058, cp=>1003.5)
-            exner = (pressure / po) ** (Rd/cp)
-        end associate
-    end function
 
     !> -------------------------------
     !! Decompose the domain into as even a set of tiles as possible in two dimensions
@@ -668,14 +690,20 @@ contains
       end do
     end subroutine
 
-    subroutine load_sounding(sounding, sounding_n, sounding_start, sounding_max)
+    subroutine load_sounding(sounding, sounding_type)
       real, allocatable, intent(out) :: sounding(:)
-      integer, intent(out) :: sounding_n, sounding_start, sounding_max
+      integer, intent(in) :: sounding_type
+      integer :: sounding_n, sounding_start, sounding_max
       character(len=32) :: filename
       integer :: me, i
       me = this_image()
       ! if (me == 1) then
-      write (filename,"(A27)") "sounding-potential-temp.txt"
+      if (sounding_type .eq. 1) &
+           write (filename,"(A27)") "sounding-potential-temp.txt"
+      if (sounding_type .eq. 2) &
+           write (filename,"(A21)") "sounding-pressure.txt"
+
+      print *, "opening", filename
       open(unit=me, file=filename, status = 'old')
       read(me,*) sounding_n, sounding_start, sounding_max
 

@@ -16,7 +16,8 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: moist_air_parcels = .true.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  logical, parameter :: brunt_vaisala = .true.
+  logical, parameter :: dry_air_parcel = .false.
+  logical, parameter :: brunt_vaisala_data = .false.
   logical, parameter :: replacement = .false.
   logical, parameter :: replacement_message = .true.
   logical, parameter :: init_theta = .false.
@@ -36,12 +37,13 @@ submodule(convection_exchangeable_interface) &
 contains
   module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid,&
       z_m, z_interface, ims, ime, kms, kme, jms, jme, dz_val, &
-      its, ite, kts, kte, jts, jte, input_buf_size, halo_width)
+      its, ite, kts, kte, jts, jte, pressure, input_buf_size, halo_width)
     class(convection_exchangeable_t), intent(inout) :: this
     class(exchangeable_t), intent(in)    :: potential_temp
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
     type(grid_t), intent(in)      :: grid
     real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+    real, intent(in)              :: pressure(ims:ime,kms:kme,jms:jme)
     real, intent(in)              :: z_interface(ims:ime,jms:jme)
     integer, intent(in)           :: ims, ime, kms, kme, jms, jme
     integer, intent(in)           :: its, ite, kts, kte, jts, jte
@@ -96,7 +98,7 @@ contains
       call this%create_particle_id()
       this%local(create) = create_particle(this%particle_id_count, &
           its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-          z_m, potential_temp, z_interface, u_in, v_in, w_in)
+          z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
 
       ! call exit ! artless
       ! this%local(create) = convection_particle(this%particle_id_count, .true., &
@@ -122,12 +124,13 @@ contains
 
   module function create_particle(particle_id, its, ite, kts, kte, jts, jte, &
       ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
-      u_in, v_in, w_in) result(particle)
+      pressure, u_in, v_in, w_in) result(particle)
     integer :: particle_id
     type(convection_particle) :: particle
     integer, intent(in)           :: ims, ime, kms, kme, jms, jme
     integer, intent(in)           :: its, ite, kts, kte, jts, jte
     real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+    real, intent(in)              :: pressure(ims:ime,kms:kme,jms:jme)
     class(exchangeable_t), intent(in)    :: potential_temp
     real, intent(in)              :: z_interface(ims:ime,jms:jme)
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
@@ -169,6 +172,15 @@ contains
           A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
     end associate
 
+    associate (A => pressure)
+      pressure_val = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+          A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+          A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+    end associate
+
+    ! print *, "val and func", pressure_val, pressure_at_elevation(100000.0, z_meters)
+    ! call exit
+
     associate (A => z_interface)
       z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
           A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
@@ -183,7 +195,7 @@ contains
     ! call exit
 
     ! sealevel_pressure => 100000.0
-    pressure_val = pressure_at_elevation(100000.0, z_meters)
+    ! pressure_val = pressure_at_elevation(100000.0, z_meters)
     exner_val = exner_function(pressure_val)
 
     ! call random_number(rand)
@@ -202,12 +214,16 @@ contains
 
     temp_val = exner_val * theta_val
 
-    water_vapor_val = sat_mr(temp_val, pressure_val)
+    if (dry_air_parcel .eqv. .true.) then
+       water_vapor_val = 0
+    else
+       water_vapor_val = sat_mr(temp_val, pressure_val) * 0.9
+    end if
     relative_humidity_in = water_vapor_val
 
     ! ARTLESS: Testing, set to 0
-    water_vapor_val = 0
-    relative_humidity_in = 0
+    !
+    ! relative_humidity_in = 0
 
     ! wind is constant in this system, ignoring w wind (aka z-direction)
     u_val = u_in%local(x0, z0, y0)
@@ -226,18 +242,19 @@ contains
 
   module subroutine process(this, nx_global, ny_global, &
       ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
-      its, ite, kts, kte, jts, jte, z_m, potential_temp, u_in, v_in, w_in, &
-      timestep)
+      its, ite, kts, kte, jts, jte, z_m, potential_temp, pressure, u_in, v_in, &
+      w_in, timestep)
     implicit none
     class(convection_exchangeable_t), intent(inout) :: this
     integer, intent(in) :: nx_global, ny_global
     real, intent(in)    :: dt, dz
     real, intent(in)    :: temperature(ims:ime,kms:kme,jms:jme)
+    real, intent(in)    :: pressure(ims:ime,kms:kme,jms:jme)
     real, intent(in)    :: z_interface(ims:ime,jms:jme)
     integer, intent(in) :: ims, ime, kms, kme, jms, jme
     integer, intent(in) :: its, ite, kts, kte, jts, jte
-    real, intent(in), optional :: z_m(ims:ime,kms:kme,jms:jme)
-    class(exchangeable_t), intent(in), optional :: potential_temp
+    real, intent(in) :: z_m(ims:ime,kms:kme,jms:jme)
+    class(exchangeable_t), intent(in) :: potential_temp
     class(exchangeable_t), intent(in), optional :: u_in, v_in, w_in
     integer, intent(in), optional :: timestep
 
@@ -257,6 +274,7 @@ contains
     logical :: calc, calc_x, calc_y, exist
     character(len=32) :: filename
 
+    if (debug .eqv. .true.) print*, "start particle processing"
 
     me = this_image()
     bv_i = 1
@@ -381,7 +399,7 @@ contains
             if (replacement .eqv. .true.) then
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-                  z_m, potential_temp, z_interface, u_in, v_in, w_in)
+                  z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
             else if (replacement_message .eqv. .true.) then
                print *, me,":",particle%particle_id, "hit the ground"
             end if
@@ -393,7 +411,7 @@ contains
             if (replacement .eqv. .true.) then
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-                  z_m, potential_temp, z_interface, u_in, v_in, w_in)
+                  z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
             else if (replacement_message .eqv. .true.) then
                print *, me,":",particle%particle_id, "went off the top"
             end if
@@ -405,7 +423,7 @@ contains
 
 
 
-          if (brunt_vaisala .eqv. .true.) then
+          if (brunt_vaisala_data .eqv. .true.) then
              associate (A => potential_temp%local, x => particle%x, &
                   z => particle%z , y => particle%y)
                x0 = floor(x); z0 = floor(z); y0 = floor(y);
@@ -429,9 +447,9 @@ contains
           !        a) change pressure         b) update temperature
           !-----------------------------------------------------------------
           if (moist_air_parcels .eqv. .false.) then
+             if (debug .eqv. .true.) print *, "-- only dry air parcel --"
              call dry_lapse_rate(particle%pressure, particle%temperature, &
                   particle%potential_temp, z_displacement)
-
           else
           !-----------------------------------------------------------------
           ! Relative Humidity and physics of Moist Adiabatic Lapse Rate
@@ -457,6 +475,10 @@ contains
               real :: specific_latent_heat, Q_heat, temp_c, delta_t, T1, p1
               real :: potential_T1
               integer :: repeat
+
+              call dry_lapse_rate(particle%pressure, particle%temperature, &
+                   particle%potential_temp, z_displacement)
+
               do iter = 1,1
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
@@ -485,7 +507,7 @@ contains
 
                    print*,"vapor_needed", vapor_needed
                 end if
-                vapor_needed = saturate - particle%water_vapor
+
                 if (vapor_needed > particle%cloud_water) then
                   vapor = particle%cloud_water
                   particle%cloud_water = 0
@@ -522,6 +544,9 @@ contains
 
                 ! update potential temperature, assumming pressure is constant
                 particle%potential_temp = particle%temperature / exner_function(particle%pressure)
+                call dry_lapse_rate(particle%pressure, particle%temperature, &
+                     particle%potential_temp, z_displacement)
+
 
                 if (debug .eqv. .true.) then
                    print *, "new potential temp", particle%potential_temp
@@ -594,6 +619,9 @@ contains
                 ! particle%potential_temp = exner_function(particle%pressure) / &
                 !      particle%temperature
                 particle%potential_temp = particle%temperature / exner_function(particle%pressure)
+                call dry_lapse_rate(particle%pressure, particle%temperature, &
+                     particle%potential_temp, z_displacement)
+
 
                 if (debug .eqv. .true.) then
                    print *, "new potential temp", particle%potential_temp
@@ -602,10 +630,13 @@ contains
                 ! -- is pressure constant during this process?
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
-             else if (iter .eq. 1) then
-                if (debug .eqv. .true.) print*, "==== dry physics  ===="
-                call dry_lapse_rate(particle%pressure, particle%temperature, &
-                     particle%potential_temp, z_displacement)
+
+
+             ! else if (iter .eq. 1) then
+             !    if (debug .eqv. .true.) print*, "==== dry physics  ===="
+             !    call dry_lapse_rate(particle%pressure, particle%temperature, &
+             !         particle%potential_temp, z_displacement)
+             !    exit
              end if
 
              if (debug .eqv. .true.) then
@@ -703,7 +734,7 @@ contains
       end associate
     end do
 
-    if (brunt_vaisala .eqv. .true.) then
+    if (brunt_vaisala_data .eqv. .true.) then
       do image=1,num_images()
       if (me .eq. image) then
          write (filename,"(A17)") "brunt_vaisala.txt"
