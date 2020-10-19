@@ -2,7 +2,9 @@
 
 # Step 1. Load needed modules
 # Step 2. Make sure below script matches user's need
-# Step 3. Run `./x-cmake.sh` from command line
+# Step 3. Create build directory and `cd` to it
+# Step 4. Run `cp ../x-cmake.sh ./` from command line
+# Step 4. Run `./x-cmake.sh` from command line
 
 # ----- GNU -----
 FC=caf cmake ../ \
