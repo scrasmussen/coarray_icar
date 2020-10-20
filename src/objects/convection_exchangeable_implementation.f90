@@ -8,15 +8,15 @@ submodule(convection_exchangeable_interface) &
   implicit none
 
   ! ----- PARAMETERS TO TUNE CONVECTION MODEL -----
-  logical, parameter :: debug = .true.
+  logical, parameter :: debug = .false.
   logical, parameter :: wrap_neighbors = .true.
   logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
   logical, parameter :: fake_wind_correction = .false.
   logical, parameter :: moist_air_parcels = .true.
+  logical, parameter :: dry_air_parcel = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
-  logical, parameter :: dry_air_parcel = .false.
   logical, parameter :: brunt_vaisala_data = .false.
   logical, parameter :: replacement = .false.
   logical, parameter :: replacement_message = .true.
@@ -472,25 +472,34 @@ contains
               ! specific heat of water vapor at constant volume
               ! real, parameter :: C_vv = 1.0 / 1390.0
               real :: C_vv, c_p
-              real :: specific_latent_heat, Q_heat, temp_c, delta_t, T1, p1
-              real :: potential_T1
+              real :: specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1, &
+                   p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif
+              real :: water_vapor0,  water_vapor1
+              real :: cloud_water0,  cloud_water1
+              real :: potential_T0, potential_T1
               integer :: repeat
-
+              logical :: only_dry
+              T0 = particle%temperature
+              p0 = particle%pressure
+              potential_T0 = particle%potential_temp
               call dry_lapse_rate(particle%pressure, particle%temperature, &
                    particle%potential_temp, z_displacement)
+              only_dry = .true.
+              T1 = particle%temperature
+              p1 = particle%pressure
+              q_dry = 1004 * 1 * (abs(t1-t0))  ! q = c_p x m x delta_T
 
               do iter = 1,1
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
-              T1 = particle%temperature
               potential_T1 = particle%potential_temp
-              p1 = particle%pressure
+              water_vapor0 = particle%water_vapor
+              cloud_water0 = particle%cloud_water
 
               particle%relative_humidity = RH
               ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
               ! specific latent heat for condensation and evaporation
               specific_latent_heat = 2.5 * 10**6 ! J kg^-1
-
 
               ! Particle is falling, using evaporation of cloud water to keep
               ! the relative humidity at 1 if possible
@@ -498,16 +507,11 @@ contains
 
               if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0 &
                    .and. vapor_needed .gt. 0.0000001) then
-                if (debug .eqv. .true.) then
-                   print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
-                   print *, "RH", RH, &
-                        "water_vapor", particle%water_vapor, &
-                        "saturate", saturate, &
-                        "cloud water", particle%cloud_water
+                if (debug .eqv. .true.) &
+                     print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
 
-                   print*,"vapor_needed", vapor_needed
-                end if
 
+                only_dry = .false.
                 if (vapor_needed > particle%cloud_water) then
                   vapor = particle%cloud_water
                   particle%cloud_water = 0
@@ -518,41 +522,21 @@ contains
 
                 particle%water_vapor = particle%water_vapor + vapor
 
-                if (debug .eqv. .true.) then
-                   print *, "vapor_needed", vapor_needed, &
-                        "new water_vapor", particle%water_vapor, &
-                        "new cloud water", particle%cloud_water
-                end if
-
-
                 ! heat required by phase change
                 Q_heat = specific_latent_heat * vapor ! kJ
+                q_wet = Q_heat
                 c_p = (1004 * (1 + 1.84 * vapor)) ! 3.3
                 ! c_p = 1004 ! specific heat of dry air at 0C
                 delta_t = Q_heat / c_p   ! 3.2c
                 particle%temperature = T1 - delta_t
 
-
-                if (debug .eqv. .true.) then
-                   print *, 'Q_heat', Q_heat, 'c_p', c_p
-                   print *, 'T1', T1, 'T new', particle%temperature, &
-                        'delta_T', delta_T
-                   print *, "old potential temp", particle%potential_temp, &
-                        'pressure remains at', particle%pressure, &
-                        "exner function", exner_function(particle%pressure)
-                end if
+                potential_temp0 = particle%potential_temp
 
                 ! update potential temperature, assumming pressure is constant
                 particle%potential_temp = particle%temperature / exner_function(particle%pressure)
-                call dry_lapse_rate(particle%pressure, particle%temperature, &
-                     particle%potential_temp, z_displacement)
 
 
-                if (debug .eqv. .true.) then
-                   print *, "new potential temp", particle%potential_temp
-                end if
-
-              ! Particle is raising and condensation is occurring
+             ! Particle is raising and condensation is occurring
              else if (RH .gt. 1.0) then
            ! ==== rh .gt. 1 ====
            ! water_vapor 5.271018017E-4 saturate 5.271018017E-4 cloud water 0.
@@ -560,22 +544,12 @@ contains
            ! Q_heat 0.
            ! ============= process done ===============
 
-               if (debug .eqv. .true.) then
-                  print*, "==== rh .gt. 1, wet ===="
-                  print *, "RH", RH, &
-                       "water_vapor", particle%water_vapor, &
-                       "saturate", saturate, &
-                       "cloud water", particle%cloud_water
-               end if
+                if (debug .eqv. .true.) print*, "==== rh .gt. 1, wet ===="
+
+                only_dry = .false.
                 condensate = particle%water_vapor - saturate
                 particle%water_vapor = particle%water_vapor - condensate
                 particle%cloud_water = particle%cloud_water + condensate
-
-                if (debug .eqv. .true.) then
-                   print *, "condensate", condensate, &
-                        "new water_vapor", particle%water_vapor, &
-                        "new cloud water", particle%cloud_water
-                end if
 
                 !--------------------------------------------------------------
                 ! a different way to calculate specific latent heat
@@ -590,9 +564,9 @@ contains
                 !       0.00006 * T_C**3
                 ! end if
 
-
                 ! heat from phase change
                 Q_heat = specific_latent_heat * condensate ! kJ
+                q_wet = Q_heat
                 ! print *, "Q_heat", Q_heat
                 ! exit
                 !--------------------------------------------------------------
@@ -607,46 +581,56 @@ contains
                 particle%temperature = T1 + delta_T
 
 
-                if (debug .eqv. .true.) then
-                   print *, 'Q_heat', Q_heat, 'c_p', c_p
-                   print *, 'T1', T1, 'T new', particle%temperature, &
-                        'delta_T', delta_T
-                   print *, "old potential temp", particle%potential_temp, &
-                        'pressure remains at', particle%pressure, &
-                        "exner function", exner_function(particle%pressure)
-                end if
                 ! update potential temperature, assumming pressure is constant
                 ! particle%potential_temp = exner_function(particle%pressure) / &
                 !      particle%temperature
                 particle%potential_temp = particle%temperature / exner_function(particle%pressure)
-                call dry_lapse_rate(particle%pressure, particle%temperature, &
-                     particle%potential_temp, z_displacement)
+                ! call dry_lapse_rate(particle%pressure, particle%temperature, &
+                !      particle%potential_temp, z_displacement)
 
-
-                if (debug .eqv. .true.) then
-                   print *, "new potential temp", particle%potential_temp
-                end if
                 ! stop
                 ! -- is pressure constant during this process?
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
 
-
-             ! else if (iter .eq. 1) then
-             !    if (debug .eqv. .true.) print*, "==== dry physics  ===="
-             !    call dry_lapse_rate(particle%pressure, particle%temperature, &
-             !         particle%potential_temp, z_displacement)
-             !    exit
+             else
+                if (debug .eqv. .true.) then
+                   print*, "==== was dry process ===="
+                end if
              end if
 
              if (debug .eqv. .true.) then
-                print*, "old  pressure,temp,potential_temp,z_displacement", &
-                     p1, t1, &
-                     potential_t1, z_displacement
-                print*, "new  pressure,temp,potential_temp,diff          ", &
-                     particle%pressure, particle%temperature, &
-                     particle%potential_temp, abs(t1-particle%temperature)
+                print *, "     pressure  |  temp      |   ~heat    | potential"
+                print *, "pre ", p0, t0, ", -none-       ,", potential_t0
              end if
+             ! if ((debug .eqv. .true.) .and. (only_dry .eqv. .false.)) then
+             !    print *, "post", p1, t1, q_dry, potential_t1
+             !    print *, "new ", &
+             !         particle%pressure, particle%temperature, &
+             !         q_wet,  particle%potential_temp
+
+                q_new_dry = &
+                     1004 * (1) * (abs(particle%temperature-t0))
+                q_dif = abs(q_dry-(q_new_dry+q_wet))
+
+                ! print *, "heat: q_dry = q_new_dry + q_wet"
+                ! print *, " ", q_dry, "=", q_new_dry, "+", q_wet
+                ! print *, "dif         =", q_dif, "which is ~ temp diff", &
+                !      1004 * (1) * q_dif
+
+                if (only_dry .eqv. .false.) &
+                     print *, q_dry, q_new_dry, q_wet, q_dif, &
+                     1004 * (1) * q_dif
+
+                ! print *, "--test--"
+                ! print *, " t? ", t0 - (q_new_dry / (1004 * (1)) )
+
+                ! print *, "vapor_needed", vapor_needed, &
+                !      "new water_vapor", particle%water_vapor, &
+                !      "new cloud water", particle%cloud_water, &
+                !      "water_vapor0", water_vapor0, &
+                !      "cloud water0", cloud_water0
+             ! end if
 
             end do
              ! saturate = sat_mr(particle%temperature, particle%pressure)
@@ -1233,6 +1217,7 @@ contains
   T_original = temperature
   temperature = exner_function(pressure) * &
        potential_temp
+
 
   if (temperature /= temperature) then
      print *, this_image(), ":: ~~~~~~NAN~~~~~~", &
