@@ -11,7 +11,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: debug = .false.
   logical, parameter :: wrap_neighbors = .true.
   logical, parameter :: convection = .true.
-  logical, parameter :: wind = .true.
+  logical, parameter :: wind = .false.
   logical, parameter :: fake_wind_correction = .false.
   logical, parameter :: moist_air_parcels = .true.
   logical, parameter :: dry_air_parcel = .false.
@@ -217,12 +217,11 @@ contains
     if (dry_air_parcel .eqv. .true.) then
        water_vapor_val = 0
     else
-       water_vapor_val = sat_mr(temp_val, pressure_val) * 0.9
+       water_vapor_val = sat_mr(temp_val, pressure_val) * 0.9 ! 0.99
     end if
     relative_humidity_in = water_vapor_val
 
     ! ARTLESS: Testing, set to 0
-    !
     ! relative_humidity_in = 0
 
     ! wind is constant in this system, ignoring w wind (aka z-direction)
@@ -489,7 +488,7 @@ contains
               p1 = particle%pressure
               q_dry = 1004 * 1 * (abs(t1-t0))  ! q = c_p x m x delta_T
 
-              do iter = 1,1
+              do iter = 1,5
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
               potential_T1 = particle%potential_temp
@@ -514,11 +513,14 @@ contains
                 only_dry = .false.
                 if (vapor_needed > particle%cloud_water) then
                   vapor = particle%cloud_water
+                  vapor = vapor / (6-iter)                ! Saturated
                   particle%cloud_water = 0
                 else
                   vapor = vapor_needed
-                  particle%cloud_water = particle%cloud_water - vapor_needed
+                  vapor = vapor / (6-iter)                ! Saturated
+                  particle%cloud_water = particle%cloud_water - vapor
                 end if
+
 
                 particle%water_vapor = particle%water_vapor + vapor
 
@@ -548,6 +550,7 @@ contains
 
                 only_dry = .false.
                 condensate = particle%water_vapor - saturate
+                condensate = condensate / (6-iter) ! Saturated
                 particle%water_vapor = particle%water_vapor - condensate
                 particle%cloud_water = particle%cloud_water + condensate
 
@@ -593,10 +596,11 @@ contains
                 ! using Poisson's equation
                 ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
 
-             else
+             else if (iter .eq. 1) then
                 if (debug .eqv. .true.) then
                    print*, "==== was dry process ===="
                 end if
+                exit
              end if
 
              if (debug .eqv. .true.) then
