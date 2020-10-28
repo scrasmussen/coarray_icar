@@ -170,7 +170,7 @@ module domain_interface
       real :: sat_mr
     end function sat_mr
 
-    subroutine load_sounding(sounding, sounding_type)
+    module subroutine load_sounding(sounding, sounding_type)
       real, allocatable, intent(out) :: sounding(:)
       integer, intent(in) :: sounding_type
     end subroutine load_sounding

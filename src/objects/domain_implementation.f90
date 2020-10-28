@@ -690,7 +690,7 @@ contains
       end do
     end subroutine
 
-    subroutine load_sounding(sounding, sounding_type)
+    module subroutine load_sounding(sounding, sounding_type)
       real, allocatable, intent(out) :: sounding(:)
       integer, intent(in) :: sounding_type
       integer :: sounding_n, sounding_start, sounding_max
