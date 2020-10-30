@@ -17,7 +17,7 @@ from tools.my_setup import *
 turn_off_graphs=True
 turn_off_graphs=False
 
-original = copy.deepcopy(particles)
+# original = copy.deepcopy(particles)
 
 
 
@@ -54,35 +54,35 @@ rh_cmap = plt.get_cmap('gist_gray')
 particles.z_meters /= 1000
 particles.pressure /= 1000
 
-rows = 3 # 2
-cols = 2
+rows = 2 # 2
+cols = 3
 fig = plt.figure()
-ax = fig.add_subplot(rows,cols,1)
 
-if True: # -----plot temperature-----
-    filename='elevation_temp_dry'
-    # particles.temperature -= 273.15
-    sc = ax.scatter(particles.temperature, particles.z_meters,
-    # ax.scatter(particles.z_meters, particles.temperature,
-               cmap=discrete_cmap, c=particles.identifier, marker='.')
-    ax.set_xlabel("temperature (K)")
-    ax.set_ylabel("elevation (km)")
-    # ax.set_xlabel("elevation (km)")
-    # ax.set_ylabel("temperature (K)")
+# ax = fig.add_subplot(rows,cols,1)
+# if True: # -----plot temperature-----
+#     filename='elevation_temp_dry'
+#     # particles.temperature -= 273.15
+#     sc = ax.scatter(particles.temperature, particles.z_meters,
+#     # ax.scatter(particles.z_meters, particles.temperature,
+#                cmap=discrete_cmap, c=particles.identifier, marker='.')
+#     ax.set_xlabel("temperature (K)")
+#     ax.set_ylabel("elevation (km)")
+#     # ax.set_xlabel("elevation (km)")
+#     # ax.set_ylabel("temperature (K)")
 
-if True: # -----plot pressure-----
-    ax2 = fig.add_subplot(3,2,2)
-    filename='elevation_pressure_dry'
-    ax2.scatter(particles.pressure, particles.z_meters,
-    # ax2.scatter(particles.z_meters, particles.pressure,
-                cmap=discrete_cmap, c=particles.identifier, marker='.')
-    # ax2.set_xlabel("elevation (km)")
-    # ax2.set_ylabel("pressure")
+# if True: # -----plot pressure-----
+#     ax2 = fig.add_subplot(rows,cols,2)
+#     filename='elevation_pressure_dry'
+#     ax2.scatter(particles.pressure, particles.z_meters,
+#     # ax2.scatter(particles.z_meters, particles.pressure,
+#                 cmap=discrete_cmap, c=particles.identifier, marker='.')
+#     # ax2.set_xlabel("elevation (km)")
+#     # ax2.set_ylabel("pressure")
 
-    ax2.set_xlabel("pressure (kPa)")
-    # ax2.set_ylabel("elevation (km)")
-    plt.setp(ax2,yticklabels=[])
-    plt.setp(ax2.get_yticklabels(), visible=False)
+#     ax2.set_xlabel("pressure (kPa)")
+#     # ax2.set_ylabel("elevation (km)")
+#     plt.setp(ax2,yticklabels=[])
+#     plt.setp(ax2.get_yticklabels(), visible=False)
 
 
 comparison = particles[particles.timestep == 0].relative_humidity.values == particles[particles.timestep == 1].relative_humidity.values
@@ -92,15 +92,17 @@ else:
     relative_humidity = True
 
 
+
+add=1 - 3
 if relative_humidity == False:
     # -----plot temp over time-----
-    ax3 = fig.add_subplot(3,2,3)
+    ax3 = fig.add_subplot(rows,cols,3+add)
     ax3.scatter(particles.timestep, particles.temperature,
                     cmap=discrete_cmap, c=particles.identifier, marker='.')
     ax3.set_xlabel("timesteps")
     ax3.set_ylabel("temp (K)")
     # -----plot pressure over time-----
-    ax4 = fig.add_subplot(3,2,4)
+    ax4 = fig.add_subplot(rows,cols,4+add)
     ax4.scatter(particles.timestep, particles.pressure,
                 cmap=discrete_cmap, c=particles.identifier, marker='.')
     ax4.set_xlabel("timesteps")
@@ -111,13 +113,13 @@ if relative_humidity == True:
     no_rh = particles[particles.relative_humidity < 1.0]
     # ------- no rh -------
     # -----plot temp over time-----
-    ax3 = fig.add_subplot(3,2,3)
+    ax3 = fig.add_subplot(rows,cols,3+add)
     ax3.scatter(no_rh.timestep, no_rh.temperature,
                 cmap=discrete_cmap, c=no_rh.identifier, marker='.')
     ax3.set_xlabel("timesteps")
     ax3.set_ylabel("temp (K)")
     # -----plot pressure over time-----
-    ax4 = fig.add_subplot(3,2,4)
+    ax4 = fig.add_subplot(rows,cols,4+add)
     ax4.scatter(no_rh.timestep, no_rh.pressure,
                 cmap=discrete_cmap, c=no_rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
@@ -127,13 +129,13 @@ if relative_humidity == True:
     ax3.scatter(rh.timestep, rh.temperature,
                 cmap=rh_cmap, c=rh.identifier, marker='.')
     ax3.set_xlabel("timesteps")
-    ax3.set_ylabel("temp (K)")
+    ax3.set_ylabel("Temp (K)")
     # -----plot pressure over time-----
     ax4.scatter(rh.timestep, rh.pressure,
                 cmap=rh_cmap, c=rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
     ax4.set_ylabel("pressure")
-    fig.legend(['Grey Scale when relative humidity < 1.0'], loc='lower left')
+    fig.legend(['Grey Scale when relative humidity > 1.0'], loc='lower left')
 
 title="Temperature and Pressure of \n"
 title += str(num_particles) + " particles, " + str(num_t) + " timesteps"
@@ -144,18 +146,32 @@ plt.suptitle(title)
 
 
 # --- plot potential temperature ---
-ax55 = fig.add_subplot(3,2,6)
+ax55 = fig.add_subplot(rows,cols,5+add)
 ax55.scatter(particles.timestep, particles.potential_temperature,
             cmap=discrete_cmap, c=particles.identifier, marker='.')
 ax55.set_xlabel("timestep")
 ax55.set_ylabel("potential temperature (K)")
 
 
-ax6 = fig.add_subplot(3,2,5)
-ax6.scatter(particles.potential_temperature, particles.z_meters,
+
+# plot altitude and the change of potential temp, temp, pressure
+ax7 = fig.add_subplot(rows,cols,6+add)
+ax7.scatter(particles.temperature, particles.z_meters,
             cmap=discrete_cmap, c=particles.identifier, marker='.')
-ax6.set_xlabel("potential temp (K)")
-ax6.set_ylabel("elevation (km)")
+ax7.set_xlabel("Temp (K)")
+ax7.set_ylabel("elevation (km)")
+
+ax8 = fig.add_subplot(rows,cols,7+add)
+ax8.scatter(particles.pressure, particles.z_meters,
+            cmap=discrete_cmap, c=particles.identifier, marker='.')
+ax8.set_xlabel("pressure")
+ax8.set_ylabel("elevation (km)")
+
+ax9 = fig.add_subplot(rows,cols,8+add)
+ax9.scatter(particles.potential_temperature, particles.z_meters,
+            cmap=discrete_cmap, c=particles.identifier, marker='.')
+ax9.set_xlabel("potential temp (K)")
+ax9.set_ylabel("elevation (km)")
 
 
 plt.tight_layout()
