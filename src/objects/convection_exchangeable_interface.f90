@@ -210,6 +210,8 @@ module convection_exchangeable_interface
        class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
      end function
 
+     module subroutine initialize_from_file()
+     end subroutine
 
      module subroutine dry_lapse_rate(pressure, temperature, potential_temp, &
           z_displacement)

@@ -22,8 +22,8 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: replacement_message = .true.
   logical, parameter :: init_theta = .false.
   logical, parameter :: init_velocity = .true.
-  integer, parameter :: particles_per_image = 1 ! 2 * 1000000
-  integer, parameter :: local_buf_size = particles_per_image * 4
+  integer, save      :: particles_per_image
+  integer, save      :: local_buf_size
   ! -----------------------------------------------
 
   integer, parameter :: default_buf_size=1
@@ -58,6 +58,9 @@ contains
     real :: u_val, v_val, w_val
     integer :: x0, x1, z0, z1, y0, y1
     logical :: calc
+
+    call initialize_from_file()
+
     me = this_image()
     ! if (present(input_buf_size)) then
     !   buf_size = input_buf_size
@@ -1190,11 +1193,6 @@ contains
     num_particles = particles_per_image
   end function num_particles
 
-  module function do_replacement(this)
-    class(convection_exchangeable_t), intent(inout) :: this
-    logical :: do_replacement
-    do_replacement = replacement
-  end function do_replacement
   ! module subroutine create_particle(this, index)
   !   class(convection_exchangeable_t), intent(inout) :: this
   !   integer :: index
@@ -1203,7 +1201,37 @@ contains
   !   ! print *, "hi!"
   ! end subroutine create_particle
 
+  module subroutine initialize_from_file()
+    integer :: num_particles
+    namelist/parcel_parameters/ num_particles
 
+    character(len=*), parameter :: file = 'parcel-parameters.txt'
+    integer :: unit, rc
+    logical :: exists
+
+    print *, "Initializing convection parcels from file"
+    inquire(file=file, exist=exists)
+
+    if (exists .neqv. .true.) then
+       particles_per_image = 1
+       local_buf_size = num_particles * 4
+       print*, trim(file), " does not exist, using default parameters:", &
+            "particles_per_image = ", particles_per_image
+       return
+    end if
+
+    unit = 10
+    open(unit, file=file, action='read', status='old', iostat=rc)
+    read(unit=unit, nml=parcel_parameters, iostat=rc)
+    close(unit)
+
+    if (num_particles .eq. 0) then
+       print *, "air parcels used but parameter list requested 0"
+       call exit
+    end if
+    particles_per_image = num_particles
+    local_buf_size = particles_per_image * 4
+  end subroutine
 
   !-----------------------------------------------------------------
   ! p = p_0 * e^( ((9.81/287.058)*dz) / t_mean )
