@@ -3,6 +3,7 @@ from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import matplotlib.animation as animation
+import matplotlib.scale as scale
 import numpy as np
 import pandas as pd
 import sys
@@ -38,6 +39,10 @@ header3 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
 header4 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time',  'halo_depth', 'n_nodes', 'compiler_flags']
 
+
+# df = pd.read_csv(open('cheyenne_results.txt'), sep='\s+',header=None)
+# df.columns = header4
+# sys.exit()
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
 df = pd.read_csv(f, sep='\s+',header=None)
 if (len(df.columns) == 9):
@@ -96,8 +101,9 @@ plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
 
-plt.xscale('log', basex=2)
-plt.yscale('log', basey=2)
+plt.yscale('log', base=2)
+plt.xscale('log', base=2)
+
 # ax.set_xticklabels([])
 # ax.set_yticklabels([])
 

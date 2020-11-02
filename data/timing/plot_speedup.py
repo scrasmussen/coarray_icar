@@ -82,7 +82,7 @@ plt.xlabel("number of images")
 plt.ylabel("speedup")
 # plt.title("Speedup")
 
-# plt.xscale('log', basex=2)
+# plt.xscale('log', base=2)
 # ax.set_xticklabels([])
 # ax.set_yticklabels([])
 

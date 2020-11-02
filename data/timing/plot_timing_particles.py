@@ -77,7 +77,7 @@ y = a * 40000000 + b
 time = 12 * 60 * 60
 print("y = ", str(y), "data = ", time, "error =",(time-y)/y)
 
-# plt.xscale('log', basex=2)
+# plt.xscale('log', base=2)
 # ax.set_xticklabels([])
 # ax.set_yticklabels([])
 

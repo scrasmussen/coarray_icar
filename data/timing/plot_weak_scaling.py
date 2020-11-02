@@ -91,8 +91,8 @@ plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
 
-# plt.xscale('log', basex=2)
-# plt.yscale('log', basey=2)
+# plt.xscale('log', base=2)
+# plt.yscale('log', base=2)
 # ax.set_xticklabels([])
 # ax.set_yticklabels([])
 
