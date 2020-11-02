@@ -52,7 +52,6 @@ module convection_exchangeable_interface
      procedure, public :: retrieve
      procedure, public :: exchange
      procedure, public :: process
-     procedure, public :: do_replacement
      generic,   public :: initialize=>convect_const
 
      procedure :: put_north
@@ -211,10 +210,6 @@ module convection_exchangeable_interface
        class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
      end function
 
-     module function do_replacement(this)
-       class(convection_exchangeable_t), intent(inout) :: this
-       logical :: do_replacement
-     end function do_replacement
 
      module subroutine dry_lapse_rate(pressure, temperature, potential_temp, &
           z_displacement)
