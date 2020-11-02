@@ -90,13 +90,15 @@ contains
 
     end subroutine process_halo
 
-    subroutine microphysics(domain, dt, halo, subset, convected_particles, t)
+    subroutine microphysics(domain, dt, halo, subset, convected_particles, t, &
+         report_convection)
         implicit none
         type(domain_t), intent(inout) :: domain
         real,           intent(in)    :: dt
         integer,        intent(in),   optional :: halo, subset
         logical,        intent(in),   optional :: convected_particles
         integer,        intent(in),   optional :: t
+        logical,        intent(in),   optional :: report_convection
         logical                       :: convect_particles
         integer                       :: dz_lb(3), i
 
@@ -139,7 +141,8 @@ contains
                   domain%jte, domain%z, domain%potential_temperature, &
                   domain%pressure, domain%u, domain%v, domain%w, &
                   int((t-1)*dt + i) )
-                call domain%report_convection(int((t-1)*dt + i))
+                if (report_convection .eqv. .true.) &
+                     call domain%report_convection(int((t-1)*dt + i))
              end do
              end if
              ! end if
