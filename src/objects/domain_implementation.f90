@@ -1,7 +1,5 @@
 submodule(domain_interface) domain_implementation
   use convection_type_interface
-  ! use convection_type_interface, only : convection_particle
-  ! use convection_object_interface, only : convection_object
   use assertions_interface, only : assert,assertions
   use iso_fortran_env, only : error_unit
   ! use grid_interface, only : grid_t
