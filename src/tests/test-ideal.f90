@@ -81,7 +81,8 @@ program main
               convected_particles = convection)
         call domain%halo_send()
         call microphysics(domain, dt = 20.0, subset=1, &
-              convected_particles = convection, t=i)
+              convected_particles = convection, t=i, &
+              report_convection = report)
         ! call domain%halo_send()
         call domain%halo_retrieve(convection)
 
