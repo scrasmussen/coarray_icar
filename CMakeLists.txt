@@ -52,6 +52,20 @@ if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
   message(STATUS "Compiling with ${coarray_flags}")
 endif()
 
+
+# Default Fortran Flags
+if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU" )
+  set(CMAKE_Fortran_FLAGS_RELEASE
+    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -cpp -DUSE_ASSERTIONS=.false.")
+elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
+  set(CMAKE_Fortran_FLAGS_RELEASE
+    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -fpp -DUSE_ASSERTIONS=.false.")
+elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Cray" )
+  set(CMAKE_Fortran_FLAGS_RELEASE
+    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -e F -DUSE_ASSERTIONS=.false.")
+endif()
+
+
 set(CMAKE_Fortran_FLAGS_DEBUG "${coarray_flags} ${CMAKE_Fortran_FLAGS_DEBUG}")
 set(CMAKE_Fortran_FLAGS_RELEASE "${coarray_flags} ${CMAKE_Fortran_FLAGS_RELEASE}")
 set(CMAKE_Fortran_FLAGS_MINSIZEREL "${coarray_flags} ${CMAKE_Fortran_FLAGS_MINSIZEREL}")
