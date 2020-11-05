@@ -23,7 +23,6 @@ module domain_interface
     type(exchangeable_t) :: rain_number
     type(exchangeable_t) :: snow_mass
     type(exchangeable_t) :: graupel_mass
-    ! type(convection_object_t) :: convection_obj
     type(convection_exchangeable_t) :: convection_obj
 
     ! core model variables (not advected)
@@ -96,10 +95,9 @@ module domain_interface
       class(domain_t), intent(inout) :: this
     end subroutine
 
-    module subroutine halo_retrieve(this, convected_particles)
+    module subroutine halo_retrieve(this)
       implicit none
       class(domain_t), intent(inout) :: this
-      logical, intent(in) :: convected_particles
     end subroutine
 
 
@@ -131,12 +129,11 @@ module domain_interface
     end function
 
     ! Input domain_t object from file
-    module subroutine initialize_from_file(this,file_name,convected_particles,&
-         use_sounding)
+    module subroutine initialize_from_file(this,file_name, use_sounding)
       implicit none
       class(domain_t), intent(inout) :: this
       character(len=*), intent(in) :: file_name
-      logical, intent(in) :: convected_particles, use_sounding
+      logical, intent(in) :: use_sounding
     end subroutine
 
     module subroutine report_convection(this, step)

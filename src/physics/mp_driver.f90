@@ -1,6 +1,7 @@
 module module_mp_driver
     use domain_interface,   only: domain_t
     use module_mp_thompson, only: thompson_init, mp_gt_driver
+      use convection_exchangeable_interface, only : num_particles
     logical :: initialized = .false.
 contains
 
@@ -90,32 +91,24 @@ contains
 
     end subroutine process_halo
 
-    subroutine microphysics(domain, dt, halo, subset, convected_particles, t, &
-         report_convection)
+    subroutine microphysics(domain, dt, halo, subset, t, report_convection)
         implicit none
         type(domain_t), intent(inout) :: domain
         real,           intent(in)    :: dt
         integer,        intent(in),   optional :: halo, subset
-        logical,        intent(in),   optional :: convected_particles
         integer,        intent(in),   optional :: t
         logical,        intent(in),   optional :: report_convection
-        logical                       :: convect_particles
-        integer                       :: dz_lb(3), i
+        integer                       :: dz_lb(3), i, n_particles
 
         if (.not. initialized) call mp_init(domain)
 
-        convect_particles = .false.
-        if (present(convected_particles)) then
-           if (convected_particles .eqv. .true.) then
-              convect_particles = .true.
-           end if
-        end if
+        n_particles = num_particles()
 
         if (present(subset)) then
 
           dz_lb = lbound(domain%dz_interface)
 
-          if (convect_particles .eqv. .true.) then
+          if (n_particles .gt. 0) then
           !  if (domain%convection_obj%do_replacement() .eqv. .false.) then
           !     print *, "---Artless: unsure why this is needed now---"
           !     stop

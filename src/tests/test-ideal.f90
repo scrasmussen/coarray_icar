@@ -22,7 +22,6 @@ program main
     ! parameters to setup test
     integer, parameter :: timesteps = 200
     logical            :: report = .false.
-    logical, parameter :: convection = .false.
     logical, parameter :: use_sounding   = .false.
     logical, parameter :: print_timestep = .false.
 
@@ -33,7 +32,6 @@ program main
     integer :: len, ierr
     character*32 processorname
 
-    if (convection .eqv. .false.) report = .false.
 
     ! call get_environment_variable('HOSTNAME',hostname)
     ! call MPI_Get_processor_name( processorname, len, ierr );
@@ -42,8 +40,7 @@ program main
     ! call exit
 
     if (me==1) print *,me,"domain%initialize_from_file('input-parameters.txt')"
-    call domain%initialize_from_file('input-parameters.txt', convection, &
-          use_sounding)
+    call domain%initialize_from_file('input-parameters.txt', use_sounding)
 
     if (me==1) then
         nz = size(domain%pressure,2)
@@ -66,8 +63,9 @@ program main
     if (me==1) print*, ""
     if (me==1) print*, "Beginning simulation..."
 
+    n_particles = num_particles()
+    if (n_particles .eq. 0) report = .false.
     if (report .eqv. .true.) call domain%report_convection(0)
-
 
     sync all
     call timer%start()
@@ -77,16 +75,13 @@ program main
                   "_____________________timestep ", i,"________________________"
         end if
         ! note should this be wrapped into the domain object(?)
-        call microphysics(domain, dt = 20.0, halo=1, &
-              convected_particles = convection)
+        call microphysics(domain, dt = 20.0, halo=1)
+
         call domain%halo_send()
-        call microphysics(domain, dt = 20.0, subset=1, &
-              convected_particles = convection, t=i, &
+        call microphysics(domain, dt = 20.0, subset=1, t=i,&
               report_convection = report)
         ! call domain%halo_send()
-        call domain%halo_retrieve(convection)
-
-        ! if (report .eqv. .true.) call domain%report_convection(i)
+        call domain%halo_retrieve()
 
         call domain%advect(dt = 1.0)
     end do
@@ -94,14 +89,12 @@ program main
     call timer%stop()
 
     if (me==1) then
-        n_particles = num_particles()
         print *, "For", timesteps, "timesteps"
-        if (convection .eqv. .true.) then
+        if (n_particles .gt. 0) then
             print *, "With", n_particles, &
                   "particles per image for a total of", &
                   n_particles * num_images()
         else
-            n_particles = 0
             print *, "With no particles"
         end if
         print *,"Model run time:",timer%as_string('(f8.3," seconds")')
@@ -119,7 +112,7 @@ program main
             end if
             write(me,*) domain%nx_global, domain%nz, domain%ny_global, &
                   num_images(), domain%ximages, domain%yimages, &
-                  0, timesteps, timer%get_time(), &
+                  n_particles, timesteps, timer%get_time(), &
                   domain%water_vapor%get_halo_depth()
             close(me)
         end if

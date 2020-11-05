@@ -1,5 +1,6 @@
 submodule(domain_interface) domain_implementation
   use convection_type_interface
+  use convection_exchangeable_interface, only : num_particles
   use assertions_interface, only : assert,assertions
   use iso_fortran_env, only : error_unit
   ! use grid_interface, only : grid_t
@@ -31,9 +32,9 @@ contains
 
     end subroutine print_in_image_order
 
-    subroutine master_initialize(this, convected_particles, use_sounding)
+    subroutine master_initialize(this, use_sounding)
       class(domain_t), intent(inout) :: this
-      logical, intent(in) :: convected_particles, use_sounding
+      logical, intent(in) :: use_sounding
       integer :: i,j,k, halo_width, sounding_type
       real, allocatable :: potential_temp_sounding(:), pressure_sounding(:)
       real :: sine_curve
@@ -224,13 +225,14 @@ contains
           ! this%water_vapor%local = 0
 
 
-          if (convected_particles .eqv. .true.) then
-            call this%convection_obj%initialize(this%potential_temperature, &
-                this%u, this%v, this%w, grid, this%z, &
-                this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
-                this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
-                this%pressure, input_buf_size=8,halo_width=2)
-            print *, "Domain_Implementation.f90: Convected Particles Initialized"
+          call this%convection_obj%initialize(this%potential_temperature, &
+               this%u, this%v, this%w, grid, this%z, &
+               this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
+               this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
+               this%pressure, input_buf_size=8,halo_width=2)
+          if ((this_image() .eq. 1) .and. (num_particles() .gt. 0)) then
+               print *, &
+                    "Domain_Implementation.f90: Convected Particles Initialized"
           end if
       end associate
     end subroutine
@@ -405,11 +407,10 @@ contains
     !! Initialize the domain reading grid dimensions from an input file
     !!
     !! -------------------------------
-    module subroutine initialize_from_file(this,file_name,convected_particles, &
-         use_sounding)
+    module subroutine initialize_from_file(this,file_name, use_sounding)
       class(domain_t), intent(inout) :: this
       character(len=*), intent(in) :: file_name
-      logical, intent(in) :: convected_particles, use_sounding
+      logical, intent(in) ::  use_sounding
       integer :: nx,ny,nz
       real    :: preferred_ratio
       integer :: my_unit,stat
@@ -444,7 +445,7 @@ contains
       this%ny = my_n(ny, this%yimg, this%yimages)
       this%nz = nz
       if (this_image()==1) print *,"call master_initialize(this)"
-      call master_initialize(this, convected_particles, use_sounding)
+      call master_initialize(this,  use_sounding)
     end subroutine
 
     !> -------------------------------
@@ -461,8 +462,7 @@ contains
       this%nx = my_n(nx_global, this%ximg, this%ximages)
       this%ny = my_n(ny_global, this%yimg, this%yimages)
       this%nz = nz_global
-      call master_initialize(this, .false., .false.) ! no convected particles or
-                                                     ! sounding
+      call master_initialize(this, .false.) ! no sounding
     end subroutine
 
 
@@ -553,10 +553,10 @@ contains
       call this%graupel_mass%send()
     end subroutine
 
-    module subroutine halo_retrieve(this, convected_particles)
+    module subroutine halo_retrieve(this)
       class(domain_t), intent(inout) :: this
-      logical, intent(in) :: convected_particles
-      if (convected_particles .eqv. .true.) call this%convection_obj%retrieve()
+
+      if (num_particles() .gt. 0) call this%convection_obj%retrieve()
       call this%water_vapor%retrieve()
       call this%potential_temperature%retrieve(no_sync=.True.)
       call this%cloud_water_mass%retrieve(no_sync=.True.)

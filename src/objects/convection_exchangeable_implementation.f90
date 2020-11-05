@@ -11,19 +11,22 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: debug = .false.
   logical, parameter :: wrap_neighbors = .true.
   logical, parameter :: convection = .true.
-  logical, parameter :: wind = .false.
+  logical, parameter :: wind = .true.
   logical, parameter :: fake_wind_correction = .false.
-  logical, parameter :: moist_air_parcels = .true.
   logical, parameter :: dry_air_parcel = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: brunt_vaisala_data = .false.
-  logical, parameter :: replacement = .false.
+  logical, parameter :: replacement = .true.
   logical, parameter :: replacement_message = .true.
   logical, parameter :: init_theta = .false.
   logical, parameter :: init_velocity = .true.
   integer, save      :: particles_per_image
   integer, save      :: local_buf_size
+  logical, save      :: moist_air_parcels
+  ! integer, parameter :: particles_per_image=1
+  ! integer, parameter :: local_buf_size=4*particles_per_image
+  ! logical, parameter :: moist_air_parcels=.true.
   ! -----------------------------------------------
 
   integer, parameter :: default_buf_size=1
@@ -59,7 +62,13 @@ contains
     integer :: x0, x1, z0, z1, y0, y1
     logical :: calc
 
+    me = this_image()
     call initialize_from_file()
+
+    if (particles_per_image .eq. 0) then
+       if (me .eq. 1) print *, "No air parcels used"
+       return
+    end if
 
     me = this_image()
     ! if (present(input_buf_size)) then
@@ -220,7 +229,7 @@ contains
     if (dry_air_parcel .eqv. .true.) then
        water_vapor_val = 0
     else
-       water_vapor_val = sat_mr(temp_val, pressure_val) * 0.9 ! 0.99
+       water_vapor_val = sat_mr(temp_val, pressure_val) *  0.99
     end if
     relative_humidity_in = water_vapor_val
 
@@ -491,7 +500,7 @@ contains
               p1 = particle%pressure
               q_dry = 1004 * 1 * (abs(t1-t0))  ! q = c_p x m x delta_T
 
-              do iter = 1,5
+              do iter = 1,4
               saturate = sat_mr(particle%temperature, particle%pressure)
               RH = particle%water_vapor / saturate
               potential_T1 = particle%potential_temp
@@ -625,7 +634,7 @@ contains
                 ! print *, "dif         =", q_dif, "which is ~ temp diff", &
                 !      1004 * (1) * q_dif
 
-                if (only_dry .eqv. .false.) &
+                if (debug .eqv. .true.) &
                      print *, q_dry, q_new_dry, q_wet, q_dif, &
                      1004 * (1) * q_dif
 
@@ -1202,20 +1211,23 @@ contains
   ! end subroutine create_particle
 
   module subroutine initialize_from_file()
-    integer :: num_particles
-    namelist/parcel_parameters/ num_particles
+    integer :: parcels_per_image
+    logical :: parcel_is_dry
+    namelist/parcel_parameters/ parcels_per_image, parcel_is_dry
 
     character(len=*), parameter :: file = 'parcel-parameters.txt'
     integer :: unit, rc
     logical :: exists
 
-    print *, "Initializing convection parcels from file"
+
+    if (this_image() .eq. 1) &
+         print *, "Initializing convection parcels from file"
     inquire(file=file, exist=exists)
 
     if (exists .neqv. .true.) then
-       particles_per_image = 1
-       local_buf_size = num_particles * 4
-       print*, trim(file), " does not exist, using default parameters:", &
+       particles_per_image = 0
+       if (this_image() .eq. 1) &
+            print*, trim(file), " does not exist, using default parameters:", &
             "particles_per_image = ", particles_per_image
        return
     end if
@@ -1225,12 +1237,9 @@ contains
     read(unit=unit, nml=parcel_parameters, iostat=rc)
     close(unit)
 
-    if (num_particles .eq. 0) then
-       print *, "air parcels used but parameter list requested 0"
-       call exit
-    end if
-    particles_per_image = num_particles
+    particles_per_image = parcels_per_image
     local_buf_size = particles_per_image * 4
+    moist_air_parcels = .not. parcel_is_dry
   end subroutine
 
   !-----------------------------------------------------------------
