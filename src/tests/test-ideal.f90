@@ -4,7 +4,7 @@ program main
   use assertions_interface, only : assert
   use module_mp_driver, only: microphysics
   use timer_interface, only: timer_t
-  use convection_exchangeable_interface, only : num_particles
+  use convection_exchangeable_interface, only : num_particles, are_particles_dry
   implicit none
 
   integer :: me, ierrr
@@ -113,7 +113,7 @@ program main
             write(me,*) domain%nx_global, domain%nz, domain%ny_global, &
                   num_images(), domain%ximages, domain%yimages, &
                   n_particles, timesteps, timer%get_time(), &
-                  domain%water_vapor%get_halo_depth()
+                  are_particles_dry()
             close(me)
         end if
 

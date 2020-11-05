@@ -13,7 +13,6 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
   logical, parameter :: fake_wind_correction = .false.
-  logical, parameter :: dry_air_parcel = .false.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: brunt_vaisala_data = .false.
@@ -23,10 +22,10 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: init_velocity = .true.
   integer, save      :: particles_per_image
   integer, save      :: local_buf_size
-  logical, save      :: moist_air_parcels
+  logical, save      :: dry_air_particles
   ! integer, parameter :: particles_per_image=1
   ! integer, parameter :: local_buf_size=4*particles_per_image
-  ! logical, parameter :: moist_air_parcels=.true.
+  ! logical, parameter :: dry_air_particles=.true.
   ! -----------------------------------------------
 
   integer, parameter :: default_buf_size=1
@@ -226,10 +225,10 @@ contains
 
     temp_val = exner_val * theta_val
 
-    if (dry_air_parcel .eqv. .true.) then
+    if (dry_air_particles .eqv. .true.) then
        water_vapor_val = 0
     else
-       water_vapor_val = sat_mr(temp_val, pressure_val) *  0.99
+       water_vapor_val = sat_mr(temp_val, pressure_val) *  1.0 !0.99
     end if
     relative_humidity_in = water_vapor_val
 
@@ -457,8 +456,8 @@ contains
           ! Method one: physics
           !        a) change pressure         b) update temperature
           !-----------------------------------------------------------------
-          if (moist_air_parcels .eqv. .false.) then
-             if (debug .eqv. .true.) print *, "-- only dry air parcel --"
+          if (dry_air_particles .eqv. .true.) then
+             if (debug .eqv. .true.) print *, "-- only dry air parcels --"
              call dry_lapse_rate(particle%pressure, particle%temperature, &
                   particle%potential_temp, z_displacement)
           else
@@ -1202,6 +1201,12 @@ contains
     num_particles = particles_per_image
   end function num_particles
 
+  function are_particles_dry()
+    logical :: are_particles_dry
+    are_particles_dry = dry_air_particles
+  end function are_particles_dry
+
+
   ! module subroutine create_particle(this, index)
   !   class(convection_exchangeable_t), intent(inout) :: this
   !   integer :: index
@@ -1239,7 +1244,7 @@ contains
 
     particles_per_image = parcels_per_image
     local_buf_size = particles_per_image * 4
-    moist_air_parcels = .not. parcel_is_dry
+    dry_air_particles = parcel_is_dry
   end subroutine
 
   !-----------------------------------------------------------------
