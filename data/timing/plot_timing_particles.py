@@ -8,6 +8,11 @@ import numpy as np
 import pandas as pd
 import sys
 
+plt.rc('font', family='serif')
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.linewidth'] = 2
+
+
 
 if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
@@ -16,42 +21,40 @@ if (len(sys.argv) < 2):
 f = open(sys.argv[1])
 header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time']
+header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+          'time', 'is_dry']
 df = pd.read_csv(f, sep='\s+',header=None, names=header)
 
 
 # --- order data ---
 df.sort_values('n_particles', inplace=True)
 
-# --- animation ----
-gif    = True
-gif    = False
-repeat = False if gif else True
 
-# ax.scatter(particles.timestep, df.time,
-#            cmap=discrete_cmap, c=particles.identifier)
-#            marker='.', edgecolor='black')
-#            color=cmap_c[0])
+dry = df[df.is_dry == 'T']
+label = "With dry particles"
+plt.plot(dry.n_particles, dry.time, marker = '.',
+         label=label)
 
-# --- setup colormap ---
-discrete_cmap = plt.get_cmap('tab20b')
+wet = df[df.is_dry == 'F']
+label = "With saturated particles"
+plt.plot(wet.n_particles, wet.time, marker = '.',
+         label=label)
 
-# --- plot data ---
-for i,size in enumerate(df.nx.unique()):
-    l = df.loc[df.nx == size, ['nx','ny','nz']].iloc[0]
-    label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
-    label = "With particles"
-    plt.plot(df.n_particles, df.time, marker = '.',
-             label=label)
-             # color=discrete_cmap(i*4))
-
-plt.plot([0,df.n_particles.max()], [943.596,943.596], marker = '.',
+# base line
+baseline = df[df.is_dry == 'B']
+plt.plot([0,df.n_particles.max()], [baseline.time,baseline.time], marker = '.',
              label="Baseline: particles turned off", color='red')
 
 
 # plt.legend(title="Dimensions")
 plt.legend()
-plt.xlabel("number of particles (million)")
+plt.xlabel("number of particles per image (million)")
 plt.ylabel("time (seconds)")
+
+plt.title("Particle Scaling, 200 timesteps, 44 images")
+
+plt.show()
+sys.exit()
 
 def format_xaxis(value, tick_num):
     return int(value / 1000000.0)
@@ -81,16 +84,5 @@ print("y = ", str(y), "data = ", time, "error =",(time-y)/y)
 # ax.set_xticklabels([])
 # ax.set_yticklabels([])
 
-
-# print(len(ax.get_yticklabels()))
-# ax.get_xaxis().set_visible(False)
-# ax.get_yaxis().set_visible(False)
-# sys.exit()
-
-if (gif):
-    print("Gif!")
-    # ani.save('test.gif', writer=animation.PillowWriter, fps=None,dpi=20) # fps was 5
-    # ani.save('test.gif', writer=animation.ImageMagickWriter, fps=None) # fps was 5
-else:
-    plt.show()
+plt.show()
 print("Fin!")

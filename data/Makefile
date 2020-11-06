@@ -14,6 +14,7 @@ input=$(data)/eight-sounding-wet5.txt
 # input=$(data)/eight-sounding-wet5-99rh.txt
 # input=$(data)/eight-wet-dry.txt
 # input=$(data)/eight-dry.txt
+input=$(data)/eight-wet.txt
 
 
 all: build

@@ -12,11 +12,12 @@ if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
 
 # ---- read input data ----
-f = open(sys.argv[1])
+f_cray = open('cray_weak_scaling.txt')
+f_cheyenne = open('cheyenne_weak_scaling.txt')
 plot_title = ""
-if (len(sys.argv) > 2):
-    if (sys.argv[2] == '-t' ):
-        plot_title=sys.argv[3]
+if (len(sys.argv) > 1):
+    if (sys.argv[1] == '-t' ):
+        plot_title=sys.argv[2]
     else:
         plot_title="Strong Scaling"
 
@@ -33,7 +34,8 @@ header5 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time',  'halo_depth', 'n_nodes', 'compiler_flags', 'scaling_run']
 
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
-df = pd.read_csv(f, sep='\s+',header=None)
+df = pd.read_csv(f_cray, sep='\s+',header=None)
+df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None)
 if (len(df.columns) == 9):
     df.columns = header
 elif (len(df.columns) == 10):
@@ -44,6 +46,9 @@ elif (len(df.columns) == 12):
     df.columns = header4
 elif (len(df.columns) == 13):
     df.columns = header5
+    df_c.columns = header5
+
+
 
 # --- animation ----
 gif    = True
@@ -66,6 +71,7 @@ if (len(df.columns) != 13):
         plt.plot(df[df.nx == size].np, df[df.nx == size].time, marker = '.',
                  label=label)
              # color=discrete_cmap(i*4))
+
 else:
     c_flags = ['O0','O3']
     c_flags = ['O3']
@@ -76,11 +82,37 @@ else:
                 marker = 'x'
                 label = 20*20*30 / 1000
             else:
-                marker = 's'
+                marker = 'x'
                 label = 160*160*30 / 1000
-            label = str(int(label)) + "k"
+            label = "cray "+ str(int(label)) + "k"
             plt.plot(df[(df.scaling_run == run)].np,
                      df[(df.scaling_run == run)].time,
+                     marker = marker,
+                     label=label)
+
+if (len(df_c.columns) != 13):
+    for i,size in enumerate(df_c.nx.unique()):
+        l = df_c.loc[df_c.nx == size, ['nx','ny','nz']].iloc[0]
+        label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
+        plt.plot(df_c[df_c.nx == size].np, df_c[df_c.nx == size].time, marker = '.',
+                 label=label)
+
+
+else:
+    c_flags = ['O0','O3']
+    c_flags = ['O3']
+    for c_flag in c_flags:
+        for i,run in enumerate(df_c.scaling_run.unique()):
+            print(run)
+            if (run == 1):
+                marker = 's'
+                label = 20*20*30 / 1000
+            else:
+                marker = 's'
+                label = 160*160*30 / 1000
+            label = "cheyenne "+ str(int(label)) + "k"
+            plt.plot(df_c[(df_c.scaling_run == run)].np,
+                     df_c[(df_c.scaling_run == run)].time,
                      marker = marker,
                      label=label)
 
