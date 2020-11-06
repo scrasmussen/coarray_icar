@@ -4,7 +4,7 @@
 # --- FILL IN PARAMETERS ---
 # --------------------------
 # values should be 1, 2, 5, 10 or 20
-nodes=1
+nodes=2
 #
 strong_scaling=true
 weak_scaling=true
@@ -32,7 +32,7 @@ if [ $nodes -eq 1 ]; then
 fi
 
 if [ $nodes -eq 2 ]; then
-		time=00:10:00
+		time=00:30:00
 		run_qsub $time
 fi
 
