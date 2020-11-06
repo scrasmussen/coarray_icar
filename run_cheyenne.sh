@@ -13,18 +13,16 @@ parcels_per_image=0
 
 
 function run_qsub {
-		echo "qsub -l select=${nodes}:ncpus=36:mpiprocs=36,walltime=${1} \
-		-v STRONG_SCALING=${strong_scaling},WEAK_SCALING=${weak_scaling},NODES=${nodes}, \
-		PARCELS_PER_IMAGE=${parcels_per_image},PARCEL_IS_DRY=${parcel_is_dry}\
-		cheyenne.sub"
+    echo "qsub -l select=${nodes}:ncpus=36:mpiprocs=36,walltime=${1} -v STRONG_SCALING=${strong_scaling},WEAK_SCALING=${weak_scaling},NODES=${nodes},PARCELS_PER_IMAGE=${parcels_per_image},PARCEL_IS_DRY=${parcel_is_dry} cheyenne.sub"
+    qsub -l select=${nodes}:ncpus=36:mpiprocs=36,walltime=${1} -v STRONG_SCALING=${strong_scaling},WEAK_SCALING=${weak_scaling},NODES=${nodes},PARCELS_PER_IMAGE=${parcels_per_image},PARCEL_IS_DRY=${parcel_is_dry} cheyenne.sub
 
 		# -- for testing cheyenne.sub -
-		STRONG_SCALING=${strong_scaling} \
-									WEAK_SCALING=${weak_scaling} \
-									PARCEL_IS_DRY=${parcel_is_dry} \
-									PARCELS_PER_IMAGE=${parcels_per_image} \
-									NODES=${nodes} \
-									bash cheyenne.sub
+    # STRONG_SCALING=${strong_scaling} \
+    #     	  WEAK_SCALING=${weak_scaling} \
+    #     	  PARCEL_IS_DRY=${parcel_is_dry} \
+    #     	  PARCELS_PER_IMAGE=${parcels_per_image} \
+    #     	  NODES=${nodes} \
+    #     	  bash cheyenne.sub
 }
 
 
