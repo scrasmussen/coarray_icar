@@ -35,7 +35,7 @@ header5 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
 
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
 df = pd.read_csv(f_cray, sep='\s+',header=None)
-df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None)
+df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None, comment='#')
 if (len(df.columns) == 9):
     df.columns = header
 elif (len(df.columns) == 10):
