@@ -44,7 +44,7 @@ header5 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
 # sys.exit()
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
 df = pd.read_csv(f_cray, sep='\s+',header=None)
-df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None)
+df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None, comment='#')
 if (len(df.columns) == 9):
     df.columns = header
 elif (len(df.columns) == 10):
@@ -65,10 +65,12 @@ discrete_cmap = plt.get_cmap('tab20b')
 for i,size in enumerate(df.nx.unique()):
     l = df.loc[df.nx == size, ['nx','ny','nz']].iloc[0]
     label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
+    cray_label = "Cray " + label
+    cheyenne_label = "Cheyenne " + label
     plt.plot(df[df.nx == size].np, df[df.nx == size].time, marker = '.',
-             label=label)
+             label=cray_label)
     plt.plot(df_c[df_c.nx == size].np, df_c[df_c.nx == size].time,
-             marker = 's', label=label)
+             marker = 's', label=cheyenne_label)
 
 # if (len(df.columns) != 12):
 #     for i,size in enumerate(df.nx.unique()):
@@ -109,7 +111,7 @@ plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
 
-plt.yscale('log', base=2)
+# plt.yscale('log', base=2)
 plt.xscale('log', base=2)
 
 # ax.set_xticklabels([])
