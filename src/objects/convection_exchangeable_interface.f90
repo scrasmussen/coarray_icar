@@ -7,7 +7,7 @@ module convection_exchangeable_interface
 
   private
   public :: convection_exchangeable_t, num_particles, are_particles_dry, &
-       num_particles_communicated, get_wind_speed
+       num_particles_communicated, get_wind_speed, check_buf_size
 
   type convection_exchangeable_t
      private
@@ -208,6 +208,10 @@ module convection_exchangeable_interface
      module function get_wind_speed()
        real :: get_wind_speed
      end function get_wind_speed
+
+     module subroutine check_buf_size(i)
+       integer, intent(in) :: i
+     end subroutine check_buf_size
 
      module function create_particle(particle_id, its, ite, kts, kte, jts, jte,&
          ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &

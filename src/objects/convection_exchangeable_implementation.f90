@@ -886,6 +886,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%south_i)
     !dir$ pgas defer_sync
     this%buf_south_in(this%south_i)[north_con_neighbor] = particle
     particle%exists = .false.
@@ -904,6 +905,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%north_i)
     !dir$ pgas defer_sync
     this%buf_north_in(this%north_i)[south_con_neighbor] = particle
     particle%exists = .false.
@@ -922,6 +924,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%west_i)
     !dir$ pgas defer_sync
     this%buf_west_in(this%west_i)[east_con_neighbor] = particle
     particle%exists = .false.
@@ -940,6 +943,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%east_i)
     !dir$ pgas defer_sync
     this%buf_east_in(this%east_i)[west_con_neighbor] = particle
     particle%exists = .false.
@@ -958,6 +962,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%southwest_i)
     !dir$ pgas defer_sync
     this%buf_southwest_in(this%southwest_i)[northeast_con_neighbor] = particle
     particle%exists = .false.
@@ -976,6 +981,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%southeast_i)
     !dir$ pgas defer_sync
     this%buf_southeast_in(this%southeast_i)[northwest_con_neighbor] = particle
     particle%exists = .false.
@@ -994,6 +1000,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%northwest_i)
     !dir$ pgas defer_sync
     this%buf_northwest_in(this%northwest_i)[southeast_con_neighbor] = particle
     particle%exists = .false.
@@ -1012,6 +1019,7 @@ contains
       return
     end if
 
+    call check_buf_size(this%northeast_i)
     !dir$ pgas defer_sync
     this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
     particle%exists = .false.
@@ -1244,6 +1252,14 @@ contains
   !   a = -1
   !   ! print *, "hi!"
   ! end subroutine create_particle
+  module subroutine check_buf_size(i)
+    integer, intent(in) :: i
+    if (i .gt. particles_per_image) then
+       print *, this_image(), ": ERROR put buffer overflow"
+       call exit
+    end if
+  end subroutine check_buf_size
+
 
   module subroutine initialize_from_file()
     integer :: parcels_per_image

@@ -4,7 +4,8 @@ program main
   use assertions_interface, only : assert
   use module_mp_driver, only: microphysics
   use timer_interface, only: timer_t
-  use convection_exchangeable_interface, only : num_particles, are_particles_dry
+  use convection_exchangeable_interface, only : num_particles, &
+       are_particles_dry, num_particles_communicated, get_wind_speed
   implicit none
 
   integer :: me, ierrr
@@ -25,7 +26,7 @@ program main
     logical, parameter :: use_sounding   = .false.
     logical, parameter :: print_timestep = .false.
 
-    integer :: i,nz, ypos,xpos, n_particles
+    integer :: i,nz, ypos,xpos, n_particles, particles_communicated
     type(timer_t) :: timer
     logical :: exist
     character(len=32) :: filename
@@ -88,6 +89,7 @@ program main
     sync all
     call timer%stop()
 
+    particles_communicated = num_particles_communicated()
     if (me==1) then
         print *, "For", timesteps, "timesteps"
         if (n_particles .gt. 0) then
@@ -101,22 +103,20 @@ program main
         print *,"Model get_time():", timer%get_time()
         me = this_image()
 
-        ! handle opening of file
-        if (me .eq. 1) then
-            write (filename,"(A18)") "timing_results.txt"
-            inquire(file=filename, exist=exist)
-            if (exist) then
-                open(unit=me, file=filename, status='old', position='append')
-            else
-                open(unit=me, file=filename, status='new')
-            end if
-            write(me,*) domain%nx_global, domain%nz, domain%ny_global, &
-                  num_images(), domain%ximages, domain%yimages, &
-                  n_particles, timesteps, timer%get_time(), &
-                  are_particles_dry()
-            close(me)
+        ! handle opening of file and report
+        write (filename,"(A18)") "timing_results.txt"
+        inquire(file=filename, exist=exist)
+        if (exist) then
+           open(unit=me, file=filename, status='old', position='append')
+        else
+           open(unit=me, file=filename, status='new')
         end if
-
+        write(me,*) domain%nx_global, domain%nz, domain%ny_global, &
+             num_images(), domain%ximages, domain%yimages, &
+             n_particles, timesteps, timer%get_time(), &
+             are_particles_dry(), get_wind_speed(), &
+             particles_communicated
+        close(me)
     endif
 
     ypos = (domain%jde-domain%jds)/2 + domain%jds
