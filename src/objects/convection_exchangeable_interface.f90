@@ -6,7 +6,8 @@ module convection_exchangeable_interface
   implicit none
 
   private
-  public :: convection_exchangeable_t, num_particles, are_particles_dry
+  public :: convection_exchangeable_t, num_particles, are_particles_dry, &
+       num_particles_communicated, get_wind_speed
 
   type convection_exchangeable_t
      private
@@ -199,6 +200,14 @@ module convection_exchangeable_interface
      module function are_particles_dry()
        logical :: are_particles_dry
      end function are_particles_dry
+
+     module function num_particles_communicated()
+       integer :: num_particles_communicated
+     end function num_particles_communicated
+
+     module function get_wind_speed()
+       real :: get_wind_speed
+     end function get_wind_speed
 
      module function create_particle(particle_id, its, ite, kts, kte, jts, jte,&
          ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &

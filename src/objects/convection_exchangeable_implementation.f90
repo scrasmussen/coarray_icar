@@ -13,15 +13,18 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: convection = .true.
   logical, parameter :: wind = .true.
   logical, parameter :: fake_wind_correction = .false.
+  logical, parameter :: use_input_wind = .true.
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: brunt_vaisala_data = .false.
   logical, parameter :: replacement = .true.
-  logical, parameter :: replacement_message = .true.
+  logical, parameter :: replacement_message = .false.
   logical, parameter :: init_theta = .false.
   logical, parameter :: init_velocity = .true.
+  integer, save      :: particles_communicated[*]
   integer, save      :: particles_per_image
   integer, save      :: local_buf_size
+  integer, save      :: input_wind
   logical, save      :: dry_air_particles
   ! integer, parameter :: particles_per_image=1
   ! integer, parameter :: local_buf_size=4*particles_per_image
@@ -63,7 +66,7 @@ contains
 
     me = this_image()
     call initialize_from_file()
-
+    particles_communicated = 0
     if (particles_per_image .eq. 0) then
        if (me .eq. 1) print *, "No air parcels used"
        return
@@ -370,14 +373,22 @@ contains
           !-----------------------------------------------------------------
           if (wind .eqv. .true.) then
             wind_correction = (1.0 / dz) ! real correction
+            ! print *, "wind", wind_correction
             ! wind_correction = (1.0 / 10) ! real correction
             if (fake_wind_correction .eqv. .true.) then
-                wind_correction = 1.0
+                wind_correction = wind_correction * 0.0
             end if
+
             ! u: zonal velocity, wind towards the east
-            particle%x = particle%x + (particle%u * wind_correction)
             ! v: meridional velocity, wind towards north
-            particle%y = particle%y + (particle%v * wind_correction)
+            if (use_input_wind .eqv. .true.) then
+               particle%x = particle%x + (input_wind * wind_correction)
+               particle%y = particle%y + (input_wind * wind_correction)
+            else
+               particle%x = particle%x + (particle%u * wind_correction)
+               particle%y = particle%y + (particle%v * wind_correction)
+            end if
+
             associate (A => z_interface, x=> particle%x, y=>particle%y)
               x0 = floor(x); x1 = ceiling(x)
               y0 = floor(y); y1 = ceiling(y)
@@ -410,20 +421,21 @@ contains
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                   z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
-            else if (replacement_message .eqv. .true.) then
-               print *, me,":",particle%particle_id, "hit the ground"
+              if (replacement_message .eqv. .true.) then
+                print *, me,":",particle%particle_id, "hit the ground"
+              end if
             end if
 
 
           else if (particle%z .gt. kte) then
             particle%exists = .false.
-            ! print *, "--replacing??!!--", particle%particle_id
             if (replacement .eqv. .true.) then
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                   z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
-            else if (replacement_message .eqv. .true.) then
-               print *, me,":",particle%particle_id, "went off the top"
+              if (replacement_message .eqv. .true.) then
+                print *, me,":",particle%particle_id, "went off the top"
+              end if
             end if
             ! call exit
             ! cycle
@@ -667,12 +679,9 @@ contains
                       x .lt. 1 .or. x .gt. nx_global .or. &
                       y .lt. 1 .or. y .gt. ny_global &
                     ) then
-                    ! if (particle%particle_id .eq. 1879048182) then
                     print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
                           "FROM", this_image(), "id:", particle%particle_id, &
                           "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
-                    ! print *, "------"
-                    ! end if
                 end if
             end if
 
@@ -710,23 +719,31 @@ contains
             if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
               if (xx .lt. its-1) then
                 call this%put_southwest(particle)
+                particles_communicated = particles_communicated + 1
               else if (xx .gt. ite+1) then
                 call this%put_southeast(particle)
+                particles_communicated = particles_communicated + 1
               else
                 call this%put_south(particle)
+                particles_communicated = particles_communicated + 1
               end if
             else if (yy .gt. jte+1) then ! jts will be 1
               if (xx .lt. its-1) then
                 call this%put_northwest(particle)
+                particles_communicated = particles_communicated + 1
               else if (xx .gt. ite+1) then
                 call this%put_northeast(particle)
+                particles_communicated = particles_communicated + 1
               else
                 call this%put_north(particle)
+                particles_communicated = particles_communicated + 1
               endif
             else if (xx .lt. its-1) then ! "its  <   x    <  ite"
-              call this%put_west(particle)      ! need to double check this!
+              call this%put_west(particle) ! need to double check this!
+              particles_communicated = particles_communicated + 1
             else if (xx .gt. ite+1) then
               call this%put_east(particle)
+              particles_communicated = particles_communicated + 1
             end if
           end associate
         end if
@@ -1201,10 +1218,23 @@ contains
     num_particles = particles_per_image
   end function num_particles
 
+  function num_particles_communicated()
+    integer :: num_particles_communicated
+    call co_sum(particles_communicated)
+    num_particles_communicated = particles_communicated
+  end function num_particles_communicated
+
   function are_particles_dry()
     logical :: are_particles_dry
     are_particles_dry = dry_air_particles
   end function are_particles_dry
+
+  module function get_wind_speed()
+    real :: get_wind_speed
+    if (use_input_wind .eqv. .true.) then
+      get_wind_speed = input_wind
+    end if
+  end function get_wind_speed
 
 
   ! module subroutine create_particle(this, index)
@@ -1218,7 +1248,8 @@ contains
   module subroutine initialize_from_file()
     integer :: parcels_per_image
     logical :: parcel_is_dry
-    namelist/parcel_parameters/ parcels_per_image, parcel_is_dry
+    real    :: wind_speed
+    namelist/parcel_parameters/ parcels_per_image, parcel_is_dry, wind_speed
 
     character(len=*), parameter :: file = 'parcel-parameters.txt'
     integer :: unit, rc
@@ -1230,11 +1261,9 @@ contains
     inquire(file=file, exist=exists)
 
     if (exists .neqv. .true.) then
-       particles_per_image = 0
        if (this_image() .eq. 1) &
-            print*, trim(file), " does not exist, using default parameters:", &
-            "particles_per_image = ", particles_per_image
-       return
+            print*, trim(file), " does not exist, please create file"
+       call exit
     end if
 
     unit = 10
@@ -1242,9 +1271,10 @@ contains
     read(unit=unit, nml=parcel_parameters, iostat=rc)
     close(unit)
 
-    particles_per_image = parcels_per_image
+    particles_per_image = nint(parcels_per_image / real(num_images()))
     local_buf_size = particles_per_image * 4
     dry_air_particles = parcel_is_dry
+    input_wind = wind_speed
   end subroutine
 
   !-----------------------------------------------------------------
