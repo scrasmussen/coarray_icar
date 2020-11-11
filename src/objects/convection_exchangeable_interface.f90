@@ -7,7 +7,8 @@ module convection_exchangeable_interface
 
   private
   public :: convection_exchangeable_t, num_particles, are_particles_dry, &
-       num_particles_communicated, get_wind_speed, check_buf_size
+       num_particles_communicated, get_wind_speed, check_buf_size, &
+       current_num_particles
 
   type convection_exchangeable_t
      private
@@ -212,6 +213,11 @@ module convection_exchangeable_interface
      module subroutine check_buf_size(i)
        integer, intent(in) :: i
      end subroutine check_buf_size
+
+     module function current_num_particles(convection_obj)
+       integer :: current_num_particles
+       type(convection_exchangeable_t),intent(in) :: convection_obj
+     end function current_num_particles
 
      module function create_particle(particle_id, its, ite, kts, kte, jts, jte,&
          ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &

@@ -15,7 +15,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: fake_wind_correction = .false.
   logical, parameter :: use_input_wind = .true.
   logical, parameter :: caf_comm_message = .false.
-  logical, parameter :: particle_create_message = .false.
+  logical, parameter :: particle_create_message = .true.
   logical, parameter :: brunt_vaisala_data = .false.
   logical, parameter :: replacement = .true.
   logical, parameter :: replacement_message = .false.
@@ -24,7 +24,7 @@ submodule(convection_exchangeable_interface) &
   integer, save      :: particles_communicated[*]
   integer, save      :: particles_per_image
   integer, save      :: local_buf_size
-  integer, save      :: input_wind
+  real, save         :: input_wind
   logical, save      :: dry_air_particles
   ! integer, parameter :: particles_per_image=1
   ! integer, parameter :: local_buf_size=4*particles_per_image
@@ -155,6 +155,7 @@ contains
     real :: pressure_val, exner_val, temp_val, water_vapor_val
     real :: u_val, v_val, w_val, velocity, cloud_water
     call random_number(random_start)
+
     x = its + (random_start(1) * (ite-its))
     z = kts + (random_start(3) * (kte-kts))
     y = jts + (random_start(2) * (jte-jts))
@@ -787,10 +788,12 @@ contains
     logical,               intent(in),   optional :: no_sync
 
     if (.not. present(no_sync)) then
-      sync images( neighbors )
+      ! sync images (neighbors) ! sync neighbors currently broken
+      sync all
     else
       if (.not. no_sync) then
-        sync images( neighbors )
+        ! sync images (neighbors) ! sync neighbors currently broken
+        sync all
       endif
     endif
 
@@ -815,6 +818,7 @@ contains
     this%northwest_i = 1
     this%southeast_i = 1
     this%southwest_i = 1
+    sync all
   end subroutine
 
   module subroutine exchange(this)
@@ -1076,10 +1080,15 @@ contains
         southeast_con_neighbor = me - grid%ximages + 1
         southwest_con_neighbor = me - grid%ximages - 1
 
-        n_neighbors = merge(0,1,this%south_boundary)  &
-            +merge(0,1,this%north_boundary)  &
-            +merge(0,1,this%east_boundary)   &
-            +merge(0,1,this%west_boundary)
+        n_neighbors = &
+             merge(0,1,this%south_boundary) &
+            +merge(0,1,this%north_boundary) &
+            +merge(0,1,this%east_boundary)  &
+            +merge(0,1,this%west_boundary)  &
+            +merge(0,1,this%northeast_boundary) &
+            +merge(0,1,this%northwest_boundary) &
+            +merge(0,1,this%southeast_boundary) &
+            +merge(0,1,this%southwest_boundary)
         n_neighbors = max(1, n_neighbors)
 
         allocate(neighbors(n_neighbors))
@@ -1165,6 +1174,19 @@ contains
               this%west_boundary = .false.
               this%wrapped_west = .true.
             end if
+
+            ! fix neighbors for when parcels are wrapped
+            deallocate(neighbors)
+            allocate(neighbors(8))
+            neighbors = (/ &
+                 north_con_neighbor, &
+                 south_con_neighbor, &
+                 east_con_neighbor, &
+                 west_con_neighbor, &
+                 northeast_con_neighbor, &
+                 southeast_con_neighbor, &
+                 northwest_con_neighbor, &
+                 southwest_con_neighbor /)
           end if
         end associate
       end associate
@@ -1221,18 +1243,18 @@ contains
     end if
   end function trilinear_interpolation
 
-  function num_particles()
+  module function num_particles()
     integer :: num_particles
     num_particles = particles_per_image
   end function num_particles
 
-  function num_particles_communicated()
+  module function num_particles_communicated()
     integer :: num_particles_communicated
     call co_sum(particles_communicated)
     num_particles_communicated = particles_communicated
   end function num_particles_communicated
 
-  function are_particles_dry()
+  module function are_particles_dry()
     logical :: are_particles_dry
     are_particles_dry = dry_air_particles
   end function are_particles_dry
@@ -1243,6 +1265,18 @@ contains
       get_wind_speed = input_wind
     end if
   end function get_wind_speed
+
+  module function current_num_particles(convection_obj)
+    integer :: current_num_particles
+    type(convection_exchangeable_t),intent(in) :: convection_obj
+    integer :: buf_size, i
+    buf_size = size(convection_obj%local)
+    current_num_particles = 0
+    do i=1,buf_size
+       if (convection_obj%local(i)%exists .eqv. .true.) &
+            current_num_particles = current_num_particles + 1
+    end do
+  end function current_num_particles
 
 
   ! module subroutine create_particle(this, index)
