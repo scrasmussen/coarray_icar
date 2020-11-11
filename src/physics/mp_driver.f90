@@ -123,9 +123,9 @@ contains
 
              if (1 .eq. 1 ) then  ! take every time step
              do i=1,int(dt)
-                ! if (this_image() .eq. 1) print*, "dt_in = ", dt_in, "dt", dt
-                if ((i .gt. 1) .and. (num_particles() .gt. 0)) &
-                     call domain%convection_obj%retrieve()
+                if ((i .gt. 1) .and. (num_particles() .gt. 0)) then
+                   call domain%convection_obj%retrieve(no_sync=.false.)
+                end if
                 call domain%convection_obj%process( &
                   domain%nx_global, domain%ny_global, &
                   domain%ims, domain%ime, domain%kms, &
