@@ -5,7 +5,8 @@ program main
   use module_mp_driver, only: microphysics
   use timer_interface, only: timer_t
   use convection_exchangeable_interface, only : num_particles, &
-       are_particles_dry, num_particles_communicated, get_wind_speed
+       are_particles_dry, num_particles_communicated, get_wind_speed, &
+       current_num_particles
   implicit none
 
   integer :: me, ierrr
@@ -27,12 +28,12 @@ program main
     logical, parameter :: print_timestep = .false.
 
     integer :: i,nz, ypos,xpos, n_particles, particles_communicated
+    integer, allocatable :: current_n_particles[:]
     type(timer_t) :: timer
     logical :: exist
     character(len=32) :: filename
     integer :: len, ierr
     character*32 processorname
-
 
     ! call get_environment_variable('HOSTNAME',hostname)
     ! call MPI_Get_processor_name( processorname, len, ierr );
@@ -90,12 +91,19 @@ program main
     call timer%stop()
 
     particles_communicated = num_particles_communicated()
+    allocate(current_n_particles[*])
+    current_n_particles = current_num_particles(domain%convection_obj)
+    call co_sum(current_n_particles)
+
     if (me==1) then
         print *, "For", timesteps, "timesteps"
         if (n_particles .gt. 0) then
             print *, "With", n_particles, &
                   "particles per image for a total of", &
                   n_particles * num_images()
+            if (current_n_particles .ne. (n_particles * num_images())) &
+               print *, "ERROR: final n particles .ne. orignal n particles",&
+               current_n_particles, "vs.", n_particles
         else
             print *, "With no particles"
         end if
