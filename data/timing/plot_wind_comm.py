@@ -40,7 +40,7 @@ header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
 # df.columns = header4
 # sys.exit()
 # df = pd.read_csv(f, sep='\s+',header=None, names=header)
-df = pd.read_csv(f_cray, sep='\s+',header=None)
+df = pd.read_csv(f_cray, sep='\s+',header=None, comment='#')
 df.columns = header
 # df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None, comment='#')
 
