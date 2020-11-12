@@ -15,7 +15,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: fake_wind_correction = .false.
   logical, parameter :: use_input_wind = .true.
   logical, parameter :: caf_comm_message = .false.
-  logical, parameter :: particle_create_message = .true.
+  logical, parameter :: particle_create_message = .false.
   logical, parameter :: brunt_vaisala_data = .false.
   logical, parameter :: replacement = .true.
   logical, parameter :: replacement_message = .false.
