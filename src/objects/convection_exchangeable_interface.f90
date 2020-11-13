@@ -221,7 +221,7 @@ module convection_exchangeable_interface
 
      module function create_particle(particle_id, its, ite, kts, kte, jts, jte,&
          ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
-         pressure, u_in, v_in, w_in) result(particle)
+         pressure, u_in, v_in, w_in, times_moved) result(particle)
        integer :: particle_id
        type(convection_particle) :: particle
        integer, intent(in)           :: its, ite, kts, kte, jts, jte
@@ -231,6 +231,7 @@ module convection_exchangeable_interface
        class(exchangeable_t), intent(in) :: potential_temp
        real, intent(in)              :: z_interface(ims:ime,jms:jme)
        class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
+       integer, intent(in), optional :: times_moved
      end function
 
      module subroutine initialize_from_file()

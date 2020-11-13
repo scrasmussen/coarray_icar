@@ -138,7 +138,7 @@ contains
 
   module function create_particle(particle_id, its, ite, kts, kte, jts, jte, &
       ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
-      pressure, u_in, v_in, w_in) result(particle)
+      pressure, u_in, v_in, w_in, times_moved) result(particle)
     integer :: particle_id
     type(convection_particle) :: particle
     integer, intent(in)           :: ims, ime, kms, kme, jms, jme
@@ -148,10 +148,11 @@ contains
     class(exchangeable_t), intent(in)    :: potential_temp
     real, intent(in)              :: z_interface(ims:ime,jms:jme)
     class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
+    integer, intent(in), optional :: times_moved
     real :: relative_humidity_in
     real :: z_meters, z_interface_val, theta_val
     real :: random_start(3), x, z, y
-    integer :: x0, x1, z0, z1, y0, y1
+    integer :: x0, x1, z0, z1, y0, y1, times_moved_val
     real :: pressure_val, exner_val, temp_val, water_vapor_val
     real :: u_val, v_val, w_val, velocity, cloud_water
     call random_number(random_start)
@@ -246,7 +247,14 @@ contains
 
 
     cloud_water = 0
-    particle = convection_particle(particle_id, .true., .false., &
+    if (present(times_moved) .eqv. .true.) then
+       times_moved_val = times_moved
+    else
+       times_moved_val = 0
+    end if
+
+
+    particle = convection_particle(particle_id, .true., times_moved_val, &
         x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
         pressure_val, temp_val, theta_val, velocity, water_vapor_val, &
         cloud_water, relative_humidity_in)

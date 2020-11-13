@@ -5,7 +5,8 @@ module convection_type_interface
 
   type convection_particle
      integer :: particle_id
-     logical :: exists = .false., moved
+     logical :: exists = .false.
+     integer :: moved
      real :: x, y, z
      real :: u, v, w
      real :: z_meters, z_interface
@@ -26,10 +27,10 @@ contains
     type(convection_particle), intent(inout)  :: to
     ! handle the from
     from%exists = .false.
-    from%moved  = .false.
+    to%moved  = from%moved +1
+    from%moved  = 0
     ! handle the to
     to%exists = .true.
-    to%moved  = .true.
     to%particle_id = from%particle_id
     to%x = from%x; to%y = from%y; to%z = from%z
     to%u = from%u; to%v = from%v; to%w = from%w
