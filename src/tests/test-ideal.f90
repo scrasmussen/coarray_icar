@@ -25,9 +25,9 @@ program main
     integer, parameter :: timesteps = 200
     logical            :: report = .false.
     logical, parameter :: use_sounding   = .false.
-    logical, parameter :: print_timestep = .false.
+    logical, parameter :: print_timestep = .true.
 
-    integer :: i,nz, ypos,xpos, n_particles, particles_communicated
+    integer :: i,nz, ypos,xpos, n_particles, particles_communicated, p
     integer, allocatable :: current_n_particles[:]
     type(timer_t) :: timer
     logical :: exist
@@ -126,6 +126,27 @@ program main
              particles_communicated
         close(me)
     endif
+
+    do i=1,num_images()
+        sync all
+        if (me==i) then
+           write (filename,"(A13)") "p_results.txt"
+           inquire(file=filename, exist=exist)
+           if (exist) then
+              open(unit=me, file=filename, status='old', position='append')
+           else
+              open(unit=me, file=filename, status='new')
+           end if
+
+           do p=1,size(domain%convection_obj%local)
+              if (domain%convection_obj%local(p)%exists .eqv. .true.) then
+                 write(me,*) domain%convection_obj%local(p)%particle_id, &
+                      domain%convection_obj%local(p)%moved
+              end if
+           end do
+        end if
+     end do
+
 
     ypos = (domain%jde-domain%jds)/2 + domain%jds
     do i=1,num_images()
