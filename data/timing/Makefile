@@ -22,6 +22,14 @@ new: gcc
 gcc:
 	$(lc) plot_$(type).py gcc9_timing_results.txt -t "Strong Scaling, New GCC 9"
 
+h: hist
+hist:
+	$(lc) hist_wind_comm.py ../../../icar_data/particles
+
+ha: histall
+histall:
+	$(lc) hist_all_wind_comm.py ../../../icar_data/particles/wind
+
 
 p: particles
 particles:
@@ -35,3 +43,9 @@ strong:
 w: weak
 weak:
 	$(lc) plot_weak_scaling.py  -t "Weak Scaling"
+
+wind:
+	$(lc) plot_wind_scaling.py
+
+wc:
+	$(lc) plot_wind_comm.py
