@@ -17,7 +17,7 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: caf_comm_message = .false.
   logical, parameter :: particle_create_message = .false.
   logical, parameter :: brunt_vaisala_data = .false.
-  logical, parameter :: replacement = .false.
+  logical, parameter :: replacement = .true.
   logical, parameter :: replacement_message = .false.
   logical, parameter :: init_theta = .false.
   logical, parameter :: init_velocity = .true.
@@ -429,7 +429,8 @@ contains
             if (replacement .eqv. .true.) then
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-                  z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
+                  z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+                  particle%moved)
               if (replacement_message .eqv. .true.) then
                 print *, me,":",particle%particle_id, "hit the ground"
               end if
@@ -441,7 +442,8 @@ contains
             if (replacement .eqv. .true.) then
                particle = create_particle(particle%particle_id, &
                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-                  z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
+                  z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+                  particle%moved)
               if (replacement_message .eqv. .true.) then
                 print *, me,":",particle%particle_id, "went off the top"
               end if

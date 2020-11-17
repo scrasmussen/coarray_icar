@@ -32,7 +32,7 @@ program main
     type(timer_t) :: timer
     logical :: exist
     character(len=32) :: filename
-    integer :: len, ierr
+    integer :: len, ierr, test
     character*32 processorname
 
     ! call get_environment_variable('HOSTNAME',hostname)
@@ -128,24 +128,27 @@ program main
     endif
 
     do i=1,num_images()
-        sync all
-        if (me==i) then
-           write (filename,"(A13)") "p_results.txt"
-           inquire(file=filename, exist=exist)
-           if (exist) then
-              open(unit=me, file=filename, status='old', position='append')
-           else
-              open(unit=me, file=filename, status='new')
-           end if
-
-           do p=1,size(domain%convection_obj%local)
-              if (domain%convection_obj%local(p)%exists .eqv. .true.) then
-                 write(me,*) domain%convection_obj%local(p)%particle_id, &
-                      domain%convection_obj%local(p)%moved
-              end if
-           end do
-        end if
-     end do
+       sync all
+       if (me==i) then
+          write (filename,"(A13)") "p-results.txt"
+          inquire(file=filename, exist=exist)
+          if (exist) then
+             open(unit=me, file=filename, status='old', position='append')
+          else
+             open(unit=me, file=filename, status='new')
+          end if
+          test = 0
+          do p=1,size(domain%convection_obj%local)
+             if (domain%convection_obj%local(p)%exists .eqv. .true.) then
+                test = test + 1
+                write(me,*) domain%convection_obj%local(p)%particle_id, &
+                     domain%convection_obj%local(p)%moved
+             end if
+          end do
+          close(unit=me)
+          print *, me, ":", test
+       end if
+    end do
 
 
     ypos = (domain%jde-domain%jds)/2 + domain%jds
