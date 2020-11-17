@@ -29,9 +29,9 @@ if (len(sys.argv) > 1):
     else:
         plot_title="Cray Wind Scaling: 500x500x30"
 
-plot_title="Cray Wind Scaling: 500x500x30"
+plot_title="Cray Wind Scaling"
 plot_title=""
-header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
+header = ['n_nodes', 'nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time', 'dry', 'wind_speed', 'num_communicated']
 
 # df = pd.read_csv(open('cheyenne_results.txt'), sep='\s+',header=None)
@@ -41,6 +41,8 @@ header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
 df = pd.read_csv(f_cray, sep='\s+',header=None, comment='#')
 df.columns = header
 # df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None, comment='#')
+
+df = df[df.n_nodes == 1]
 
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')

@@ -25,24 +25,24 @@ header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time', 'is_dry']
 df = pd.read_csv(f, sep='\s+',header=None, names=header)
 
-
 # --- order data ---
 df.sort_values('n_particles', inplace=True)
 
-
 dry = df[df.is_dry == 'T']
+dry.n_particles *= 44
 label = "With dry particles"
 plt.plot(dry.n_particles, dry.time, marker = '.',
          label=label)
 
 wet = df[df.is_dry == 'F']
+wet.n_particles *= 44
 label = "With saturated particles"
 plt.plot(wet.n_particles, wet.time, marker = '.',
          label=label)
 
 # base line
 baseline = df[df.is_dry == 'B']
-plt.plot([0,df.n_particles.max()], [baseline.time,baseline.time], marker = '.',
+plt.plot([0,df.n_particles.max()*44], [baseline.time,baseline.time], marker = '.',
              label="Baseline: particles turned off", color='red')
 
 
