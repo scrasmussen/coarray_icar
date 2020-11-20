@@ -72,9 +72,9 @@ plt.ylim(bottom=0)
 # ---- read input data ----
 
 plot_title = ""
-plot_title="Cray: Number of Times Particles Communicated"
+plot_title="Cray: Percentage of Times Particles are Communicated"
 plt.legend(title="Wind Speed")
-plt.xlabel("times parcel communicated")
+plt.xlabel("number of times parcel communicated")
 plt.ylabel("percentage of parcels")
 plt.title(plot_title)
 

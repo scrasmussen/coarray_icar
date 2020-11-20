@@ -29,7 +29,7 @@ if (len(sys.argv) > 1):
     else:
         plot_title="Cray Wind Scaling: 500x500x30"
 
-plot_title="Cray Wind Scaling"
+plot_title="Cray Wind "
 plot_title=""
 header = ['n_nodes', 'nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
           'time', 'dry', 'wind_speed', 'num_communicated']

@@ -49,3 +49,6 @@ wind:
 
 wc:
 	$(lc) plot_wind_comm.py
+
+wn:
+	$(lc) plot_wind_node_scaling.py
