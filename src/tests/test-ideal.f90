@@ -25,21 +25,16 @@ program main
     integer, parameter :: timesteps = 200
     logical            :: report = .false.
     logical, parameter :: use_sounding   = .false.
-    logical, parameter :: print_timestep = .true.
+    logical, parameter :: print_timestep = .false.
+    logical, parameter :: save_particles_moved = .false.
 
     integer :: i,nz, ypos,xpos, n_particles, particles_communicated, p
     integer, allocatable :: current_n_particles[:]
     type(timer_t) :: timer
     logical :: exist
     character(len=32) :: filename
-    integer :: len, ierr, test
-    character*32 processorname
+    integer :: len, ierr
 
-    ! call get_environment_variable('HOSTNAME',hostname)
-    ! call MPI_Get_processor_name( processorname, len, ierr );
-    ! print *, me, ': has processor name ', trim(processorname)
-    ! sync all
-    ! call exit
 
     if (me==1) print *,me,"domain%initialize_from_file('input-parameters.txt')"
     call domain%initialize_from_file('input-parameters.txt', use_sounding)
@@ -119,7 +114,8 @@ program main
         else
            open(unit=me, file=filename, status='new')
         end if
-        write(me,*) domain%nx_global, domain%nz, domain%ny_global, &
+        write(me,*) ceiling(num_images()/36.0), &
+             domain%nx_global, domain%nz, domain%ny_global, &
              num_images(), domain%ximages, domain%yimages, &
              n_particles, timesteps, timer%get_time(), &
              are_particles_dry(), get_wind_speed(), &
@@ -127,29 +123,27 @@ program main
         close(me)
     endif
 
-    do i=1,num_images()
-       sync all
-       if (me==i) then
-          write (filename,"(A13)") "p-results.txt"
-          inquire(file=filename, exist=exist)
-          if (exist) then
-             open(unit=me, file=filename, status='old', position='append')
-          else
-             open(unit=me, file=filename, status='new')
-          end if
-          test = 0
-          do p=1,size(domain%convection_obj%local)
-             if (domain%convection_obj%local(p)%exists .eqv. .true.) then
-                test = test + 1
-                write(me,*) domain%convection_obj%local(p)%particle_id, &
-                     domain%convection_obj%local(p)%moved
-             end if
-          end do
-          close(unit=me)
-          print *, me, ":", test
-       end if
-    end do
 
+    if (save_particles_moved .eqv. .true.) then
+       do i=1,num_images()
+          sync all
+          if (me==i) then
+             write (filename,"(A19)") "particles-moved.txt"
+             inquire(file=filename, exist=exist)
+             if (exist) then
+                open(unit=me, file=filename, status='old', position='append')
+             else
+                open(unit=me, file=filename, status='new')
+             end if
+             do p=1,size(domain%convection_obj%local)
+                if (domain%convection_obj%local(p)%exists .eqv. .true.) then
+                   write(me,*) domain%convection_obj%local(p)%moved
+                end if
+             end do
+             close(unit=me)
+          end if
+       end do
+    end if
 
     ypos = (domain%jde-domain%jds)/2 + domain%jds
     do i=1,num_images()
