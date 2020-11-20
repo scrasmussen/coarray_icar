@@ -26,6 +26,8 @@ program main
     logical            :: report = .false.
     logical, parameter :: use_sounding   = .false.
     logical, parameter :: print_timestep = .false.
+    logical, parameter :: count_p_comm = .false.
+    ! if count_p_comm is true, need to edit other convect_exhange_implementation
     logical, parameter :: save_particles_moved = .false.
 
     integer :: i,nz, ypos,xpos, n_particles, particles_communicated, p
@@ -85,10 +87,15 @@ program main
     sync all
     call timer%stop()
 
-    particles_communicated = num_particles_communicated()
-    allocate(current_n_particles[*])
-    current_n_particles = current_num_particles(domain%convection_obj)
-    call co_sum(current_n_particles)
+
+    if (count_p_comm .eqv. .true.) then
+       particles_communicated = num_particles_communicated()
+       allocate(current_n_particles[*])
+       current_n_particles = current_num_particles(domain%convection_obj)
+       call co_sum(current_n_particles)
+    else
+       particles_communicated = -1
+    end if
 
     if (me==1) then
         print *, "For", timesteps, "timesteps"
@@ -96,9 +103,12 @@ program main
             print *, "With", n_particles, &
                   "particles per image for a total of", &
                   n_particles * num_images()
-            if (current_n_particles .ne. (n_particles * num_images())) &
-               print *, "ERROR: final n particles .ne. orignal n particles",&
-               current_n_particles, "vs.", n_particles
+            if (count_p_comm .eqv. .true.) then
+               if (current_n_particles .ne. (n_particles * num_images())) &
+                    print *, &
+                    "ERROR: final n particles .ne. orignal n particles",&
+                    current_n_particles, "vs.", n_particles
+            end if
         else
             print *, "With no particles"
         end if

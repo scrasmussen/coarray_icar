@@ -21,10 +21,11 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: replacement_message = .false.
   logical, parameter :: init_theta = .false.
   logical, parameter :: init_velocity = .true.
+  logical, parameter :: count_p_comm = .false.
   integer, save      :: particles_communicated[*]
   integer, save      :: particles_per_image
   integer, save      :: local_buf_size
-  real, save         :: input_wind
+  real,    save      :: input_wind
   logical, save      :: dry_air_particles
   ! integer, parameter :: particles_per_image=1
   ! integer, parameter :: local_buf_size=4*particles_per_image
@@ -730,31 +731,39 @@ contains
             if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
               if (xx .lt. its-1) then
                 call this%put_southwest(particle)
-                particles_communicated = particles_communicated + 1
+                if (count_p_comm .eqv. .true.) &
+                     particles_communicated = particles_communicated + 1
               else if (xx .gt. ite+1) then
                 call this%put_southeast(particle)
-                particles_communicated = particles_communicated + 1
+                if (count_p_comm .eqv. .true.) &
+                     particles_communicated = particles_communicated + 1
               else
                 call this%put_south(particle)
-                particles_communicated = particles_communicated + 1
+                if (count_p_comm .eqv. .true.) &
+                     particles_communicated = particles_communicated + 1
               end if
             else if (yy .gt. jte+1) then ! jts will be 1
               if (xx .lt. its-1) then
                 call this%put_northwest(particle)
-                particles_communicated = particles_communicated + 1
+                if (count_p_comm .eqv. .true.) &
+                     particles_communicated = particles_communicated + 1
               else if (xx .gt. ite+1) then
                 call this%put_northeast(particle)
-                particles_communicated = particles_communicated + 1
+                if (count_p_comm .eqv. .true.) &
+                     particles_communicated = particles_communicated + 1
               else
                 call this%put_north(particle)
-                particles_communicated = particles_communicated + 1
+                if (count_p_comm .eqv. .true.) &
+                     particles_communicated = particles_communicated + 1
               endif
             else if (xx .lt. its-1) then ! "its  <   x    <  ite"
               call this%put_west(particle) ! need to double check this!
-              particles_communicated = particles_communicated + 1
+              if (count_p_comm .eqv. .true.) &
+                   particles_communicated = particles_communicated + 1
             else if (xx .gt. ite+1) then
               call this%put_east(particle)
-              particles_communicated = particles_communicated + 1
+              if (count_p_comm .eqv. .true.) &
+                   particles_communicated = particles_communicated + 1
             end if
           end associate
         end if
@@ -1260,8 +1269,13 @@ contains
 
   module function num_particles_communicated()
     integer :: num_particles_communicated
-    call co_sum(particles_communicated)
-    num_particles_communicated = particles_communicated
+    if (count_p_comm .eqv. .true.) then
+       call co_sum(particles_communicated)
+       num_particles_communicated = particles_communicated
+    else
+       num_particles_communicated = -1
+       print *, "WARNING: number of particles communicated wasn't calculated"
+    end if
   end function num_particles_communicated
 
   module function are_particles_dry()
