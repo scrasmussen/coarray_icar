@@ -1,0 +1,176 @@
+#!/bin/bash
+#PBS -N job_name
+#PBS -A project_code
+#PBS -q queue_name
+#PBS -j oe
+#PBS -m n
+#PBS -M gutmann@ucar.edu
+
+cd $PBS_O_WORKDIR
+
+nodes=${NODES}
+strong_scaling=${STRONG_SCALING}
+weak_scaling=${WEAK_SCALING}
+parcel_is_dry=${PARCEL_IS_DRY}
+total_parcels=${TOTAL_PARCELS}
+wind_speed=8.0
+n=$((${nodes} * 36))
+
+exe=./test-ideal
+
+echo "nodes=${nodes}, strong_scaling=${strong_scaling}, weak_scaling=${weak_scaling}, num_processors=${n}"
+# exit 1
+
+# ----------------------
+# --- user functions ---
+# ----------------------
+function create_input {
+		file=input-parameters.txt
+    rm -f ${file}
+    echo "&grid nx=$1,ny=$2,nz=30 /" > ${file}
+    echo "" >> ${file}
+    echo "&options preferred_ratio=1/" >> ${file}
+    echo "created ${1}x${2}x30 parameter file"
+}
+function create_both_input {
+    ppi=$(expr ${1} \* ${2}) # new total_parcels
+    create_parcel_input ${ppi} ${parcel_is_dry} ${wind_speed}
+    create_input $1 $2
+    cat input-parameters.txt
+    cat parcel-parameters.txt
+}
+function create_parcel_input {
+		parcel_file=parcel-parameters.txt
+    rm -f ${parcel_file}
+    echo "&parcel_parameters total_parcels=$1 parcel_is_dry=$2 wind_speed=$3 /" > ${parcel_file}
+    echo "" >> ${parcel_file}
+    echo "created parcel parameter file"
+}
+function run_n_images {
+    echo "mpiexec -np ${1} ${exe}"
+    mpiexec -np ${1} ${exe}
+}
+function run_n_nodes {
+		np=$((${1} * 36))
+		run_n_images $np
+}
+
+
+
+# ----------------------
+# ---  parcel setup  ---
+# ----------------------
+create_parcel_input ${total_parcels} ${parcel_is_dry} ${wind_speed}
+
+# ----------------------
+# ---    run  exe    ---
+# ----------------------
+
+# ---- run strong scaling ----
+if [[ "$strong_scaling" = true ]]; then
+    echo "- running strong scaling tests -"
+    if [[ ${nodes} == 1 ]]; then
+				create_both_input 500 500
+				run_n_images 1
+				run_n_images 2
+				run_n_images 4
+				run_n_images 8
+				run_n_images 16
+				run_n_images 36
+
+				create_both_input 2000 2000
+				run_n_images 1
+				run_n_images 2
+				run_n_images 4
+				run_n_images 8
+				run_n_images 16
+				run_n_images 36
+
+		else
+				create_both_input 500 500
+				run_n_nodes ${nodes}
+				create_both_input 2000 2000
+				run_n_nodes ${nodes}
+		fi
+fi
+# Problem size table for strong scaling
+# | Nodes | Num Images |
+# |     1 |          1 |
+# |     1 |          2 |
+# |     1 |          4 |
+# |     1 |          8 |
+# |     1 |         16 |
+# |     1 |         36 |
+# |     2 |         72 |
+# |     5 |        180 |
+# |    10 |        360 |
+# |    20 |        720 |
+# ---- end strong scaling ----
+
+
+# ---- run weak scaling ----
+if [[ "$weak_scaling" = true ]]; then
+    echo "- running weak scaling tests on ${nodes} nodes"
+    if [[ ${nodes} == 1 ]]; then
+        # 12k per image
+        create_both_input 20 20
+        run_n_images 1
+        create_both_input 120 120
+        run_n_images 36
+        # 768k per image
+        create_both_input 160 160
+        run_n_images 1
+        create_both_input 960 960
+        run_n_images 36
+
+    elif [[ ${nodes} == 2 ]] ; then
+        # 12000 per image
+        create_both_input 160 180
+        run_n_images ${n}
+        # 768k per image
+        create_both_input 1280 1440
+        run_n_images ${n}
+    elif [[ ${nodes} == 5 ]] ; then
+        # 12000 per image
+        create_both_input 250 288
+        run_n_images ${n}
+        # 768k per image
+        create_both_input 2250 2048
+        run_n_images ${n}
+    elif [[ ${nodes} == 10 ]] ; then
+        # 12000 per image
+        create_both_input 375 384
+        run_n_images ${n}
+        # 768k per image
+        create_both_input 3000 3072
+        run_n_images ${n}
+    elif [[ ${nodes} == 20 ]] ; then
+        # 12000 per image
+        create_both_input 500 576
+        run_n_images ${n}
+        # 768k per image
+        create_both_input 4096 4500
+        run_n_images ${n}
+    fi
+fi
+
+# Problem size table for weak scaling
+#
+# 12000 per image
+# | Nodes | Num Images |   x |   y |  z |
+# |     1 |          1 |  20 |  20 | 30 | X
+# |     1 |         36 | 120 | 120 | 30 | X
+# |     2 |         72 | 160 | 180 | 30 |
+# |     5 |        180 | 250 | 288 | 30 |
+# |    10 |        360 | 375 | 384 | 30 |
+# |    20 |        720 | 500 | 576 | 30 |
+
+# 768000 per image
+# | Nodes | Num Images |    x |    y |  z |
+# |     1 |          1 |  160 |  160 | 30 | X
+# |     1 |         36 |  960 |  960 | 30 | X
+# |     2 |         72 | 1280 | 1440 | 30 |
+# |     5 |        180 | 2250 | 2048 | 30 |
+# |    10 |        360 | 3000 | 3072 | 30 |
+# |    20 |        720 | 4096 | 4500 | 30 |
+# ---- end weak scaling ----
