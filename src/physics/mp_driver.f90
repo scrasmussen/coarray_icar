@@ -1,7 +1,7 @@
 module module_mp_driver
     use domain_interface,   only: domain_t
     use module_mp_thompson, only: thompson_init, mp_gt_driver
-      use convection_exchangeable_interface, only : num_particles
+      use convection_exchangeable_interface, only : total_num_particles
     logical :: initialized = .false.
 contains
 
@@ -102,7 +102,7 @@ contains
 
         if (.not. initialized) call mp_init(domain)
 
-        n_particles = num_particles()
+        n_particles = total_num_particles()
 
         if (present(subset)) then
 
@@ -123,7 +123,7 @@ contains
 
              if (1 .eq. 1 ) then  ! take every time step
              do i=1,int(dt)
-                if ((i .gt. 1) .and. (num_particles() .gt. 0)) then
+                if ((i .gt. 1)) then
                    call domain%convection_obj%retrieve(no_sync=.false.)
                 end if
                 call domain%convection_obj%process( &

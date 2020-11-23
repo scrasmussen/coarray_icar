@@ -1262,10 +1262,15 @@ contains
     end if
   end function trilinear_interpolation
 
-  module function num_particles()
-    integer :: num_particles
-    num_particles = particles_per_image
-  end function num_particles
+  module function total_num_particles()
+    integer :: total_num_particles
+    total_num_particles = particles_per_image * num_images()
+  end function total_num_particles
+
+  module function num_particles_per_image()
+    integer :: num_particles_per_image
+    num_particles_per_image = particles_per_image
+  end function num_particles_per_image
 
   module function num_particles_communicated()
     integer :: num_particles_communicated

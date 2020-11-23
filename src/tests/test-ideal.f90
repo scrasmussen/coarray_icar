@@ -4,9 +4,9 @@ program main
   use assertions_interface, only : assert
   use module_mp_driver, only: microphysics
   use timer_interface, only: timer_t
-  use convection_exchangeable_interface, only : num_particles, &
+  use convection_exchangeable_interface, only : total_num_particles, &
        are_particles_dry, num_particles_communicated, get_wind_speed, &
-       current_num_particles
+       current_num_particles, num_particles_per_image
   implicit none
 
   integer :: me, ierrr
@@ -30,7 +30,7 @@ program main
     ! if count_p_comm is true, need to edit other convect_exhange_implementation
     logical, parameter :: save_particles_moved = .false.
 
-    integer :: i,nz, ypos,xpos, n_particles, particles_communicated, p
+    integer :: i,nz, ypos,xpos, particles_communicated, p
     integer, allocatable :: current_n_particles[:]
     type(timer_t) :: timer
     logical :: exist
@@ -62,8 +62,8 @@ program main
     if (me==1) print*, ""
     if (me==1) print*, "Beginning simulation..."
 
-    n_particles = num_particles()
-    if (n_particles .eq. 0) report = .false.
+
+    if (total_num_particles() .eq. 0) report = .false.
     if (report .eqv. .true.) call domain%report_convection(0)
 
     sync all
@@ -99,10 +99,10 @@ program main
 
     if (me==1) then
         print *, "For", timesteps, "timesteps"
-        if (n_particles .gt. 0) then
-            print *, "With", nint(n_particles / real(num_images())), &
+        if (total_num_particles() .gt. 0) then
+            print *, "With", num_particles_per_image(), &
                   "particles per image for a total of", &
-                  n_particles
+                  total_num_particles()
         else
             print *, "With no particles"
         end if
@@ -121,7 +121,7 @@ program main
         write(me,*) ceiling(num_images()/36.0), &
              domain%nx_global, domain%nz, domain%ny_global, &
              num_images(), domain%ximages, domain%yimages, &
-             n_particles, timesteps, timer%get_time(), &
+             num_particles_per_image(), timesteps, timer%get_time(), &
              are_particles_dry(), get_wind_speed(), &
              particles_communicated
         close(me)

@@ -6,7 +6,8 @@ module convection_exchangeable_interface
   implicit none
 
   private
-  public :: convection_exchangeable_t, num_particles, are_particles_dry, &
+  public :: convection_exchangeable_t, num_particles_per_image, &
+       total_num_particles, are_particles_dry, &
        num_particles_communicated, get_wind_speed, check_buf_size, &
        current_num_particles
 
@@ -194,9 +195,13 @@ module convection_exchangeable_interface
        type(grid_t), intent(in) :: grid
      end subroutine
 
-     module function num_particles()
-       integer :: num_particles
-     end function num_particles
+     module function total_num_particles()
+       integer :: total_num_particles
+     end function total_num_particles
+
+     module function num_particles_per_image()
+       integer :: num_particles_per_image
+     end function num_particles_per_image
 
      module function are_particles_dry()
        logical :: are_particles_dry

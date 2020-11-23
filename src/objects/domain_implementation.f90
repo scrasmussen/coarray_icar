@@ -1,6 +1,6 @@
 submodule(domain_interface) domain_implementation
   use convection_type_interface
-  use convection_exchangeable_interface, only : num_particles
+  use convection_exchangeable_interface, only : total_num_particles
   use assertions_interface, only : assert,assertions
   use iso_fortran_env, only : error_unit
   ! use grid_interface, only : grid_t
@@ -230,7 +230,7 @@ contains
                this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
                this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
                this%pressure, input_buf_size=8,halo_width=2)
-          if ((this_image() .eq. 1) .and. (num_particles() .gt. 0)) then
+          if ((this_image() .eq. 1) .and. (total_num_particles() .gt. 0)) then
                print *, &
                     "Domain_Implementation.f90: Convected Particles Initialized"
           end if
@@ -556,7 +556,7 @@ contains
     module subroutine halo_retrieve(this)
       class(domain_t), intent(inout) :: this
 
-      if (num_particles() .gt. 0) call this%convection_obj%retrieve()
+      if (total_num_particles() .gt. 0) call this%convection_obj%retrieve()
       call this%water_vapor%retrieve()
       call this%potential_temperature%retrieve(no_sync=.True.)
       call this%cloud_water_mass%retrieve(no_sync=.True.)
