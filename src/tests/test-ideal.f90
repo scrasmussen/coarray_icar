@@ -100,15 +100,9 @@ program main
     if (me==1) then
         print *, "For", timesteps, "timesteps"
         if (n_particles .gt. 0) then
-            print *, "With", n_particles, &
+            print *, "With", nint(n_particles / real(num_images())), &
                   "particles per image for a total of", &
-                  n_particles * num_images()
-            if (count_p_comm .eqv. .true.) then
-               if (current_n_particles .ne. (n_particles * num_images())) &
-                    print *, &
-                    "ERROR: final n particles .ne. orignal n particles",&
-                    current_n_particles, "vs.", n_particles
-            end if
+                  n_particles
         else
             print *, "With no particles"
         end if

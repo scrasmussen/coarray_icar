@@ -1320,10 +1320,10 @@ contains
 
 
   module subroutine initialize_from_file()
-    integer :: parcels_per_image
+    integer :: total_parcels
     logical :: parcel_is_dry
     real    :: wind_speed
-    namelist/parcel_parameters/ parcels_per_image, parcel_is_dry, wind_speed
+    namelist/parcel_parameters/ total_parcels, parcel_is_dry, wind_speed
 
     character(len=*), parameter :: file = 'parcel-parameters.txt'
     integer :: unit, rc
@@ -1345,7 +1345,7 @@ contains
     read(unit=unit, nml=parcel_parameters, iostat=rc)
     close(unit)
 
-    particles_per_image = nint(parcels_per_image / real(num_images()))
+    particles_per_image = nint(total_parcels / real(num_images()))
     local_buf_size = particles_per_image * 4
     dry_air_particles = parcel_is_dry
     input_wind = wind_speed
