@@ -8,114 +8,45 @@ import pandas as pd
 import sys
 
 
+plt.rc('font', family='serif')
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.linewidth'] = 2
+
+
 if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
 
 # ---- read input data ----
-f_cray = open('cray_weak_scaling.txt')
+plot_title = "" # "Weak Scaling"
+header = ['n_nodes', 'nx','nz','ny','np','x_images','y_images','n_particles',
+          'timesteps', 'time',  'is_dry', 'wind_speed', 'scaling_run']
+
+f_cray     = open('cray_weak_scaling.txt')
 f_cheyenne = open('cheyenne_weak_scaling.txt')
-plot_title = ""
-if (len(sys.argv) > 1):
-    if (sys.argv[1] == '-t' ):
-        plot_title=sys.argv[2]
-    else:
-        plot_title="Strong Scaling"
-
-
-header = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
-          'time']
-header2 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
-          'time', 'n_nodes']
-header3 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
-          'time',  'halo_size', 'n_nodes']
-header4 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
-          'time',  'halo_depth', 'n_nodes', 'compiler_flags']
-header5 = ['nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
-          'time',  'halo_depth', 'n_nodes', 'compiler_flags', 'scaling_run']
-
-# df = pd.read_csv(f, sep='\s+',header=None, names=header)
-df = pd.read_csv(f_cray, sep='\s+',header=None)
+df   = pd.read_csv(f_cray, sep='\s+',header=None)
 df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None, comment='#')
-if (len(df.columns) == 9):
-    df.columns = header
-elif (len(df.columns) == 10):
-    df.columns = header2
-elif (len(df.columns) == 11):
-    df.columns = header3
-elif (len(df.columns) == 12):
-    df.columns = header4
-elif (len(df.columns) == 13):
-    df.columns = header5
-    df_c.columns = header5
-
-
-
-# --- animation ----
-gif    = True
-gif    = False
-repeat = False if gif else True
-
-# ax.scatter(particles.timestep, df.time,
-#            cmap=discrete_cmap, c=particles.identifier)
-#            marker='.', edgecolor='black')
-#            color=cmap_c[0])
+df.columns = header
+df_c.columns = header
 
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')
 
 # --- plot data ---
-if (len(df.columns) != 13):
-    for i,size in enumerate(df.nx.unique()):
-        l = df.loc[df.nx == size, ['nx','ny','nz']].iloc[0]
-        label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
-        plt.plot(df[df.nx == size].np, df[df.nx == size].time, marker = '.',
-                 label=label)
-             # color=discrete_cmap(i*4))
 
-else:
-    c_flags = ['O0','O3']
-    c_flags = ['O3']
-    for c_flag in c_flags:
-        for i,run in enumerate(df.scaling_run.unique()):
-            print(run)
-            if (run == 1):
-                marker = 'x'
-                label = 20*20*30 / 1000
-            else:
-                marker = 'x'
-                label = 160*160*30 / 1000
-            label = "cray "+ str(int(label)) + "k"
-            plt.plot(df[(df.scaling_run == run)].np,
-                     df[(df.scaling_run == run)].time,
-                     marker = marker,
-                     label=label)
+for i,run in enumerate(df.scaling_run.unique()):
+    if (run == 1):
+        marker = 'x'
+        label = 20*20*30 / 1000
+    else:
+        marker = '.'
+        label = 160*160*30 / 1000
+    label = "cray "+ str(int(label)) + "k "
 
-if (len(df_c.columns) != 13):
-    for i,size in enumerate(df_c.nx.unique()):
-        l = df_c.loc[df_c.nx == size, ['nx','ny','nz']].iloc[0]
-        label = l.to_csv(header=False, index=False).replace('\n','x')[:-1]
-        plt.plot(df_c[df_c.nx == size].np, df_c[df_c.nx == size].time, marker = '.',
-                 label=label)
-
-
-else:
-    c_flags = ['O0','O3']
-    c_flags = ['O3']
-    for c_flag in c_flags:
-        for i,run in enumerate(df_c.scaling_run.unique()):
-            print(run)
-            if (run == 1):
-                marker = 's'
-                label = 20*20*30 / 1000
-            else:
-                marker = 's'
-                label = 160*160*30 / 1000
-            label = "cheyenne "+ str(int(label)) + "k"
-            plt.plot(df_c[(df_c.scaling_run == run)].np,
-                     df_c[(df_c.scaling_run == run)].time,
-                     marker = marker,
-                     label=label)
-
+    data = df[(df.scaling_run == run) & (df.n_particles == 0)]
+    data_p = df[(df.scaling_run == run) & (df.n_particles != 0)]
+    plt.plot(data.np,   data.time, marker = '.', label=label)
+    plt.plot(data_p.np, data_p.time, marker = 'x',
+             label=label+' with particles')
 
 
 plt.legend(title="Problem size per image")
@@ -134,10 +65,5 @@ plt.title(plot_title)
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
 
-if (gif):
-    print("Gif!")
-    # ani.save('test.gif', writer=animation.PillowWriter, fps=None,dpi=20) # fps was 5
-    # ani.save('test.gif', writer=animation.ImageMagickWriter, fps=None) # fps was 5
-else:
-    plt.show()
-print("Fin!")
+plt.tight_layout()
+plt.show()
