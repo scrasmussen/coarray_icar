@@ -17,7 +17,7 @@ f_cheyenne = open('cheyenne_strong_scaling.txt')
 
 # ---- read input data ----
 plot_title = ""
-plot_title="Strong Scaling"
+# plot_title="Strong Scaling"
 
 header = ['n_nodes', 'nx','nz','ny','np','x_images','y_images','n_particles',
           'timesteps', 'time',  'is_dry', 'wind_speed', 'scaling_run']
@@ -44,37 +44,36 @@ discrete_cmap = plt.get_cmap('tab20b')
 #              marker = 's', label=cheyenne_label)
 
 graph_size=500
-# graph_size=2000
-
-for i,size in enumerate(df.nx.unique()):
-    if (size != graph_size):
-        continue
-    label = (size**2 * 30) / 1000
-
-    label = 'cray '+str(size)+'x'+str(size)+'x30'
-
-    data = df[(df.nx == size) & (df.n_particles == 0)]
-    data_p = df[(df.nx == size) & (df.n_particles != 0)]
-    plt.plot(data.np,   data.time, marker = '.', label=label)
-    plt.plot(data_p.np, data_p.time, marker = 'x',
-             label=label+' with particles')
-
-for i,size in enumerate(df_c.nx.unique()):
-    if (size != graph_size):
-        continue
-    label = (size**2 * 30) / 1000
-    label = 'cheyenne '+str(size)+'x'+str(size)+'x30'
-    data = df_c[(df_c.nx == size) & (df_c.n_particles == 0)]
-    data_p = df_c[(df_c.nx == size) & (df_c.n_particles != 0)]
-    plt.plot(data.np,   data.time, marker = '.', label=label)
-    plt.plot(data_p.np, data_p.time, marker = 'x',
-             label=label+' with particles')
+graph_size=2000
 
 
 
+def plot_data(data_in, name):
+    for i,size in enumerate(df.nx.unique()):
+        if (size != graph_size):
+            continue
+        # label = (size**2 * 30) / 1000
+        # label = name+' '+str(size)+'x'+str(size)+'x30'
+
+        label = name
+
+        data = data_in[(data_in.nx == size) & (data_in.n_particles == 0)]
+        data_p = data_in[(data_in.nx == size) & (data_in.n_particles != 0)]
+
+        if (not data.empty):
+            plt.plot(data.np,   data.time, marker = '.', label=label)
+        if (not data_p.empty):
+            plt.plot(data_p.np, data_p.time, marker = 'x',
+                     label=label+' with particles')
+
+plot_data(df, 'Cray')
+plot_data(df_c, 'SGI')
+# plot_data(df_c, 'Cheyenne')
 
 
-plt.legend(title="Dimension and Optimization")
+
+
+plt.legend(title="Machine")
 plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)

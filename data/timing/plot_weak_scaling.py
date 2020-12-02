@@ -40,7 +40,7 @@ for i,run in enumerate(df.scaling_run.unique()):
     else:
         marker = '.'
         label = 160*160*30 / 1000
-    label = "cray "+ str(int(label)) + "k "
+    label = "Cray "+ str(int(label)) + "k "
 
     data = df[(df.scaling_run == run) & (df.n_particles == 0)]
     data_p = df[(df.scaling_run == run) & (df.n_particles != 0)]
