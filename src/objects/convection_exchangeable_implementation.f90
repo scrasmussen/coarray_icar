@@ -352,7 +352,6 @@ contains
 
           if (convection .eqv. .true.) then
             buoyancy = (T - T_prime) / T_prime
-            ! print *, "T", T, "T_prime", T_prime, "% dif", buoyancy * 100
             a_prime = buoyancy * gravity
             ! d = v_0 * t + 1/2 * a * t^2
             z_displacement = particle%velocity * dt + 0.5 * a_prime * dt * dt
@@ -362,8 +361,7 @@ contains
             ! number from dz_interface, currently always 500
             delta_z = z_displacement / dz
             if (z_displacement /= z_displacement) then
-              ! when T=0 it causes division by 0. This problem should be fixed
-              print *, me, ":: ------------NAN--------------", &
+              print *, me, ":: ---------NAN ERROR---------", &
                   particle%particle_id, T, T_prime
               particle%z = -1
               print *, p0, z_displacement, gravity, particle%temperature
@@ -1220,6 +1218,10 @@ contains
     integer, intent(in) :: x0, x1, y0, y1
     real :: xd, yd, c0, c1, c
     if (x0 .eq. x1) then
+       if (y0 .eq. y1) then
+          c = c00
+          return
+       end if
       c = c00 + (c11-c00) * (y-y0) / (y1-y0)
     else if (y0 .eq. y1) then
       c = c00 + (c11-c00) * (x-x0) / (x1-x0)
@@ -1375,13 +1377,10 @@ contains
 
 
   if (temperature /= temperature) then
-     print *, this_image(), ":: ~~~~~~NAN~~~~~~", &
-          ! particle%particle_id, particle%temperature, &
-          temperature, exner_function(pressure), pressure, &
-          potential_temp, p0, z_displacement
-     ! print*, p0, z_displacement, gravity ,287.05,particle%temperature
-     ! particle%exists = .false.
-     ! call exit
+     print *, this_image(), ":: ~~~~~~NAN ERROR~~~~~~", &
+          p0, pressure, z_displacement, T_original, temperature, &
+          exner_function(pressure), potential_temp
+     call exit
   end if
   end procedure dry_lapse_rate
   !-----------------------------------------------------------------
