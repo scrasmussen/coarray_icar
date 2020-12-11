@@ -25,7 +25,7 @@ for wind in f_wind:
     f = open(f_name)
     df_new = pd.read_csv(f, sep='\s+',header=None, names=['num_comm'])
     norm = df_new.value_counts(normalize=True, sort=False)
-    plt.plot([x[0] for x in norm.index], norm.values*100, '-', label=str(wind))
+    plt.plot([x[0] for x in norm.index], norm.values, '-', label=str(wind))
 
     df_max = df_new.num_comm.max()
     if (df_max > max):
@@ -71,11 +71,12 @@ plt.ylim(bottom=0)
 
 # ---- read input data ----
 
+plot_title="Cray: Probability Distribution of Times Particles are Communicated"
 plot_title = ""
-plot_title="Cray: Percentage of Times Particles are Communicated"
+
 plt.legend(title="Wind Speed")
 plt.xlabel("number of times parcel communicated")
-plt.ylabel("percentage of parcels")
+plt.ylabel("probability distribution")
 plt.title(plot_title)
 
 plt.tight_layout()

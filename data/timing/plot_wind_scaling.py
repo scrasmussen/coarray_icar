@@ -18,7 +18,8 @@ plt.rcParams['axes.linewidth'] = 2
 # AND fig = plt.figure(figsize=(4,3))
 # AND plt.tight_layout() before plt.show()
 
-f_cray = open('cray_wind_results.txt')
+# f_cray = open('cray_wind_results.txt')
+f_cray = open('new_cray_wind_results.txt')
 # f_cheyenne = open('cheyenne_strong_scaling.txt')
 
 # ---- read input data ----

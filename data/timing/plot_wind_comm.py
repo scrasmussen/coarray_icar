@@ -30,7 +30,7 @@ if (len(sys.argv) > 1):
         plot_title="Cray Wind Scaling: 500x500x30"
 
 plot_title="Cray: Particles Communicated"
-# plot_title=""
+plot_title=""
 
 
 header = ['n_nodes','nx','nz','ny','np','x_images','y_images','n_particles','timesteps',
@@ -54,6 +54,7 @@ handles=[title_proxy]
 labels=[r"\textbf{Number of Parcels}"]
 
 df.num_communicated /= 1000000
+df = df[df.n_nodes == 1]
 # --- plot data ---
 for i,size in enumerate(df.n_particles.unique()):
 

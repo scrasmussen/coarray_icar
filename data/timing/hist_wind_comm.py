@@ -47,11 +47,11 @@ plt.hist(hist_data, density=True,label=hist_labels, align='left', bins=h_bins)
 
 # ---- read input data ----
 
-plot_title = ""
 plot_title="Cray: Number of Times Particles Communicated"
+plot_title = ""
 plt.legend(title="Number of particles")
 plt.xlabel("times communicated")
-plt.ylabel("ratio")
+plt.ylabel("probability distribution")
 plt.title(plot_title)
 
 plt.tight_layout()

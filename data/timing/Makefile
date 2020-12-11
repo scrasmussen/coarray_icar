@@ -30,11 +30,25 @@ ha: histall
 histall:
 	$(lc) hist_all_wind_comm.py ../../../icar_data/particles/wind
 
+m: multinode
+multinode:
+	$(lc) plot_multinode.py
 
 p: particles
 particles:
 	$(lc) plot_timing_particles.py cray_particle_timing.txt -t "Particle Scaling"
 
+se: strongeff
+strongeff:
+	$(lc) plot_strong_efficiency.py
+
+ss: strongspeed
+strongspeed:
+	$(lc) plot_strong_speedup.py
+
+ws: weakspeed
+weakspeed:
+	$(lc) plot_weak_speedup.py
 
 s: strong
 strong:
@@ -49,6 +63,9 @@ wind:
 
 wc:
 	$(lc) plot_wind_comm.py
+
+we:
+	$(lc) plot_weak_efficiency.py
 
 wn:
 	$(lc) plot_wind_node_scaling.py

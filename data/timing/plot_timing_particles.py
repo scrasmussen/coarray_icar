@@ -29,29 +29,41 @@ df = pd.read_csv(f, sep='\s+',header=None, names=header)
 df.sort_values('n_particles', inplace=True)
 
 dry = df[df.is_dry == 'T']
-dry.n_particles *= 44
+dry.n_particles *= 44 / 1000000
 label = "With dry particles"
 plt.plot(dry.n_particles, dry.time, marker = '.',
          label=label)
 
 wet = df[df.is_dry == 'F']
-wet.n_particles *= 44
+wet.n_particles *= 44 / 1000000
 label = "With saturated particles"
 plt.plot(wet.n_particles, wet.time, marker = '.',
          label=label)
 
+print(wet[["time"]] )
+print ( "--")
+print(dry["time"] )
+print ( "--")
+
+print(wet.time.values / dry.time.values)
+print(wet.n_particles.values)
+sys.exit()
+
 # base line
 baseline = df[df.is_dry == 'B']
-plt.plot([0,df.n_particles.max()*44], [baseline.time,baseline.time], marker = '.',
+plt.plot([0,df.n_particles.max()*44/1000000], [baseline.time,baseline.time], marker = '.',
              label="Baseline: particles turned off", color='red')
 
+# print("-----",df.n_particles.max()*44)
 
 # plt.legend(title="Dimensions")
 plt.legend()
-plt.xlabel("number of particles per image (million)")
+plt.xlabel("number of particles (million)")
 plt.ylabel("time (seconds)")
 
 plt.title("Particle Scaling, 200 timesteps, 44 images")
+plt.title("Particle Scaling")
+plt.title("")
 
 plt.show()
 sys.exit()
