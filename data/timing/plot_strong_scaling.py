@@ -44,8 +44,7 @@ discrete_cmap = plt.get_cmap('tab20b')
 #              marker = 's', label=cheyenne_label)
 
 graph_size=500
-graph_size=2000
-
+# graph_size=2000
 
 
 def plot_data(data_in, name):
@@ -78,7 +77,7 @@ plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
 
-# plt.yscale('log', base=2)
+plt.yscale('log', base=2)
 plt.xscale('log', base=2)
 
 # ax.set_xticklabels([])

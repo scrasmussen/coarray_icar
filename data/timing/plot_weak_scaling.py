@@ -23,7 +23,7 @@ header = ['n_nodes', 'nx','nz','ny','np','x_images','y_images','n_particles',
 
 f_cray     = open('cray_weak_scaling.txt')
 f_cheyenne = open('cheyenne_weak_scaling.txt')
-df   = pd.read_csv(f_cray, sep='\s+',header=None)
+df   = pd.read_csv(f_cray, sep='\s+',header=None, comment='#')
 df_c = pd.read_csv(f_cheyenne, sep='\s+',header=None, comment='#')
 df.columns = header
 df_c.columns = header
@@ -32,14 +32,17 @@ df_c.columns = header
 discrete_cmap = plt.get_cmap('tab20b')
 
 # --- plot data ---
-
 for i,run in enumerate(df.scaling_run.unique()):
     if (run == 1):
         marker = 'x'
         label = 20*20*30 / 1000
+        continue
     else:
         marker = '.'
         label = 160*160*30 / 1000
+        # continue
+
+
     label = "Cray "+ str(int(label)) + "k "
 
     data = df[(df.scaling_run == run) & (df.n_particles == 0)]
@@ -48,7 +51,8 @@ for i,run in enumerate(df.scaling_run.unique()):
     plt.plot(data_p.np, data_p.time, marker = 'x',
              label=label+' with particles')
 
-
+ax = plt.gca()
+ax.set_ylim(0.0)
 plt.legend(title="Problem size per image")
 plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
