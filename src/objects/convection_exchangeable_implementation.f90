@@ -565,7 +565,8 @@ contains
                 delta_t = Q_heat / c_p   ! 3.2c
                 particle%temperature = T1 - delta_t
 
-                potential_temp0 = particle%potential_temp
+                if (debug .eqv. .true.) &
+                     potential_temp0 = particle%potential_temp
 
                 ! update potential temperature, assumming pressure is constant
                 particle%potential_temp = particle%temperature / exner_function(particle%pressure)
@@ -639,6 +640,12 @@ contains
              if (debug .eqv. .true.) then
                 print *, "     pressure  |  temp      |   ~heat    | potential"
                 print *, "pre ", p0, t0, ", -none-       ,", potential_t0
+
+                q_new_dry = &
+                     1004 * (1) * (abs(particle%temperature-t0))
+                q_dif = abs(q_dry-(q_new_dry+q_wet))
+                print *, q_dry, q_new_dry, q_wet, q_dif, &
+                     1004 * (1) * q_dif
              end if
              ! if ((debug .eqv. .true.) .and. (only_dry .eqv. .false.)) then
              !    print *, "post", p1, t1, q_dry, potential_t1
@@ -646,18 +653,11 @@ contains
              !         particle%pressure, particle%temperature, &
              !         q_wet,  particle%potential_temp
 
-                q_new_dry = &
-                     1004 * (1) * (abs(particle%temperature-t0))
-                q_dif = abs(q_dry-(q_new_dry+q_wet))
 
                 ! print *, "heat: q_dry = q_new_dry + q_wet"
                 ! print *, " ", q_dry, "=", q_new_dry, "+", q_wet
                 ! print *, "dif         =", q_dif, "which is ~ temp diff", &
                 !      1004 * (1) * q_dif
-
-                if (debug .eqv. .true.) &
-                     print *, q_dry, q_new_dry, q_wet, q_dif, &
-                     1004 * (1) * q_dif
 
                 ! print *, "--test--"
                 ! print *, " t? ", t0 - (q_new_dry / (1004 * (1)) )
