@@ -135,12 +135,12 @@ if relative_humidity == True:
                 cmap=rh_cmap, c=rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
     ax4.set_ylabel("pressure")
-    fig.legend(['Grey Scale when relative humidity > 1.0'], loc='lower left')
+    # fig.legend(['Grey Scale when relative humidity > 1.0'], loc='lower left')
 
 title="Temperature and Pressure of \n"
-title += str(num_particles) + " particles, " + str(num_t) + " timesteps"
-title += ", " + f.name.split('/')[1]
-plt.suptitle(title)
+title += str(num_particles) + " saturated particles, " + str(num_t) + " timesteps"
+# title += ", " + f.name.split('/')[1]
+# plt.suptitle(title)
 
 
 

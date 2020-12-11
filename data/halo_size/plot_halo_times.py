@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 import sys
 
+plt.rc('font', family='serif')
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.linewidth'] = 2
 
 if (len(sys.argv) < 2):
     sys.exit("Error: too few arguments for `plot.py [graph_data.txt]`")
@@ -41,52 +44,55 @@ elif (len(df.columns) == 11):
 elif (len(df.columns) == 12):
     df.columns = header4
 
-# --- animation ----
-gif    = True
-gif    = False
-repeat = False if gif else True
+rows = 1 # 2
+cols = 1
+fig = plt.figure()
 
-# ax.scatter(particles.timestep, df.time,
-#            cmap=discrete_cmap, c=particles.identifier)
-#            marker='.', edgecolor='black')
-#            color=cmap_c[0])
+
 
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')
-c_flags = ['O0','O3']
-c_flags = ['O3']
 # --- plot data ---
 df = df[df.timesteps == 200]
-for c_flag in c_flags:
-    for i,nodes in enumerate(df.n_nodes.unique()):
-        for i,nx in enumerate(df.nx.unique()):
-            if (nx == 2000):
-                continue
-            if (nodes == 1):
-                label = str(nodes) + " node"#, optimization -" + str(c_flag)
-            else:
-                label = str(nodes) + " nodes"#, optimization -" + str(c_flag)
-            label = label + ", " + str(nx) + "x" + str(nx) + "x30"
+# ax = fig.add_subplot(111)
+ax1 = fig.add_subplot(rows,cols,1)
+# ax2 = fig.add_subplot(rows,cols,2)
 
-            if (nodes == 1):
-                marker = 'x'
-            else:
-                marker = 's'
-            print("-")
-            plt.plot(df[(df.n_nodes == nodes) &
-                        (df.compiler_flags == c_flag)&
-                        (df.nx == nx)].halo_depth,
-                     df[(df.n_nodes == nodes) &
-                        (df.compiler_flags == c_flag)&
-                        (df.nx == nx)].time,
-                     marker = marker,
-                     label=label)
+def plot_size(nx, ax_in):
+    t_ax = ax_in
+    if (nx == 2000):
+        color = 'blue'
+    else:
+        color = 'red'
+    for i,nodes in enumerate(df.n_nodes.unique()):
+        label = str(nodes) + ' node'
+        if (nodes != 1):
+            label = label + 's'
+        if (nodes == 1):
+            marker = '.'
+        else:
+            marker = 'x'
+
+        label = str(nx)+' problem size, '+label
+        t_ax.plot(df[(df.n_nodes == nodes) &
+                    (df.nx == nx)].halo_depth,
+                 df[(df.n_nodes == nodes) &
+                    (df.nx == nx)].time,
+                 marker=marker,
+                 label=label, color=color)
+        t_ax.set_xlabel("halo depth")
+        t_ax.set_ylabel("time (seconds)")
+
         # color=discrete_cmap(i*4))
 
+ax1.set_ylim([0,df.time.max()+10])
+plot_size(2000, ax1)
+plot_size(500,  ax1)
+
+
+
 plt.legend(title="Number of nodes, problem size")
-plt.xlabel("halo depth")
-plt.ylabel("time (seconds)")
-plt.title(plot_title)
+# plt.title(plot_title)
 
 # plt.xscale('log', basex=2)
 # ax.set_xticklabels([])
@@ -97,11 +103,9 @@ plt.title(plot_title)
 # ax.get_xaxis().set_visible(False)
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
-
-if (gif):
-    print("Gif!")
-    # ani.save('test.gif', writer=animation.PillowWriter, fps=None,dpi=20) # fps was 5
-    # ani.save('test.gif', writer=animation.ImageMagickWriter, fps=None) # fps was 5
-else:
-    plt.show()
+# --- be sure to add ---
+# AND fig = plt.figure(figsize=(4,3))
+# AND plt.tight_layout() before plt.show()
+plt.tight_layout()
+plt.show()
 print("Fin!")
