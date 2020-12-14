@@ -44,10 +44,12 @@ discrete_cmap = plt.get_cmap('tab20b')
 #              marker = 's', label=cheyenne_label)
 
 graph_size=500
-# graph_size=2000
+graph_size=2000
 
 print("graph_size is "+str(graph_size))
 def plot_data(data_in, name):
+    if (name == "SGI" and graph_size == 2000):
+        return
     for i,size in enumerate(df.nx.unique()):
         if (size != graph_size):
             continue
@@ -67,7 +69,7 @@ def plot_data(data_in, name):
             plt.plot(data.np, eff, marker = '.', label=label)
         if (not data_p.empty):
             plt.plot(data_p.np, eff_p, marker = 'x',
-                     label=label+' with particles')
+                     label=label+' w/ particles')
 
 plot_data(df, 'Cray')
 plot_data(df_c, 'SGI')
@@ -76,7 +78,7 @@ plot_data(df_c, 'SGI')
 ax = plt.gca()
 ax.set_ylim(0.0)
 
-plt.legend(title="Machine")
+plt.legend()
 plt.xlabel("number of images")
 # plt.ylabel("time (seconds)")
 plt.ylabel("efficiency")
@@ -94,6 +96,10 @@ plt.xscale('log', base=2)
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
 
+filename="strong_scaling_"+str(graph_size)+"_efficiency.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")

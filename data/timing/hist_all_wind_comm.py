@@ -74,11 +74,17 @@ plt.ylim(bottom=0)
 plot_title="Cray: Probability Distribution of Times Particles are Communicated"
 plot_title = ""
 
-plt.legend(title="Wind Speed")
+plt.legend(title="Wind Speed", loc='upper right')
+
+# plt.legend(title="Wind Speed")
 plt.xlabel("number of times parcel communicated")
 plt.ylabel("probability distribution")
 plt.title(plot_title)
 
+filename="particles_communicated_histogram_delta_wind_speed"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")

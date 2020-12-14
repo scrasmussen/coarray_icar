@@ -54,6 +54,12 @@ plt.xlabel("times communicated")
 plt.ylabel("probability distribution")
 plt.title(plot_title)
 
+
+
+filename="particles_communicated_histogram_delta_particle_count.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")

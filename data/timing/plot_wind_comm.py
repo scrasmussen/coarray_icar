@@ -95,7 +95,10 @@ plt.title(plot_title)
 # ax.get_xaxis().set_visible(False)
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
-
+filename="particles_communicate_delta_wind.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")

@@ -35,21 +35,21 @@ discrete_cmap = plt.get_cmap('tab20b')
 for i,run in enumerate(df.scaling_run.unique()):
     if (run == 1):
         marker = 'x'
-        label = 20*20*30 / 1000
-        continue
+        # continue
+        label_n = 20*20*30 / 1000
     else:
         marker = '.'
-        label = 160*160*30 / 1000
-        # continue
+        continue
+        label_n = 160*160*30 / 1000
 
 
-    label = "Cray "+ str(int(label)) + "k "
+    label = "Cray " + str(int(label_n)) + "k "
 
     data = df[(df.scaling_run == run) & (df.n_particles == 0)]
     data_p = df[(df.scaling_run == run) & (df.n_particles != 0)]
     plt.plot(data.np,   data.time, marker = '.', label=label)
     plt.plot(data_p.np, data_p.time, marker = 'x',
-             label=label+' with particles')
+             label=label+' w/ particles')
 
 ax = plt.gca()
 ax.set_ylim(0.0)
@@ -69,5 +69,11 @@ plt.title(plot_title)
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
 
+
+filename="weak_scaling_cray_"+str(int(label_n))+"k.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
+print("Fin!")

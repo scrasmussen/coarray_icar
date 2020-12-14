@@ -47,7 +47,7 @@ print ( "--")
 
 print(wet.time.values / dry.time.values)
 print(wet.n_particles.values)
-sys.exit()
+# sys.exit()
 
 # base line
 baseline = df[df.is_dry == 'B']
@@ -64,6 +64,14 @@ plt.ylabel("time (seconds)")
 plt.title("Particle Scaling, 200 timesteps, 44 images")
 plt.title("Particle Scaling")
 plt.title("")
+
+filename="particle_scaling_1node_44p.png"
+fig = plt.gcf()
+sz=0.75
+fig.set_size_inches(sz*fig.get_size_inches())
+plt.tight_layout()
+plt.savefig(filename, pad_inches=0.0, dpi=400)
+
 
 plt.show()
 sys.exit()

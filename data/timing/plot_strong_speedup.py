@@ -51,7 +51,7 @@ for i,nx in enumerate(df.nx.unique()):
     plt.plot(data.np.values, speedup, marker = '.',
              label=label, color=color)
     plt.plot(data_p.np, speedup_p, marker = 'x',
-             label=str(label)+' with particles', color=color)
+             label=str(label)+' w/ particles', color=color)
              # color=discrete_cmap(i*4))
 
 # --- plot ideal speedup ---
@@ -89,6 +89,10 @@ plt.ylabel("speedup")
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
 
+filename="strong_scaling_speedup.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")

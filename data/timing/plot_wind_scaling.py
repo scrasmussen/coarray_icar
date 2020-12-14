@@ -18,8 +18,8 @@ plt.rcParams['axes.linewidth'] = 2
 # AND fig = plt.figure(figsize=(4,3))
 # AND plt.tight_layout() before plt.show()
 
-# f_cray = open('cray_wind_results.txt')
-f_cray = open('new_cray_wind_results.txt')
+f_cray = open('cray_wind_results.txt')
+# f_cray = open('new_cray_wind_results.txt')
 # f_cheyenne = open('cheyenne_strong_scaling.txt')
 
 # ---- read input data ----
@@ -51,9 +51,16 @@ discrete_cmap = plt.get_cmap('tab20b')
 title_proxy = mpatches.Rectangle((0,0),0,0,color='w')
 sat   = lines.Line2D([],[],marker='s',color='black')
 unsat = lines.Line2D([],[],marker='.',color='black')
-handles=[title_proxy,sat,unsat,title_proxy]
-labels=[r"\textbf{Markers}","saturated parcel","dry parcel",
-        r"\textbf{Number of Parcels}"]
+# handles=[title_proxy,sat,unsat,title_proxy]
+handles=[sat,unsat,title_proxy]
+labels=["saturated parcel","dry parcel"]
+# labels=[r"\textbf{Markers}","saturated parcel","dry parcel"]
+        #, r"\textbf{Number of Parcels}"]
+legend1 = plt.legend(handles,labels, loc=6)
+handles=[]
+labels=[]
+
+
 # --- plot data ---
 for i,size in enumerate(df.n_particles.unique()):
 
@@ -79,6 +86,8 @@ for i,size in enumerate(df.n_particles.unique()):
 
 
 plt.legend(handles,labels) #,title="Dimension and Optimization")
+plt.gca().add_artist(legend1)
+
 plt.xlabel("wind speed (meters per second)")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
@@ -95,6 +104,11 @@ plt.title(plot_title)
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
 
+
+filename="cray_wind_500x500x30_200ts.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")

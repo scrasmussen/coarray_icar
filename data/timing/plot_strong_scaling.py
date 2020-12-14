@@ -9,8 +9,8 @@ import pandas as pd
 import sys
 plt.rc('font', family='serif')
 plt.rcParams['font.size'] = 10
+# plt.rcParams['font.weight'] = 'bold'
 plt.rcParams['axes.linewidth'] = 2
-
 
 f_cray = open('cray_strong_scaling.txt')
 f_cheyenne = open('cheyenne_strong_scaling.txt')
@@ -44,7 +44,7 @@ discrete_cmap = plt.get_cmap('tab20b')
 #              marker = 's', label=cheyenne_label)
 
 graph_size=500
-# graph_size=2000
+graph_size=2000
 
 
 def plot_data(data_in, name):
@@ -63,7 +63,7 @@ def plot_data(data_in, name):
             plt.plot(data.np,   data.time, marker = '.', label=label)
         if (not data_p.empty):
             plt.plot(data_p.np, data_p.time, marker = 'x',
-                     label=label+' with particles')
+                     label=label+' w/ particles')
 
 plot_data(df, 'Cray')
 plot_data(df_c, 'SGI')
@@ -72,7 +72,8 @@ plot_data(df_c, 'SGI')
 
 
 
-plt.legend(title="Machine")
+# plt.legend(title="Machine")
+plt.legend()
 plt.xlabel("number of images")
 plt.ylabel("time (seconds)")
 plt.title(plot_title)
@@ -89,6 +90,11 @@ plt.xscale('log', base=2)
 # ax.get_yaxis().set_visible(False)
 # sys.exit()
 
+
+filename="strong_scaling_"+str(graph_size)+"_loglog.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
 plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")
