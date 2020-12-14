@@ -1,5 +1,6 @@
 lc=python3
 
+images=/home/artless/Documents/papers/convectionChapter/images
 data=../../icar_data/particles
 # ----- one particle runs for testing -----
 input=$(data)/single-200ts-no-sounding-dry.txt
@@ -10,7 +11,7 @@ input=$(data)/single-sounding-wet.txt
 input=$(data)/eight-sounding-wet.txt
 input=$(data)/eight-sounding-wet2.txt
 input=$(data)/eight-sounding-wet5.txt
-input=$(data)/eight-sounding-dry.txt
+# input=$(data)/eight-sounding-dry.txt
 # input=$(data)/single-sounding-dry.txt
 # input=$(data)/eight-dry.txt
 # input=$(data)/eight-sounding-wet5-99rh.txt
@@ -20,6 +21,10 @@ input=$(data)/eight-sounding-dry.txt
 
 
 all: build
+
+o: open
+open:
+	xdg-open validation_dry_parcels.png
 
 build:
 	$(lc) plot.py $(input)
@@ -36,6 +41,12 @@ g: gif
 gif:
 	$(lc) plot.py $(input) gif
 
+ls:
+	ls $(data)
+
+move:
+	cp *.png $(images)/
+
 p: pub
 pub:
 	$(lc) pub.py $(input)
@@ -43,8 +54,6 @@ pub:
 p2: plot_2d
 plot_2d:
 	$(lc) plot_2d.py $(input)
-
-
 
 .PHONY: s sounding
 s: sounding

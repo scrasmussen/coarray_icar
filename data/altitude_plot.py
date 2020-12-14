@@ -8,11 +8,13 @@ import pandas as pd
 import copy
 import sys
 import scipy as sy
+import os
 from scipy import fftpack
 
 
 from tools.my_setup import *
 
+# plt.rc('text', usetex=True)
 
 turn_off_graphs=True
 turn_off_graphs=False
@@ -60,7 +62,6 @@ fig = plt.figure()
 
 # ax = fig.add_subplot(rows,cols,1)
 # if True: # -----plot temperature-----
-#     filename='elevation_temp_dry'
 #     # particles.temperature -= 273.15
 #     sc = ax.scatter(particles.temperature, particles.z_meters,
 #     # ax.scatter(particles.z_meters, particles.temperature,
@@ -72,7 +73,6 @@ fig = plt.figure()
 
 # if True: # -----plot pressure-----
 #     ax2 = fig.add_subplot(rows,cols,2)
-#     filename='elevation_pressure_dry'
 #     ax2.scatter(particles.pressure, particles.z_meters,
 #     # ax2.scatter(particles.z_meters, particles.pressure,
 #                 cmap=discrete_cmap, c=particles.identifier, marker='.')
@@ -150,7 +150,7 @@ ax55 = fig.add_subplot(rows,cols,5+add)
 ax55.scatter(particles.timestep, particles.potential_temperature,
             cmap=discrete_cmap, c=particles.identifier, marker='.')
 ax55.set_xlabel("timestep")
-ax55.set_ylabel("potential temperature (K)")
+ax55.set_ylabel("potential temp. (K)")
 
 
 
@@ -170,13 +170,34 @@ ax8.set_ylabel("elevation (km)")
 ax9 = fig.add_subplot(rows,cols,8+add)
 ax9.scatter(particles.potential_temperature, particles.z_meters,
             cmap=discrete_cmap, c=particles.identifier, marker='.')
-ax9.set_xlabel("potential temp (K)")
+ax9.set_xlabel("potential temp. (K)")
 ax9.set_ylabel("elevation (km)")
 
 
 plt.tight_layout()
-plt.show()
+
+if 'dry' in os.path.splitext(f.name)[0]:
+    filename='validation_dry_parcels'
+else:
+    filename='validation_saturated_parcels'
+
+filename+=".png"
+sz=0.75
+fig.set_size_inches(sz*fig.get_size_inches())
+plt.tight_layout()
+plt.savefig(filename, pad_inches=0.0, dpi=400)
 # fig.save(filename, pdf=False, pgf=True)
+print("file "+filename+" outputted")
+print(fig.get_size_inches(), " and ",fig.dpi)
+print("new")
+print(sz*fig.get_size_inches(), " and ",fig.dpi)
+print(f.name, "  ", os.path.splitext(f.name)[0])
+
+# should be ~ 3.07
+# is 6.4, 4.8
+#
+# plt.show()
+
 print("Fin!")
 
 sys.exit()
@@ -227,9 +248,8 @@ for particle in range(0,num_particles):
 
 
 
-
-
-plt.tight_layout()
-plt.show()
 # fig.save(filename, pdf=False, pgf=True)
+
+# plt.tight_layout()
+# plt.show()
 print("Fin!")
