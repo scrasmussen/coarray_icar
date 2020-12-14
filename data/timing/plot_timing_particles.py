@@ -67,13 +67,13 @@ plt.title("")
 
 filename="particle_scaling_1node_44p.png"
 fig = plt.gcf()
-sz=0.75
-fig.set_size_inches(sz*fig.get_size_inches())
+fig.set_size_inches((4,3))
 plt.tight_layout()
-plt.savefig(filename, pad_inches=0.0, dpi=400)
-
-
+plt.savefig(filename, dpi=300)
 plt.show()
+print("Fin!")
+
+
 sys.exit()
 
 def format_xaxis(value, tick_num):

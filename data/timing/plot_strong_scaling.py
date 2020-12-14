@@ -9,7 +9,6 @@ import pandas as pd
 import sys
 plt.rc('font', family='serif')
 plt.rcParams['font.size'] = 10
-# plt.rcParams['font.weight'] = 'bold'
 plt.rcParams['axes.linewidth'] = 2
 
 f_cray = open('cray_strong_scaling.txt')
