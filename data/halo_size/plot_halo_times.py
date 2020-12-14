@@ -107,5 +107,11 @@ plt.legend(title="Number of nodes, problem size")
 # AND fig = plt.figure(figsize=(4,3))
 # AND plt.tight_layout() before plt.show()
 plt.tight_layout()
+
+filename="cray_halo_depth.png"
+fig = plt.gcf()
+fig.set_size_inches((4,3))
+plt.tight_layout()
+plt.savefig(filename, dpi=300)
 plt.show()
 print("Fin!")
