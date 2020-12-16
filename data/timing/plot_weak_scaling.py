@@ -32,24 +32,30 @@ df_c.columns = header
 discrete_cmap = plt.get_cmap('tab20b')
 
 # --- plot data ---
-for i,run in enumerate(df.scaling_run.unique()):
-    if (run == 1):
-        marker = 'x'
-        # continue
-        label_n = 20*20*30 / 1000
-    else:
-        marker = '.'
-        continue
-        label_n = 160*160*30 / 1000
+def plot_data(data_in, name):
+    global label_n
+    for i,run in enumerate(df.scaling_run.unique()):
+        if (run == 1):
+            marker = 'x'
+            # continue
+            label_n = 20*20*30 / 1000
+        else:
+            marker = '.'
+            continue
+            label_n = 160*160*30 / 1000
 
+        label = name + " " + str(int(label_n)) + "k "
 
-    label = "Cray " + str(int(label_n)) + "k "
+        data = data_in[(data_in.scaling_run == run) &
+                       (data_in.n_particles == 0)]
+        data_p = data_in[(data_in.scaling_run == run) &
+                         (data_in.n_particles != 0)]
+        plt.plot(data.np,   data.time, marker = '.', label=label)
+        plt.plot(data_p.np, data_p.time, marker = 'x',
+                 label=label+' w/ particles')
 
-    data = df[(df.scaling_run == run) & (df.n_particles == 0)]
-    data_p = df[(df.scaling_run == run) & (df.n_particles != 0)]
-    plt.plot(data.np,   data.time, marker = '.', label=label)
-    plt.plot(data_p.np, data_p.time, marker = 'x',
-             label=label+' w/ particles')
+plot_data(df, 'Cray')
+plot_data(df_c, 'SGI')
 
 ax = plt.gca()
 ax.set_ylim(0.0)
