@@ -52,9 +52,8 @@ rh_cmap = plt.get_cmap('gist_gray')
 # discrete_cmap = plt.get_cmap('Set1')
 # discrete_cmap = plt.get_cmap('Paired')
 
-
 particles.z_meters /= 1000
-particles.pressure /= 1000
+particles.pressure /= 100
 
 rows = 2 # 2
 cols = 3
@@ -106,7 +105,7 @@ if relative_humidity == False:
     ax4.scatter(particles.timestep, particles.pressure,
                 cmap=discrete_cmap, c=particles.identifier, marker='.')
     ax4.set_xlabel("timesteps")
-    ax4.set_ylabel("pressure")
+    ax4.set_ylabel("pressure (hPa)")
 
 if relative_humidity == True:
     rh = particles[particles.relative_humidity >= 1.0]
@@ -123,7 +122,7 @@ if relative_humidity == True:
     ax4.scatter(no_rh.timestep, no_rh.pressure,
                 cmap=discrete_cmap, c=no_rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
-    ax4.set_ylabel("pressure")
+    ax4.set_ylabel("pressure (hPa)")
     # -------- rh ---------
     # -----plot temp over time-----
     ax3.scatter(rh.timestep, rh.temperature,
@@ -134,7 +133,7 @@ if relative_humidity == True:
     ax4.scatter(rh.timestep, rh.pressure,
                 cmap=rh_cmap, c=rh.identifier, marker='.')
     ax4.set_xlabel("timesteps")
-    ax4.set_ylabel("pressure")
+    ax4.set_ylabel("pressure (hPa)")
     # fig.legend(['Grey Scale when relative humidity > 1.0'], loc='lower left')
 
 title="Temperature and Pressure of \n"
@@ -149,7 +148,7 @@ title += str(num_particles) + " saturated particles, " + str(num_t) + " timestep
 ax55 = fig.add_subplot(rows,cols,5+add)
 ax55.scatter(particles.timestep, particles.potential_temperature,
             cmap=discrete_cmap, c=particles.identifier, marker='.')
-ax55.set_xlabel("timestep")
+ax55.set_xlabel("timesteps")
 ax55.set_ylabel("potential temp. (K)")
 
 
@@ -162,9 +161,14 @@ ax7.set_xlabel("Temp (K)")
 ax7.set_ylabel("elevation (km)")
 
 ax8 = fig.add_subplot(rows,cols,7+add)
+# ax8.scatter(particles.temperature, particles.pressure,
+#             cmap=discrete_cmap, c=particles.identifier, marker='.')
+# ax8.set_xlabel("Temp (K)")
+# ax8.set_ylabel("pressure (hPa)")
+# ax8.invert_yaxis()
 ax8.scatter(particles.pressure, particles.z_meters,
             cmap=discrete_cmap, c=particles.identifier, marker='.')
-ax8.set_xlabel("pressure")
+ax8.set_xlabel("pressure (hPa)")
 ax8.set_ylabel("elevation (km)")
 
 ax9 = fig.add_subplot(rows,cols,8+add)
@@ -182,21 +186,19 @@ else:
     filename='validation_saturated_parcels'
 
 filename+=".png"
-sz=0.75
-fig.set_size_inches(sz*fig.get_size_inches())
+# fig.set_size_inches((4,3))
+fig.set_size_inches((6,4))
 plt.tight_layout()
 plt.savefig(filename, pad_inches=0.0, dpi=400)
 # fig.save(filename, pdf=False, pgf=True)
 print("file "+filename+" outputted")
 print(fig.get_size_inches(), " and ",fig.dpi)
-print("new")
-print(sz*fig.get_size_inches(), " and ",fig.dpi)
 print(f.name, "  ", os.path.splitext(f.name)[0])
 
 # should be ~ 3.07
 # is 6.4, 4.8
 #
-# plt.show()
+plt.show()
 
 print("Fin!")
 
