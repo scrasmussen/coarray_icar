@@ -8,6 +8,9 @@ n=eight
 files=$(n)-dry.txt $(data)/$(n)-dry.txt
 
 
+# data=newdata
+# files=$(data)/bv_dry.txt $(data)/output_dry.txt
+
 
 all: run
 
