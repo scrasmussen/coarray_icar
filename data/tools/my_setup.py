@@ -9,6 +9,7 @@ if (len(sys.argv) < 2):
 plt.rc('font', family='serif')
 plt.rcParams['font.size'] = 10
 plt.rcParams['axes.linewidth'] = 2
+
 # --- be sure to add ---
 # AND fig = plt.figure(figsize=(4,3))
 # AND plt.tight_layout() before plt.show()
