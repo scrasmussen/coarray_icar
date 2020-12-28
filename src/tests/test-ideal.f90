@@ -87,6 +87,8 @@ program main
     sync all
     call timer%stop()
 
+    if (me==1) print *, "Finished"
+
 
     if (count_p_comm .eqv. .true.) then
        particles_communicated = num_particles_communicated()
@@ -118,12 +120,12 @@ program main
         else
            open(unit=me, file=filename, status='new')
         end if
-        write(me,*) ceiling(num_images()/36.0), &
+        write(me,*) ceiling(num_images()/44.0), &
              domain%nx_global, domain%nz, domain%ny_global, &
              num_images(), domain%ximages, domain%yimages, &
              num_particles_per_image(), timesteps, timer%get_time(), &
              are_particles_dry(), get_wind_speed(), &
-             particles_communicated
+             particles_communicated, 2 ! do concurrent loop
         close(me)
     endif
 
@@ -159,7 +161,6 @@ program main
             endif
         endif
     enddo
-
   end block
 
 
