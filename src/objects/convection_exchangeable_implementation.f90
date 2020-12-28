@@ -306,7 +306,7 @@ contains
        particle_id = 0
     end if
 
-    do i=1,ubound(this%local,1)
+    do concurrent (i=1:ubound(this%local,1))
       associate (particle=>this%local(i))
         if (particle%exists .neqv. .true.) cycle
 
@@ -317,10 +317,11 @@ contains
              particle%z .gt. kte+1 .or. &
              particle%y .gt. jte+1) then
            print *, "particle", particle%particle_id, "on image", me
-           print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
-           print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
-           print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
-           stop "x,y,z is out of bounds"
+           ! print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
+           ! print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
+           ! print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
+           ! stop "x,y,z is out of bounds" ! can't be in DC
+           print *, "ERROR: x,y,z is out of bounds"
         end if
 
 
@@ -679,11 +680,16 @@ contains
 
            end block
         end if ! ---- end of relative humidity seciton ----
+    !   end associate
+    ! end do
 
 
-        !-----------------------------------------------------------------
-        ! Move particle if needed
-        !-----------------------------------------------------------------
+    !     !-----------------------------------------------------------------
+    !     ! Move particle if needed
+    !     !-----------------------------------------------------------------
+    ! do concurrent (i=1:ubound(this%local,1))
+    !   associate (particle=>this%local(i))
+    !     if (particle%exists .neqv. .true.) cycle
         associate (x => particle%x, y => particle%y, z => particle%z)
           if (caf_comm_message .eqv. .true.) then
              if (  x .lt. its-1 .or. x .gt. ite+1 .or. &
@@ -770,6 +776,7 @@ contains
         ! end if
       end associate
     end do
+
 
     if (brunt_vaisala_data .eqv. .true.) then
       do image=1,num_images()
