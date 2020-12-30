@@ -65,6 +65,14 @@ module convection_exchangeable_interface
      procedure :: put_northwest
      procedure :: put_southeast
      procedure :: put_southwest
+     procedure :: put_north_p
+     procedure :: put_south_p
+     procedure :: put_east_p
+     procedure :: put_west_p
+     procedure :: put_northeast_p
+     procedure :: put_northwest_p
+     procedure :: put_southeast_p
+     procedure :: put_southwest_p
      procedure :: retrieve_buf
      procedure :: create_particle_id
      procedure :: setup_neighbors
@@ -184,6 +192,62 @@ module convection_exchangeable_interface
        type(convection_particle), intent(inout) :: particle
      end subroutine
 
+     pure module subroutine put_north_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
+     pure module subroutine put_south_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
+     pure module subroutine put_east_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
+     pure module subroutine put_west_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
+     pure module subroutine put_northeast_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
+     pure module subroutine put_northwest_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
+     pure module subroutine put_southeast_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
+     pure module subroutine put_southwest_p(this, particle, i)
+       implicit none
+       class(convection_exchangeable_t), intent(inout) :: this
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: i
+     end subroutine
+
      module subroutine create_particle_id(this)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
@@ -239,10 +303,25 @@ module convection_exchangeable_interface
        integer, intent(in), optional :: times_moved
      end function
 
+     pure module subroutine replace_particle(particle_id, its, ite, kts, kte, jts, jte,&
+         ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
+         pressure, u_in, v_in, w_in, times_moved, particle)
+       type(convection_particle), intent(inout) :: particle
+       integer, intent(in) :: particle_id
+       integer, intent(in)           :: its, ite, kts, kte, jts, jte
+       integer, intent(in)           :: ims, ime, kms, kme, jms, jme
+       real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+       real, intent(in)              :: pressure(ims:ime,kms:kme,jms:jme)
+       class(exchangeable_t), intent(in) :: potential_temp
+       real, intent(in)              :: z_interface(ims:ime,jms:jme)
+       class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
+       integer, intent(in), optional :: times_moved
+     end subroutine
+
      module subroutine initialize_from_file()
      end subroutine
 
-     module subroutine dry_lapse_rate(pressure, temperature, potential_temp, &
+     pure module subroutine dry_lapse_rate(pressure, temperature, potential_temp, &
           z_displacement)
        real, intent(inout) :: pressure, temperature, potential_temp
        real, intent(in) :: z_displacement

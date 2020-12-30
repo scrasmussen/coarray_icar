@@ -81,7 +81,7 @@ contains
     !   buf_size = default_buf_size
     !   print *, 'using default_buf_size'
     ! end if
-    buf_size = particles_per_image * 2
+    buf_size = particles_per_image * 1.2
 
     if (present(halo_width)) then
       halo_size = halo_width
@@ -262,6 +262,149 @@ contains
 
   end function
 
+  pure module subroutine replace_particle(particle_id, its, ite, kts, kte, jts, jte, &
+      ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
+      pressure, u_in, v_in, w_in, times_moved, particle)
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: particle_id
+    integer, intent(in)           :: ims, ime, kms, kme, jms, jme
+    integer, intent(in)           :: its, ite, kts, kte, jts, jte
+    real, intent(in)              :: z_m(ims:ime,kms:kme,jms:jme)
+    real, intent(in)              :: pressure(ims:ime,kms:kme,jms:jme)
+    class(exchangeable_t), intent(in)    :: potential_temp
+    real, intent(in)              :: z_interface(ims:ime,jms:jme)
+    class(exchangeable_t), intent(in)    :: u_in, v_in, w_in
+    integer, intent(in), optional :: times_moved
+    real :: relative_humidity_in
+    real :: z_meters, z_interface_val, theta_val
+    real :: random_start(3), x, z, y
+    integer :: x0, x1, z0, z1, y0, y1, times_moved_val
+    real :: pressure_val, exner_val, temp_val, water_vapor_val
+    real :: u_val, v_val, w_val, velocity, cloud_water
+    call random_number(random_start)
+
+    x = its + (random_start(1) * (ite-its))
+    z = kts + (random_start(3) * (kte-kts))
+    y = jts + (random_start(2) * (jte-jts))
+
+    if (x .lt. its .or. &
+        x .gt. ite .or. &
+        z .lt. kts .or. &
+        z .gt. kte .or. &
+        y .lt. jts .or. &
+        y .gt. jte) then
+      ! print *, "x:", its, "<", x, "<", ite
+      ! print *, "z:", kts, "<", z, "<", kte
+      ! print *, "y:", jts, "<", y, "<", jte
+       ! stop "x,y,z is out of bounds"
+      return
+    end if
+
+    x0 = floor(x); z0 = floor(z); y0 = floor(y);
+    x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
+
+    associate (A => z_m)
+      z_meters = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+          A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+          A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+    end associate
+
+    associate (A => potential_temp%local)
+      theta_val = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+          A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+          A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+    end associate
+
+    associate (A => pressure)
+      pressure_val = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+          A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
+          A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+    end associate
+
+    ! print *, "val and func", pressure_val, pressure_at_elevation(100000.0, z_meters)
+    ! call exit
+
+    associate (A => z_interface)
+      z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
+          A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
+    end associate
+
+    ! print *, "z meters =" , z_meters, "z =", z, "zm =", z_m(x0,z0,y0)
+    ! print *, "z_interface_val =", z_interface_val, "try =", z*dz_val + z_interface_val -250
+    ! print *, "----"
+
+    ! call flush()
+    ! sync all
+    ! call exit
+
+    ! sealevel_pressure => 100000.0
+    ! pressure_val = pressure_at_elevation(100000.0, z_meters)
+    exner_val = exner_function(pressure_val)
+
+    ! call random_number(rand)
+    if (init_theta .eqv. .true.) then
+      theta_val = theta_val * (1 + 1.0 / 100) ! random 0-1% change
+    else
+      theta_val = theta_val ! * (1 + 0.01) ! increase by 1%
+   end if
+
+   if (init_velocity .eqv. .true.) then
+      velocity = 5
+   else
+      velocity = 0
+   end if
+
+
+    temp_val = exner_val * theta_val
+
+    if (dry_air_particles .eqv. .true.) then
+       water_vapor_val = 0
+    else
+       water_vapor_val = sat_mr(temp_val, pressure_val) *  1.0 !0.99
+    end if
+    relative_humidity_in = water_vapor_val
+
+    ! ARTLESS: Testing, set to 0
+    ! relative_humidity_in = 0
+
+    ! wind is constant in this system, ignoring w wind (aka z-direction)
+    u_val = u_in%local(x0, z0, y0)
+    v_val = v_in%local(x0, z0, y0)
+    w_val = 0
+
+
+    cloud_water = 0
+    if (present(times_moved) .eqv. .true.) then
+       times_moved_val = times_moved
+    else
+       times_moved_val = 0
+    end if
+
+    ! ARTLESS
+    ! particle = convection_particle(particle_id, .true., times_moved_val, &
+    !     x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
+    !     pressure_val, temp_val, theta_val, velocity, water_vapor_val, &
+    !     cloud_water, relative_humidity_in)
+    particle%particle_id = particle_id
+    particle%exists = .true.
+    particle%moved = times_moved_val
+    particle%x = x
+    particle%y = y
+    particle%z = z
+    particle%u = u_val
+    particle%v = v_val
+    particle%w = w_val
+    particle%z_meters = z_meters
+    particle%z_interface = z_interface_val
+    particle%pressure = pressure_val
+    particle%temperature = temp_val
+    particle%potential_temp = theta_val
+    particle%velocity = velocity
+    particle%water_vapor = water_vapor_val
+    particle%cloud_water = cloud_water
+    particle%relative_humidity = relative_humidity_in
+  end subroutine
+
 
   module subroutine process(this, nx_global, ny_global, &
       ims, ime, kms, kme, jms, jme, dt, dz, temperature, z_interface, &
@@ -306,6 +449,7 @@ contains
        particle_id = 0
     end if
 
+    ! do i=1,ubound(this%local,1)
     do concurrent (i=1:ubound(this%local,1))
       associate (particle=>this%local(i))
         if (particle%exists .neqv. .true.) cycle
@@ -316,12 +460,14 @@ contains
              particle%x .gt. ite+1 .or. &
              particle%z .gt. kte+1 .or. &
              particle%y .gt. jte+1) then
-           print *, "particle", particle%particle_id, "on image", me
            ! print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
            ! print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
            ! print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
            ! stop "x,y,z is out of bounds" ! can't be in DC
-           print *, "ERROR: x,y,z is out of bounds"
+           print *, "ERROR: x,y,z is out of bounds", "particle", &
+                particle%particle_id, "on image", me
+           particle%exists = .false.
+           cycle
         end if
 
 
@@ -367,9 +513,11 @@ contains
            if (z_displacement /= z_displacement) then
               print *, me, ":: ---------NAN ERROR---------", &
                    particle%particle_id, T, T_prime
+              particle%exists = .false.
+              cycle
               particle%z = -1
               print *, p0, z_displacement, gravity, particle%temperature
-              call exit
+              ! call exit
            else
               particle%z = particle%z + delta_z
               particle%velocity = z_displacement
@@ -430,10 +578,15 @@ contains
            particle%exists = .false.
            ! print *, "-replacing??!!-", particle%particle_id
            if (replacement .eqv. .true.) then
-              particle = create_particle(particle%particle_id, &
+              ! particle = create_particle(particle%particle_id, &
+              !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+              !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+              !      particle%moved)
+              call replace_particle(particle%particle_id, &
                    its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                    z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-                   particle%moved)
+                   particle%moved, particle)
+
               if (replacement_message .eqv. .true.) then
                  print *, me,":",particle%particle_id, "hit the ground"
               end if
@@ -443,10 +596,15 @@ contains
         else if (particle%z .gt. kte) then
            particle%exists = .false.
            if (replacement .eqv. .true.) then
-              particle = create_particle(particle%particle_id, &
+              ! particle = create_particle(particle%particle_id, &
+              !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+              !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+              !      particle%moved)
+              call replace_particle(particle%particle_id, &
                    its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                    z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-                   particle%moved)
+                   particle%moved, particle)
+
               if (replacement_message .eqv. .true.) then
                  print *, me,":",particle%particle_id, "went off the top"
               end if
@@ -486,6 +644,10 @@ contains
            if (debug .eqv. .true.) print *, "-- only dry air parcels --"
            call dry_lapse_rate(particle%pressure, particle%temperature, &
                 particle%potential_temp, z_displacement)
+           ! particle%pressure = particle%pressure - z_displacement * &
+           !      gravity / (287.05 * particle%temperature) * particle%pressure
+           ! particle%temperature = exner_function(particle%pressure) * &
+           !      particle%potential_temp
         else
            !-----------------------------------------------------------------
            ! Relative Humidity and physics of Moist Adiabatic Lapse Rate
@@ -520,6 +682,11 @@ contains
              potential_T0 = particle%potential_temp
              call dry_lapse_rate(particle%pressure, particle%temperature, &
                   particle%potential_temp, z_displacement)
+             ! particle%pressure = particle%pressure - z_displacement * &
+             !      gravity / (287.05 * particle%temperature) * particle%pressure
+             ! particle%temperature = exner_function(particle%pressure) * &
+             !      particle%potential_temp
+
              only_dry = .true.
              T1 = particle%temperature
              p1 = particle%pressure
@@ -686,10 +853,11 @@ contains
 
     !     !-----------------------------------------------------------------
     !     ! Move particle if needed
-    !     !-----------------------------------------------------------------
-    ! do concurrent (i=1:ubound(this%local,1))
-    !   associate (particle=>this%local(i))
-    !     if (particle%exists .neqv. .true.) cycle
+        !-----------------------------------------------------------------
+    ! do concurrent (i=1:ubound(this%local,1))     !
+    ! ! do i=1,ubound(this%local,1)     !
+    !   associate (particle=>this%local(i))        !
+    !     if (particle%exists .neqv. .true.) cycle !
         associate (x => particle%x, y => particle%y, z => particle%z)
           if (caf_comm_message .eqv. .true.) then
              if (  x .lt. its-1 .or. x .gt. ite+1 .or. &
@@ -737,38 +905,38 @@ contains
           ! Check values to know where to send particle
           if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
              if (xx .lt. its-1) then
-                call this%put_southwest(particle)
+                call this%put_southwest_p(particle, i)
                 if (count_p_comm .eqv. .true.) &
                      particles_communicated = particles_communicated + 1
              else if (xx .gt. ite+1) then
-                call this%put_southeast(particle)
+                call this%put_southeast_p(particle, i)
                 if (count_p_comm .eqv. .true.) &
                      particles_communicated = particles_communicated + 1
              else
-                call this%put_south(particle)
+                call this%put_south_p(particle, i)
                 if (count_p_comm .eqv. .true.) &
                      particles_communicated = particles_communicated + 1
              end if
           else if (yy .gt. jte+1) then ! jts will be 1
              if (xx .lt. its-1) then
-                call this%put_northwest(particle)
+                call this%put_northwest_p(particle, i)
                 if (count_p_comm .eqv. .true.) &
                      particles_communicated = particles_communicated + 1
              else if (xx .gt. ite+1) then
-                call this%put_northeast(particle)
+                call this%put_northeast_p(particle, i)
                 if (count_p_comm .eqv. .true.) &
                      particles_communicated = particles_communicated + 1
              else
-                call this%put_north(particle)
+                call this%put_north_p(particle, i)
                 if (count_p_comm .eqv. .true.) &
                      particles_communicated = particles_communicated + 1
              endif
           else if (xx .lt. its-1) then ! "its  <   x    <  ite"
-             call this%put_west(particle) ! need to double check this!
+             call this%put_west_p(particle, i) ! need to double check this!
              if (count_p_comm .eqv. .true.) &
                   particles_communicated = particles_communicated + 1
           else if (xx .gt. ite+1) then
-             call this%put_east(particle)
+             call this%put_east_p(particle, i)
              if (count_p_comm .eqv. .true.) &
                   particles_communicated = particles_communicated + 1
           end if
@@ -891,7 +1059,8 @@ contains
     do i=1,buf_n
       associate (particle=>buf(i))
         do while (particle%exists .eqv. .true.)
-          if (local_i .gt. local_n) then
+           if (local_i .gt. local_n) then
+            print *, "i" , local_i, "n", local_n
             stop "retrieve_buf is out of bounds"
           end if
           if (this%local(local_i)%exists .eqv. .false.) then
@@ -1051,6 +1220,120 @@ contains
     end if
 
     call check_buf_size(this%northeast_i)
+    !dir$ pgas defer_sync
+    this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
+    particle%exists = .false.
+    this%northeast_i = this%northeast_i + 1
+  end subroutine
+
+  pure module subroutine put_north_p(this, particle,i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%north_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
+    !dir$ pgas defer_sync
+    this%buf_south_in(i)[north_con_neighbor] = particle
+    particle%exists = .false.
+  end subroutine
+
+
+  pure module subroutine put_south_p(this, particle, i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%south_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
+    !dir$ pgas defer_sync
+    this%buf_north_in(i)[south_con_neighbor] = particle
+    particle%exists = .false.
+  end subroutine
+
+  pure module subroutine put_east_p(this, particle, i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%east_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
+    !dir$ pgas defer_sync
+    this%buf_west_in(i)[east_con_neighbor] = particle
+    particle%exists = .false.
+  end subroutine
+
+  pure module subroutine put_west_p(this, particle, i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%west_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
+    !dir$ pgas defer_sync
+    this%buf_east_in(i)[west_con_neighbor] = particle
+    particle%exists = .false.
+  end subroutine
+
+  pure module subroutine put_northeast_p(this, particle, i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%northeast_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
+    !dir$ pgas defer_sync
+    this%buf_southwest_in(i)[northeast_con_neighbor] = particle
+    particle%exists = .false.
+  end subroutine
+
+  pure module subroutine put_northwest_p(this, particle, i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%northwest_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
+    !dir$ pgas defer_sync
+    this%buf_southeast_in(i)[northwest_con_neighbor] = particle
+    particle%exists = .false.
+  end subroutine
+
+  pure module subroutine put_southeast_p(this, particle, i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%southeast_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
+    !dir$ pgas defer_sync
+    this%buf_northwest_in(i)[southeast_con_neighbor] = particle
+    particle%exists = .false.
+  end subroutine
+
+  pure module subroutine put_southwest_p(this, particle, i)
+    class(convection_exchangeable_t), intent(inout) :: this
+    type(convection_particle), intent(inout) :: particle
+    integer, intent(in) :: i
+    if (this%southwest_boundary) then
+      particle%exists = .false.
+      return
+    end if
+
     !dir$ pgas defer_sync
     this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
     particle%exists = .false.
@@ -1221,7 +1504,7 @@ contains
 
   end subroutine
 
-  function bilinear_interpolation(x, x0, x1, y, y0, y1, &
+  pure function bilinear_interpolation(x, x0, x1, y, y0, y1, &
       c00, c01, c10, c11) result(c)
     real, intent(in) :: x, y
     real, intent(in) :: c00, c01, c10, c11
@@ -1242,7 +1525,7 @@ contains
     end if
   end function bilinear_interpolation
 
-  function trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
+  pure function trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0, y1, &
       c000, c001, c010, c100, c011, c101, c110, c111) result(c)
     real, intent(in) :: x, z, y
     real, intent(in) :: c000, c001, c010, c100, c011, c101, c110, c111
@@ -1374,25 +1657,29 @@ contains
   ! Method one: physics
   !        a) change pressure         b) update temperature
   !-----------------------------------------------------------------
-  module procedure dry_lapse_rate
-  real, parameter :: gravity = 9.80665
-  real ::  p0, T_original
-  p0 = pressure
-  pressure = p0 - z_displacement * &
-       gravity / (287.05 * temperature) * p0
 
-  T_original = temperature
-  temperature = exner_function(pressure) * &
-       potential_temp
+  pure module subroutine dry_lapse_rate(pressure, temperature, potential_temp, &
+          z_displacement)
+    real, intent(inout) :: pressure, temperature, potential_temp
+    real, intent(in) :: z_displacement
 
+    real, parameter :: gravity = 9.80665
+    real ::  p0, T_original
+    p0 = pressure
+    pressure = p0 - z_displacement * &
+         gravity / (287.05 * temperature) * p0
 
-  if (temperature /= temperature) then
-     print *, this_image(), ":: ~~~~~~NAN ERROR~~~~~~", &
-          p0, pressure, z_displacement, T_original, temperature, &
-          exner_function(pressure), potential_temp
-     call exit
-  end if
-  end procedure dry_lapse_rate
+    T_original = temperature
+    temperature = exner_function(pressure) * potential_temp
+  end subroutine
+  ! if (temperature /= temperature) then
+  !    print *, this_image(), ":: ~~~~~~NAN ERROR~~~~~~", &
+  !         p0, pressure, z_displacement, T_original, temperature, &
+  !         exner_function(pressure), potential_temp
+  !    ! call exit
+  !    return
+  ! end if
+  ! end procedure !pure dry_lapse_rate
   !-----------------------------------------------------------------
   ! Method two: adiabatic lapse rate, not using
   !-----------------------------------------------------------------
