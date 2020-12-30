@@ -22,10 +22,11 @@ program main
     type(domain_t), save :: domain
 
     ! parameters to setup test
-    integer, parameter :: timesteps = 200
+    logical, parameter :: just_particles = .true.
+    integer, parameter :: timesteps = 4 !20!0
     logical            :: report = .false.
     logical, parameter :: use_sounding   = .false.
-    logical, parameter :: print_timestep = .false.
+    logical, parameter :: print_timestep = .true.
     logical, parameter :: count_p_comm = .false.
     ! if count_p_comm is true, need to edit other convect_exhange_implementation
     logical, parameter :: save_particles_moved = .false.
@@ -36,6 +37,8 @@ program main
     logical :: exist
     character(len=32) :: filename
     integer :: len, ierr
+    integer :: dz_lb(3), ii
+    real    :: dt
 
 
     if (me==1) print *,me,"domain%initialize_from_file('input-parameters.txt')"
@@ -58,6 +61,7 @@ program main
     ! initialize microphysics before starting the timer
     if (me==1) print*, "Initializing microphysics..."
     call microphysics(domain, dt = 20.0)
+    dt = 20.0
 
     if (me==1) print*, ""
     if (me==1) print*, "Beginning simulation..."
@@ -68,7 +72,34 @@ program main
 
     sync all
     call timer%start()
+
     do i=1, timesteps
+        if (just_particles .eqv. .true.) then
+           do ii=1,int(dt)
+              if ((print_timestep .eqv. .true.) .and. me==1) then
+                 print *, &
+                      "_____________________timestep ", &
+                      int((i-1)*dt + ii), "________________________"
+              end if
+
+              dz_lb = lbound(domain%dz_interface)
+              call domain%convection_obj%process( &
+                   domain%nx_global, domain%ny_global, &
+                   domain%ims, domain%ime, domain%kms, &
+                   domain%kme, domain%jms, domain%jme, &
+                   1.0, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
+                   domain%temperature, domain%z_interface(:,1,:), &
+                   domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
+                   domain%jte, domain%z, domain%potential_temperature, &
+                   domain%pressure, domain%u, domain%v, domain%w, &
+                   int((i-1)*dt + ii) )
+              if (report .eqv. .true.) &
+                   call domain%report_convection(int((i-1)*dt + ii))
+              call domain%convection_obj%retrieve(no_sync=.false.)
+           end do
+           cycle
+        end if
+
         if ((print_timestep .eqv. .true.) .and. me==1) then
             print *, &
                   "_____________________timestep ", i,"________________________"
@@ -83,7 +114,8 @@ program main
         call domain%halo_retrieve()
 
         call domain%advect(dt = 1.0)
-    end do
+     end do
+
     sync all
     call timer%stop()
 
