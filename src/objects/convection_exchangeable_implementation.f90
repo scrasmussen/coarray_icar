@@ -81,7 +81,8 @@ contains
     !   buf_size = default_buf_size
     !   print *, 'using default_buf_size'
     ! end if
-    buf_size = particles_per_image * 1.2
+    buf_size = ceiling(particles_per_image * 1.25) + 10  ! artless
+    ! buf_size = particles_per_image * 2
 
     if (present(halo_width)) then
       halo_size = halo_width
@@ -441,19 +442,40 @@ contains
     character(len=32) :: filename
 
     if (debug .eqv. .true.) print*, "start particle processing"
-
-    me = this_image()
     if (brunt_vaisala_data .eqv. .true.) then
        bv_i = 1
        bv = 0
        particle_id = 0
     end if
 
-    ! do i=1,ubound(this%local,1)
+#ifdef DC_LOOP
+    print *, "--- do concurrent ---"
+#endif
+#ifdef OMP_LOOP
+    print *, "--- OpenMP ---"
+#endif
+#ifndef DC_LOOP
+#ifndef OMP_LOOP
+    print *, "--- do ---"
+#endif
+#endif
+
+
+    me = this_image()
+#ifdef DC_LOOP
     do concurrent (i=1:ubound(this%local,1))
+#endif
+#ifdef OMP_LOOP
+    do i=1,ubound(this%local,1)
+#endif
+#ifndef DC_LOOP
+#ifndef OMP_LOOP
+    do i=1,ubound(this%local,1)
+#endif
+#endif
       associate (particle=>this%local(i))
         if (particle%exists .neqv. .true.) cycle
-
+        ! print *, me,":", particle%particle_id, particle%x ,particle%y
         if (particle%x .lt. its-1 .or. &
              particle%z .lt. kts-1 .or. &
              particle%y .lt. jts-1 .or. &
@@ -1057,20 +1079,24 @@ contains
     local_n = ubound(this%local, dim=1)
     local_i = 1
     do i=1,buf_n
-      associate (particle=>buf(i))
-        do while (particle%exists .eqv. .true.)
-           if (local_i .gt. local_n) then
-            print *, "i" , local_i, "n", local_n
-            stop "retrieve_buf is out of bounds"
-          end if
-          if (this%local(local_i)%exists .eqv. .false.) then
-            call particle%move_to(this%local(local_i))
+       associate (particle=>buf(i))
+         do while (particle%exists .eqv. .true.)
+            if (local_i .gt. local_n) then
+               ! print *, this_image(), ": id",particle%particle_id," i" , &
+               !      local_i, "but buf size", local_n
+               ! print *, "ERROR: retrieve_buf is out of bounds"
+               particle%exists = .false.
+            end if
+
+            if (this%local(local_i)%exists .eqv. .false.) then
+               call particle%move_to(this%local(local_i))
+               ! print *, "------", particle%exists
+               local_i = local_i + 1
+               exit
+            end if
             local_i = local_i + 1
-            exit
-          end if
-          local_i = local_i + 1
-       end do
-      end associate
+         end do
+       end associate
     end do
   end subroutine
 
