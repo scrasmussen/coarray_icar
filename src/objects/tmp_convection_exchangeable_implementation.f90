@@ -39,6 +39,7 @@ submodule(convection_exchangeable_interface) &
   integer, save :: east_con_neighbor, west_con_neighbor
   integer, save :: northeast_con_neighbor, northwest_con_neighbor
   integer, save :: southeast_con_neighbor, southwest_con_neighbor
+  integer, save :: current_max_local_particles
 
 contains
   module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid,&
@@ -110,6 +111,7 @@ contains
     call random_seed(PUT=seed)
     call random_init(.true.,.true.)
 
+    current_max_local_particles = particles_per_image
     do create=1,particles_per_image
       call this%create_particle_id()
       this%local(create) = create_particle(this%particle_id_count, &
@@ -431,7 +433,7 @@ contains
     real :: xx, yy, z_0, z_1
     real :: rate_of_temp_change, bv(local_buf_size), input_wind_val
     integer :: x0, x1, z0, z1, y0, y1, bv_i, image, particle_id(local_buf_size)
-    integer :: u_bound(3)
+    integer :: u_bound(3)!, n_local_particles
     logical :: calc, calc_x, calc_y, exist
     ! logical, allocatable :: truth_a(:)
     character(len=32) :: filename
@@ -492,8 +494,10 @@ contains
 
     me = this_image()
 
+
 #ifdef DC_LOOP
-    do concurrent (i=1:ubound(this%local,1)) &
+    do concurrent (i=1:current_max_local_particles) & ! this is 14% faster
+    ! do concurrent (i=1:ubound(this%local,1)) &      ! than this
        local(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement, &
          delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1, & ! add after
          bv, bv_i, particle_id, xx, yy, &
@@ -514,11 +518,23 @@ contains
 #endif
 #ifdef OMP_LOOP
 !!!$omp do schedule(dynamic)
-    !$omp parallel loop private(T, T_prime, x0,z0,y0,x1,z1,y1,buoyancy,a_prime)
-    !$omp &             private(z_displacement,delta_z,wind_correction)
-    !$omp &             private(z_interface_val,z_wind_change,z_0,z_1)
-    !$omp &             shared(me,dt,dz,input_wind,kts,gravity,this,temperature)
-    !$omp &             shared(z_interface) default(private)
+    !$omp parallel loop
+!$omp & private(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement)
+!$omp & private(delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1)
+!$omp & private(bv, bv_i, particle_id, xx, yy)
+!$omp & private(saturate, condensate, vapor, vapor_needed, RH, C_vv, c_p)
+!$omp & private(specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1)
+!$omp & private(p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif)
+!$omp & private(water_vapor0,  water_vapor1, cloud_water0,  cloud_water1)
+!$omp & private(potential_T0, potential_T1, repeat, iter, only_dry, x,y,z)
+!$omp & private(particle)
+!$omp & shared(me,dt,dz,gravity,this,temperature,z_interface)
+!$omp & shared(jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its)
+!$omp & shared(z_m, pressure, potential_temp,input_wind_val,nx_global,ny_global)
+!$omp & shared(w_in, v_in, u_in, dry_air_particles_val, condensation_lh)
+!$omp & shared(vaporization_lh, bv_data_val, replacement_message_val)
+!$omp & shared(replacement_val, debug_val, wrap_neighbors_val, convection_val)
+!!!$omp & default(none)
     do i=1,ubound(this%local,1)
 #endif
 #ifdef DO_LOOP
@@ -530,7 +546,7 @@ contains
        ! print *, me,":", particle%particle_id, particle%x ,particle%y
        ! print *, me,":", particle%particle_id, particle%x ,particle%y
 
-#ifdef DO_LOOP
+
         if (particle%x .lt. its-1 .or. &
              particle%z .lt. kts-1 .or. &
              particle%y .lt. jts-1 .or. &
@@ -544,9 +560,13 @@ contains
            print *, "ERROR: x,y,z is out of bounds", "particle", &
                 particle%particle_id, "on image", me
            particle%exists = .false.
+#ifdef DO_LOOP
+           stop "x,y,z is out of bounds" ! can't be in DC
+#endif
            cycle
         end if
-#endif
+        if (bv_data_val .eqv. .true.) bv_i = 1
+
 
         !-----------------------------------------------------------------
         ! Handle Buoyancy
@@ -646,10 +666,11 @@ contains
         z_0 = particle%z_meters
         z_1 = particle%z_meters + z_displacement
         particle%z_meters = z_1
-        ! print *, "particle%z", particle%z, kts, kte
 
+
+        ! --- this part is working
         if (particle%z .lt. kts) then
-           print *, "A:HERE"
+           ! print *, "A:HERE"
            ! ---- hits the ground and stops  ----
            ! z_displacement = z_displacement + dz * (1-particle%z)
            ! particle%z = 1
@@ -664,17 +685,17 @@ contains
               ! !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
               ! !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
               ! !      particle%moved)
-              ! call replace_particle(particle%particle_id, &
-              !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-              !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-              !      particle%moved, particle)
+              call replace_particle(particle%particle_id, &
+                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+                   z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+                   particle%moved, particle)
 
               if (replacement_message_val .eqv. .true.) then
                  print *, me,":",particle%particle_id, "hit the ground"
               end if
            end if
 
-
+           cycle
         else if (particle%z .gt. kte) then
            ! print *, "A:THERE"
 
@@ -693,8 +714,7 @@ contains
                  print *, me,":",particle%particle_id, "went off the top"
               end if
            end if
-           ! call exit
-           ! cycle
+           cycle
         end if
 
 
@@ -990,9 +1010,8 @@ contains
         ! print *, "cycle 5"
         ! cycle
 
-        ! ---- this is where it now breaks ----
         ! Check values to know where to send particle
-        if (num_images() .gt. 0) then
+        if (num_images() .gt. 1) then
         if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
            if (xx .lt. its-1) then
               ! particle%exists = .false.
@@ -1181,6 +1200,10 @@ contains
          end do
        end associate
     end do
+    if (local_i > current_max_local_particles) then
+       current_max_local_particles = local_i
+    end if
+    ! print *, "current _max loc=", current_max_local_particles
   end subroutine
 
   module subroutine put_north(this, particle)
