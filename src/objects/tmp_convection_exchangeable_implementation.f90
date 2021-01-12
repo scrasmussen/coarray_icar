@@ -262,6 +262,9 @@ contains
         x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
         pressure_val, temp_val, theta_val, velocity, water_vapor_val, &
         cloud_water, relative_humidity_in)
+    ! if (particle%particle_id .eq. 0) then
+    !    print *, "--------------- i=",  x,y,z
+    ! end if
 
   end function
 
@@ -517,8 +520,10 @@ contains
        default(none)
 #endif
 #ifdef OMP_LOOP
-!!!$omp do schedule(dynamic)
-    !$omp parallel loop
+       ! !$omp parallel loop
+       !!      !$omp parallel do simd schedule(auto)
+!!!$omp parallel
+!$omp do simd schedule(auto)
 !$omp & private(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement)
 !$omp & private(delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1)
 !$omp & private(bv, bv_i, particle_id, xx, yy)
@@ -534,17 +539,19 @@ contains
 !$omp & shared(w_in, v_in, u_in, dry_air_particles_val, condensation_lh)
 !$omp & shared(vaporization_lh, bv_data_val, replacement_message_val)
 !$omp & shared(replacement_val, debug_val, wrap_neighbors_val, convection_val)
-!!!$omp & default(none)
-    do i=1,ubound(this%local,1)
+!$omp & default(none)
+    do i=1,current_max_local_particles
+       ! do i=1,ubound(this%local,1)
+       ! print *, ""
 #endif
 #ifdef DO_LOOP
-    do i=1,ubound(this%local,1)
+    do i=1,current_max_local_particles
+    ! do i=1,ubound(this%local,1)
 #endif
        particle = this%local(i)
        ! print *, particle%particle_id, particle%exists
+       ! if (i .eq. 1) print*, omp_in_parallel(), "omp_num_threads", omp_get_num_threads()
        if (particle%exists .neqv. .true.) cycle
-       ! print *, me,":", particle%particle_id, particle%x ,particle%y
-       ! print *, me,":", particle%particle_id, particle%x ,particle%y
 
 
         if (particle%x .lt. its-1 .or. &
@@ -553,12 +560,14 @@ contains
              particle%x .gt. ite+1 .or. &
              particle%z .gt. kte+1 .or. &
              particle%y .gt. jte+1) then
-           ! print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
-           ! print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
-           ! print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
+           print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
+           print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
+           print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
            ! stop "x,y,z is out of bounds" ! can't be in DC
-           print *, "ERROR: x,y,z is out of bounds", "particle", &
+           print *, "ERROR: x,y,z is out of bounds", " particle_id:", &
                 particle%particle_id, "on image", me
+           ! print *, "particle_id:", &
+           !      particle%particle_id,"E=", particle%exists
            particle%exists = .false.
 #ifdef DO_LOOP
            stop "x,y,z is out of bounds" ! can't be in DC
@@ -1066,7 +1075,9 @@ contains
         ! print *, "end loop"
    end do
 #ifdef OMP_LOOP
-   !$omp end parallel loop
+   !$omp end do simd
+   !!!$omp end parallel
+   !!!$omp end parallel loop
 #endif
    return
 
