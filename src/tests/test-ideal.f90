@@ -23,10 +23,10 @@ program main
 
     ! parameters to setup test
     logical, parameter :: just_particles = .true.
-    integer, parameter :: timesteps = 4 !20!0
+    integer, parameter :: timesteps = 10! 200
     logical            :: report = .false.
     logical, parameter :: use_sounding   = .false.
-    logical, parameter :: print_timestep = .true.
+    logical, parameter :: print_timestep = .false.
     logical, parameter :: count_p_comm = .false.
     ! if count_p_comm is true, need to edit other convect_exhange_implementation
     logical, parameter :: save_particles_moved = .false.
@@ -65,10 +65,26 @@ program main
 
     if (me==1) print*, ""
     if (me==1) print*, "Beginning simulation..."
+#ifdef DC_LOOP
+    if (me==1) print *, "--- do concurrent ---"
+    print *, "max threads =", omp_get_max_threads()
+#endif
+#ifdef OMP_LOOP
+    if (me==1) then
+       print *, "--- OpenMP ---"
+       print *, "max threads =", omp_get_max_threads()
+    end if
+#endif
+#ifdef DO_LOOP
+    if (me==1) print *, "--- do ---"
+#endif
 
 
     if (total_num_particles() .eq. 0) report = .false.
     if (report .eqv. .true.) call domain%report_convection(0)
+
+    ! print *, me,":", domain%nx, domain%ny, domain%nx_global, domain%ny_global
+
 
     sync all
     call timer%start()
@@ -80,6 +96,7 @@ program main
                  print *, &
                       "_____________________timestep ", &
                       int((i-1)*dt + ii), "________________________"
+                 ! print *, me,":", current_num_particles(domain%convection_obj)
               end if
 
               dz_lb = lbound(domain%dz_interface)
@@ -157,7 +174,16 @@ program main
              num_images(), domain%ximages, domain%yimages, &
              num_particles_per_image(), timesteps, timer%get_time(), &
              are_particles_dry(), get_wind_speed(), &
-             particles_communicated, 2 ! do concurrent loop
+#ifdef OMP_LOOP
+             particles_communicated, "omp", omp_get_max_threads()
+#endif
+#ifdef DC_LOOP
+             particles_communicated, 'dc', omp_get_max_threads()
+#endif
+#ifdef DO_LOOP
+             particles_communicated, "do", 0
+
+#endif
         close(me)
     endif
 
