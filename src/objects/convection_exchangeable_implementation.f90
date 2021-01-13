@@ -39,6 +39,7 @@ submodule(convection_exchangeable_interface) &
   integer, save :: east_con_neighbor, west_con_neighbor
   integer, save :: northeast_con_neighbor, northwest_con_neighbor
   integer, save :: southeast_con_neighbor, southwest_con_neighbor
+  integer, save :: current_max_local_particles
 
 contains
   module subroutine convect_const(this, potential_temp, u_in, v_in, w_in, grid,&
@@ -110,6 +111,7 @@ contains
     call random_seed(PUT=seed)
     call random_init(.true.,.true.)
 
+    current_max_local_particles = particles_per_image
     do create=1,particles_per_image
       call this%create_particle_id()
       this%local(create) = create_particle(this%particle_id_count, &
@@ -221,13 +223,13 @@ contains
       theta_val = theta_val * (1 + 1.0 / 100) ! random 0-1% change
     else
       theta_val = theta_val ! * (1 + 0.01) ! increase by 1%
-   end if
+    end if
 
-   if (init_velocity .eqv. .true.) then
+    if (init_velocity .eqv. .true.) then
       velocity = 5
-   else
+    else
       velocity = 0
-   end if
+    end if
 
 
     temp_val = exner_val * theta_val
@@ -282,24 +284,25 @@ contains
     integer :: x0, x1, z0, z1, y0, y1, times_moved_val
     real :: pressure_val, exner_val, temp_val, water_vapor_val
     real :: u_val, v_val, w_val, velocity, cloud_water
+
     call random_number(random_start)
 
     x = its + (random_start(1) * (ite-its))
     z = kts + (random_start(3) * (kte-kts))
     y = jts + (random_start(2) * (jte-jts))
 
-    if (x .lt. its .or. &
-        x .gt. ite .or. &
-        z .lt. kts .or. &
-        z .gt. kte .or. &
-        y .lt. jts .or. &
-        y .gt. jte) then
-      ! print *, "x:", its, "<", x, "<", ite
-      ! print *, "z:", kts, "<", z, "<", kte
-      ! print *, "y:", jts, "<", y, "<", jte
-       ! stop "x,y,z is out of bounds"
-      return
-    end if
+    ! if (x .lt. its .or. &
+    !     x .gt. ite .or. &
+    !     z .lt. kts .or. &
+    !     z .gt. kte .or. &
+    !     y .lt. jts .or. &
+    !     y .gt. jte) then
+    !   ! print *, "x:", its, "<", x, "<", ite
+    !   ! print *, "z:", kts, "<", z, "<", kte
+    !   ! print *, "y:", jts, "<", y, "<", jte
+    !    ! print*, "x,y,z is out of bounds"
+    !   return
+    ! end if
 
     x0 = floor(x); z0 = floor(z); y0 = floor(y);
     x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
@@ -330,39 +333,31 @@ contains
           A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
     end associate
 
-    ! print *, "z meters =" , z_meters, "z =", z, "zm =", z_m(x0,z0,y0)
-    ! print *, "z_interface_val =", z_interface_val, "try =", z*dz_val + z_interface_val -250
-    ! print *, "----"
-
-    ! call flush()
-    ! sync all
-    ! call exit
-
     ! sealevel_pressure => 100000.0
     ! pressure_val = pressure_at_elevation(100000.0, z_meters)
-    exner_val = exner_function(pressure_val)
+    ! exner_val =
 
     ! call random_number(rand)
-    if (init_theta .eqv. .true.) then
-      theta_val = theta_val * (1 + 1.0 / 100) ! random 0-1% change
-    else
-      theta_val = theta_val ! * (1 + 0.01) ! increase by 1%
-   end if
+    ! if (init_theta .eqv. .true.) then
+    !   theta_val = theta_val * (1 + 1.0 / 100) ! random 0-1% change
+    ! else
+    !   theta_val = theta_val ! * (1 + 0.01) ! increase by 1%
+    ! end if
 
-   if (init_velocity .eqv. .true.) then
-      velocity = 5
-   else
-      velocity = 0
-   end if
+    ! if (init_velocity .eqv. .true.) then
+    velocity = 5
+    ! else
+    !   velocity = 0
+    ! end if
 
 
-    temp_val = exner_val * theta_val
+    temp_val = exner_function(pressure_val) * theta_val
 
-    if (dry_air_particles .eqv. .true.) then
-       water_vapor_val = 0
-    else
+    ! if (dry_air_particles .eqv. .true.) then
+    !    water_vapor_val = 0
+    ! else
        water_vapor_val = sat_mr(temp_val, pressure_val) *  1.0 !0.99
-    end if
+    ! end if
     relative_humidity_in = water_vapor_val
 
     ! ARTLESS: Testing, set to 0
@@ -427,70 +422,156 @@ contains
 
     real, parameter :: gravity = 9.80665
     type(convection_particle) :: new_particle
-    real :: Gamma
-    real :: a_prime, z_displacement, t, t_prime, buoyancy
-    real :: ws, wind_correction, delta_z, z_interface_val, z_wind_change
-    integer :: i,j,k, l_bound(1), dif(1), new_ijk(3), me, iter
-    real :: new_pressure, R_s, p0, exponent, alt_pressure, alt_pressure2
+    ! real :: Gamma
+    real :: a_prime, z_displacement, T, t_prime, buoyancy
+    real :: wind_correction, delta_z, z_interface_val, z_wind_change
+
+    integer :: i,j,k, me
+    real :: new_pressure, R_s, exponent, alt_pressure, alt_pressure2
     real :: alt_pressure3, alt_pressure4, mixing_ratio, sat_mr_val
     real :: vapor_p, sat_p, T_C, T_K, mr, T_squared, T_original, tmp
     real :: xx, yy, z_0, z_1
-    real :: rate_of_temp_change, bv(local_buf_size)
+    real :: rate_of_temp_change, bv(local_buf_size), input_wind_val
     integer :: x0, x1, z0, z1, y0, y1, bv_i, image, particle_id(local_buf_size)
-    integer :: u_bound(3)
+    integer :: u_bound(3)!, n_local_particles
     logical :: calc, calc_x, calc_y, exist
+    ! logical, allocatable :: truth_a(:)
     character(len=32) :: filename
+    logical :: dry_air_particles_val
 
+
+    !-----------------------------------------
+    !  block memory
+    !-----------------------------------------
+    real :: saturate, condensate, vapor, vapor_needed, RH
+    ! specific latent heat values, calculating using formula
+    real, parameter :: condensation_lh = 2600!000 ! 2.5 x 10^6 J/kg
+    real, parameter :: vaporization_lh = -condensation_lh
+    ! specific heat of water vapor at constant volume
+    ! real, parameter :: C_vv = 1.0 / 1390.0
+    real :: C_vv, c_p
+    real :: specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1, &
+         p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif
+    real :: water_vapor0,  water_vapor1
+    real :: cloud_water0,  cloud_water1
+    real :: potential_T0, potential_T1
+    integer :: repeat, iter
+    logical :: only_dry, bv_data_val, replacement_message_val, replacement_val
+    logical :: debug_val, wrap_neighbors_val, convection_val
+
+    !-----------------------------------------
+    !  associate
+    !-----------------------------------------
+    real :: x, y, z
+    type(convection_particle) :: particle
+
+
+    input_wind_val = input_wind
+    dry_air_particles_val = dry_air_particles
+    bv_data_val = brunt_vaisala_data
+    replacement_message_val = replacement_message
+    replacement_val = replacement
+    debug_val = debug
+    wrap_neighbors_val = wrap_neighbors
+    convection_val = convection
+
+    ! print *, "ARTLESS: PARTICLE PROCESSING"
     if (debug .eqv. .true.) print*, "start particle processing"
-    if (brunt_vaisala_data .eqv. .true.) then
+    if (bv_data_val .eqv. .true.) then
        bv_i = 1
        bv = 0
        particle_id = 0
     end if
 
-#ifdef DC_LOOP
-    print *, "--- do concurrent ---"
-#endif
-#ifdef OMP_LOOP
-    print *, "--- OpenMP ---"
-#endif
-#ifndef DC_LOOP
-#ifndef OMP_LOOP
-    print *, "--- do ---"
-#endif
-#endif
 
+    ! allocate(truth_a(ubound(this%local,1)))
+
+    ! yy, xx, ny_global, nx_global, q_dif, q_new_dry, condensate,
+    ! potential_temp0, delta_t, c_p, q_wet, q_heat, vapor, vapor_needed
+    ! specific_latent_heat, cloud_water0, water_vapor0, potential_t1
+    ! rh, saturate, iter, q_dry, p1, t1, only_dry, potential_t0, p0
+    ! t0
 
     me = this_image()
+
+
 #ifdef DC_LOOP
-    do concurrent (i=1:ubound(this%local,1))
+    do concurrent (i=1:current_max_local_particles) & ! this is 14% faster
+    ! do concurrent (i=1:ubound(this%local,1)) &      ! than this
+       local(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement, &
+         delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1, & ! add after
+         bv, bv_i, particle_id, xx, yy, &
+         saturate, condensate, vapor, vapor_needed, RH, C_vv, c_p, &
+         specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1, &
+         p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif, &
+         water_vapor0,  water_vapor1, cloud_water0,  cloud_water1, &
+         potential_T0, potential_T1, repeat, iter, only_dry, x,y,z, &
+         particle) &
+       shared(me,dt,dz,gravity,this,temperature,z_interface, &
+         jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its, & !added af
+         z_m, pressure, potential_temp, input_wind_val, nx_global, ny_global, &
+         w_in, v_in, u_in, dry_air_particles_val, condensation_lh, &
+         vaporization_lh, bv_data_val, replacement_message_val, &
+         replacement_val, debug_val, wrap_neighbors_val, convection_val &
+         ) &
+       default(none)
 #endif
 #ifdef OMP_LOOP
-    do i=1,ubound(this%local,1)
+       ! !$omp parallel loop
+       !!      !$omp parallel do simd schedule(auto)
+!!!$omp parallel
+!$omp do simd schedule(auto)
+!$omp & private(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement)
+!$omp & private(delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1)
+!$omp & private(bv, bv_i, particle_id, xx, yy)
+!$omp & private(saturate, condensate, vapor, vapor_needed, RH, C_vv, c_p)
+!$omp & private(specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1)
+!$omp & private(p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif)
+!$omp & private(water_vapor0,  water_vapor1, cloud_water0,  cloud_water1)
+!$omp & private(potential_T0, potential_T1, repeat, iter, only_dry, x,y,z)
+!$omp & private(particle)
+!$omp & shared(me,dt,dz,gravity,this,temperature,z_interface)
+!$omp & shared(jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its)
+!$omp & shared(z_m, pressure, potential_temp,input_wind_val,nx_global,ny_global)
+!$omp & shared(w_in, v_in, u_in, dry_air_particles_val, condensation_lh)
+!$omp & shared(vaporization_lh, bv_data_val, replacement_message_val)
+!$omp & shared(replacement_val, debug_val, wrap_neighbors_val, convection_val)
+!$omp & default(none)
+    do i=1,current_max_local_particles
+       ! do i=1,ubound(this%local,1)
+       ! print *, ""
 #endif
-#ifndef DC_LOOP
-#ifndef OMP_LOOP
-    do i=1,ubound(this%local,1)
+#ifdef DO_LOOP
+    do i=1,current_max_local_particles
+    ! do i=1,ubound(this%local,1)
 #endif
-#endif
-      associate (particle=>this%local(i))
-        if (particle%exists .neqv. .true.) cycle
-        ! print *, me,":", particle%particle_id, particle%x ,particle%y
+       particle = this%local(i)
+       ! print *, particle%particle_id, particle%exists
+       ! if (i .eq. 1) print*, omp_in_parallel(), "omp_num_threads", omp_get_num_threads()
+       if (particle%exists .neqv. .true.) cycle
+
+
         if (particle%x .lt. its-1 .or. &
              particle%z .lt. kts-1 .or. &
              particle%y .lt. jts-1 .or. &
              particle%x .gt. ite+1 .or. &
              particle%z .gt. kte+1 .or. &
              particle%y .gt. jte+1) then
-           ! print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
-           ! print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
-           ! print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
+           print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
+           print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
+           print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
            ! stop "x,y,z is out of bounds" ! can't be in DC
-           print *, "ERROR: x,y,z is out of bounds", "particle", &
+           print *, "ERROR: x,y,z is out of bounds", " particle_id:", &
                 particle%particle_id, "on image", me
+           ! print *, "particle_id:", &
+           !      particle%particle_id,"E=", particle%exists
            particle%exists = .false.
+#ifdef DO_LOOP
+           stop "x,y,z is out of bounds" ! can't be in DC
+#endif
            cycle
         end if
+        if (bv_data_val .eqv. .true.) bv_i = 1
 
 
         !-----------------------------------------------------------------
@@ -510,7 +591,6 @@ contains
         !-----------------------------------------------------------------
         ! new: properites of environment are prime
         T = particle%temperature
-
         associate (A => temperature, x => particle%x, z => particle%z , &
              y => particle%y)
           x0 = floor(x); z0 = floor(z); y0 = floor(y);
@@ -522,7 +602,7 @@ contains
         end associate
 
 
-        if (convection .eqv. .true.) then
+        if (convection_val .eqv. .true.) then
            buoyancy = (T - T_prime) / T_prime
            a_prime = buoyancy * gravity
            ! d = v_0 * t + 1/2 * a * t^2
@@ -532,7 +612,9 @@ contains
 
            ! number from dz_interface, currently always 500
            delta_z = z_displacement / dz
+
            if (z_displacement /= z_displacement) then
+#ifdef DO_LOOP
               print *, me, ":: ---------NAN ERROR---------", &
                    particle%particle_id, T, T_prime
               particle%exists = .false.
@@ -540,6 +622,7 @@ contains
               particle%z = -1
               print *, p0, z_displacement, gravity, particle%temperature
               ! call exit
+#endif
            else
               particle%z = particle%z + delta_z
               particle%velocity = z_displacement
@@ -564,8 +647,8 @@ contains
            ! u: zonal velocity, wind towards the east
            ! v: meridional velocity, wind towards north
            if (use_input_wind .eqv. .true.) then
-              particle%x = particle%x + (input_wind * wind_correction)
-              particle%y = particle%y + (input_wind * wind_correction)
+              particle%x = particle%x + (input_wind_val * wind_correction)
+              particle%y = particle%y + (input_wind_val * wind_correction)
            else
               particle%x = particle%x + (particle%u * wind_correction)
               particle%y = particle%y + (particle%v * wind_correction)
@@ -589,7 +672,11 @@ contains
         z_0 = particle%z_meters
         z_1 = particle%z_meters + z_displacement
         particle%z_meters = z_1
+
+
+        ! --- this part is working
         if (particle%z .lt. kts) then
+           ! print *, "A:HERE"
            ! ---- hits the ground and stops  ----
            ! z_displacement = z_displacement + dz * (1-particle%z)
            ! particle%z = 1
@@ -599,47 +686,45 @@ contains
            ! ---- replacement code ----
            particle%exists = .false.
            ! print *, "-replacing??!!-", particle%particle_id
-           if (replacement .eqv. .true.) then
-              ! particle = create_particle(particle%particle_id, &
-              !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-              !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-              !      particle%moved)
+           if (replacement_val .eqv. .true.) then
+              ! ! particle = create_particle(particle%particle_id, &
+              ! !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+              ! !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+              ! !      particle%moved)
               call replace_particle(particle%particle_id, &
                    its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                    z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
                    particle%moved, particle)
 
-              if (replacement_message .eqv. .true.) then
+              if (replacement_message_val .eqv. .true.) then
                  print *, me,":",particle%particle_id, "hit the ground"
               end if
            end if
 
-
+           cycle
         else if (particle%z .gt. kte) then
+           ! print *, "A:THERE"
+
            particle%exists = .false.
-           if (replacement .eqv. .true.) then
-              ! particle = create_particle(particle%particle_id, &
-              !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-              !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-              !      particle%moved)
+           if (replacement_val .eqv. .true.) then
+              ! ! particle = create_particle(particle%particle_id, &
+              ! !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+              ! !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+              ! !      particle%moved)
               call replace_particle(particle%particle_id, &
                    its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
                    z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
                    particle%moved, particle)
 
-              if (replacement_message .eqv. .true.) then
+              if (replacement_message_val .eqv. .true.) then
                  print *, me,":",particle%particle_id, "went off the top"
               end if
            end if
-           ! call exit
-           ! cycle
+           cycle
         end if
 
 
-
-
-
-        if (brunt_vaisala_data .eqv. .true.) then
+        if (bv_data_val .eqv. .true.) then
            associate (A => potential_temp%local, x => particle%x, &
                 z => particle%z , y => particle%y)
              x0 = floor(x); z0 = floor(z); y0 = floor(y);
@@ -662,8 +747,8 @@ contains
         ! Method one: physics
         !        a) change pressure         b) update temperature
         !-----------------------------------------------------------------
-        if (dry_air_particles .eqv. .true.) then
-           if (debug .eqv. .true.) print *, "-- only dry air parcels --"
+        if (dry_air_particles_val .eqv. .true.) then
+           if (debug_val .eqv. .true.) print *, "-- only dry air parcels --"
            call dry_lapse_rate(particle%pressure, particle%temperature, &
                 particle%potential_temp, z_displacement)
            ! particle%pressure = particle%pressure - z_displacement * &
@@ -684,26 +769,14 @@ contains
            !   delta_T = Q_heat / c_p   ! c_p is specific heat capacity
            !   temperature += delta_T
            !-----------------------------------------------------------------
-           block
-             real :: saturate, condensate, vapor, vapor_needed, RH
-             ! specific latent heat values, calculating using formula
-             real, parameter :: condensation_lh = 2600!000 ! 2.5 x 10^6 J/kg
-             real, parameter :: vaporization_lh = -condensation_lh
-             ! specific heat of water vapor at constant volume
-             ! real, parameter :: C_vv = 1.0 / 1390.0
-             real :: C_vv, c_p
-             real :: specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1, &
-                  p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif
-             real :: water_vapor0,  water_vapor1
-             real :: cloud_water0,  cloud_water1
-             real :: potential_T0, potential_T1
-             integer :: repeat
-             logical :: only_dry
+
+           ! ---- this was start of block ----
              T0 = particle%temperature
              p0 = particle%pressure
              potential_T0 = particle%potential_temp
              call dry_lapse_rate(particle%pressure, particle%temperature, &
                   particle%potential_temp, z_displacement)
+
              ! particle%pressure = particle%pressure - z_displacement * &
              !      gravity / (287.05 * particle%temperature) * particle%pressure
              ! particle%temperature = exner_function(particle%pressure) * &
@@ -720,7 +793,6 @@ contains
                 potential_T1 = particle%potential_temp
                 water_vapor0 = particle%water_vapor
                 cloud_water0 = particle%cloud_water
-
                 particle%relative_humidity = RH
                 ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
                 ! specific latent heat for condensation and evaporation
@@ -732,7 +804,7 @@ contains
 
                 if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0 &
                      .and. vapor_needed .gt. 0.0000001) then
-                   if (debug .eqv. .true.) &
+                   if (debug_val .eqv. .true.) &
                         print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
 
 
@@ -758,7 +830,7 @@ contains
                    delta_t = Q_heat / c_p   ! 3.2c
                    particle%temperature = T1 - delta_t
 
-                   if (debug .eqv. .true.) &
+                   if (debug_val .eqv. .true.) &
                         potential_temp0 = particle%potential_temp
 
                    ! update potential temperature, assumming pressure is constant
@@ -773,7 +845,7 @@ contains
                    ! Q_heat 0.
                    ! ============= process done ===============
 
-                   if (debug .eqv. .true.) print*, "==== rh .gt. 1, wet ===="
+                   if (debug_val .eqv. .true.) print*, "==== rh .gt. 1, wet ===="
 
                    only_dry = .false.
                    condensate = particle%water_vapor - saturate
@@ -824,13 +896,13 @@ contains
                    ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
 
                 else if (iter .eq. 1) then
-                   if (debug .eqv. .true.) then
+                   if (debug_val .eqv. .true.) then
                       print*, "==== was dry process ===="
                    end if
                    exit
                 end if
 
-                if (debug .eqv. .true.) then
+                if (debug_val .eqv. .true.) then
                    print *, "     pressure  |  temp      |   ~heat    | potential"
                    print *, "pre ", p0, t0, ", -none-       ,", potential_t0
 
@@ -840,7 +912,7 @@ contains
                    print *, q_dry, q_new_dry, q_wet, q_dif, &
                         1004 * (1) * q_dif
                 end if
-                ! if ((debug .eqv. .true.) .and. (only_dry .eqv. .false.)) then
+                ! if ((debug_val .eqv. .true.) .and. (only_dry .eqv. .false.)) then
                 !    print *, "post", p1, t1, q_dry, potential_t1
                 !    print *, "new ", &
                 !         particle%pressure, particle%temperature, &
@@ -867,11 +939,10 @@ contains
              ! RH = particle%water_vapor / saturate
              ! particle%relative_humidity = RH
 
-           end block
+
         end if ! ---- end of relative humidity seciton ----
     !   end associate
     ! end do
-
 
     !     !-----------------------------------------------------------------
     !     ! Move particle if needed
@@ -880,93 +951,112 @@ contains
     ! ! do i=1,ubound(this%local,1)     !
     !   associate (particle=>this%local(i))        !
     !     if (particle%exists .neqv. .true.) cycle !
-        associate (x => particle%x, y => particle%y, z => particle%z)
-          if (caf_comm_message .eqv. .true.) then
-             if (  x .lt. its-1 .or. x .gt. ite+1 .or. &
-                  z .lt. kms-1 .or. z .gt. kme   .or. &
-                  y .lt. jts-1 .or. y .gt. jte+1 .or. &
-                  x .lt. 1 .or. x .gt. nx_global .or. &
-                  y .lt. 1 .or. y .gt. ny_global &
-                  ) then
-                print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
-                     "FROM", this_image(), "id:", particle%particle_id, &
-                     "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
-             end if
-          end if
+        x = particle%x
+        y = particle%y
+        z = particle%z
+#ifdef DO_LOOP
+        if (caf_comm_message .eqv. .true.) then
+           if (  x .lt. its-1 .or. x .gt. ite+1 .or. &
+                z .lt. kms-1 .or. z .gt. kme   .or. &
+                y .lt. jts-1 .or. y .gt. jte+1 .or. &
+                x .lt. 1 .or. x .gt. nx_global .or. &
+                y .lt. 1 .or. y .gt. ny_global &
+                ) then
+              print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
+                   "FROM", this_image(), "id:", particle%particle_id, &
+                   "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
+           end if
+        end if
+#endif
+        xx = x
+        yy = y
+        ! If particle is getting wrapped the x and y values need to be
+        ! properly updated
+        if (wrap_neighbors_val .eqv. .true.) then
+           if (x > nx_global) then
+              ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+              !     , particle%particle_id
+              x = x - nx_global + 1
+              xx = xx + 2
+           else if (x < 1) then
+              ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+              !     , particle%particle_id
+              x = x + nx_global - 1
+              xx = xx - 2
+           end if
 
-          xx = x
-          yy = y
-          ! If particle is getting wrapped the x and y values need to be
-          ! properly updated
-          if (wrap_neighbors .eqv. .true.) then
-             if (x > nx_global) then
-                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
-                !     , particle%particle_id
-                x = x - nx_global + 1
-                xx = xx + 2
-             else if (x < 1) then
-                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
-                !     , particle%particle_id
-                x = x + nx_global - 1
-                xx = xx - 2
-             end if
+           if (y > ny_global) then
+              ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+              !     , particle%particle_id
+              y = y - ny_global + 1
+              yy = yy + 2
+           else if (y < 1) then
+              ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
+              !     , particle%particle_id
+              y = y + ny_global - 1
+              yy = yy - 2
+           end if
+        end if
 
-             if (y > ny_global) then
-                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
-                !     , particle%particle_id
-                y = y - ny_global + 1
-                yy = yy + 2
-             else if (y < 1) then
-                ! if (caf_comm_message .eqv. .true.) print *, "WRAPPED" &
-                !     , particle%particle_id
-                y = y + ny_global - 1
-                yy = yy - 2
-             end if
-          end if
+        ! Check values to know where to send particle
+        if (num_images() .gt. 1) then
+        if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
+           if (xx .lt. its-1) then
+              ! particle%exists = .false.
+              call this%put_southwest_p(particle, i)
+              ! if (count_p_comm .eqv. .true.) &
+              ! particles_communicated = particles_communicated + 1
+           else if (xx .gt. ite+1) then
+              ! particle%exists = .false.
+              call this%put_southeast_p(particle, i)
+              ! if (count_p_comm .eqv. .true.) &
+              ! particles_communicated = particles_communicated + 1
+           else
+              ! particle%exists = .false.
+              call this%put_south_p(particle, i)
+              ! if (count_p_comm .eqv. .true.) &
+              ! particles_communicated = particles_communicated + 1
+           end if
+        else if (yy .gt. jte+1) then ! jts will be 1
+           if (xx .lt. its-1) then
+              ! particle%exists = .false.
+              call this%put_northwest_p(particle, i)
+              ! if (count_p_comm .eqv. .true.) &
+              ! particles_communicated = particles_communicated + 1
+           else if (xx .gt. ite+1) then
+              ! particle%exists = .false.
+              call this%put_northeast_p(particle, i)
+              ! if (count_p_comm .eqv. .true.) &
+              ! particles_communicated = particles_communicated + 1
+           else
+              ! particle%exists = .false.
+              call this%put_north_p(particle, i)
+              ! if (count_p_comm .eqv. .true.) &
+              ! particles_communicated = particles_communicated + 1
+           endif
+        else if (xx .lt. its-1) then ! "its  <   x    <  ite"
+           ! particle%exists = .false.
+           call this%put_west_p(particle, i) ! need to double check this!
+           ! if (count_p_comm .eqv. .true.) &
+           ! particles_communicated = particles_communicated + 1
+        else if (xx .gt. ite+1) then
+           ! particle%exists = .false.
+           call this%put_east_p(particle, i)
+           ! if (count_p_comm .eqv. .true.) &
+           ! particles_communicated = particles_communicated + 1
+        end if
+        end if
 
-          ! Check values to know where to send particle
-          if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
-             if (xx .lt. its-1) then
-                call this%put_southwest_p(particle, i)
-                if (count_p_comm .eqv. .true.) &
-                     particles_communicated = particles_communicated + 1
-             else if (xx .gt. ite+1) then
-                call this%put_southeast_p(particle, i)
-                if (count_p_comm .eqv. .true.) &
-                     particles_communicated = particles_communicated + 1
-             else
-                call this%put_south_p(particle, i)
-                if (count_p_comm .eqv. .true.) &
-                     particles_communicated = particles_communicated + 1
-             end if
-          else if (yy .gt. jte+1) then ! jts will be 1
-             if (xx .lt. its-1) then
-                call this%put_northwest_p(particle, i)
-                if (count_p_comm .eqv. .true.) &
-                     particles_communicated = particles_communicated + 1
-             else if (xx .gt. ite+1) then
-                call this%put_northeast_p(particle, i)
-                if (count_p_comm .eqv. .true.) &
-                     particles_communicated = particles_communicated + 1
-             else
-                call this%put_north_p(particle, i)
-                if (count_p_comm .eqv. .true.) &
-                     particles_communicated = particles_communicated + 1
-             endif
-          else if (xx .lt. its-1) then ! "its  <   x    <  ite"
-             call this%put_west_p(particle, i) ! need to double check this!
-             if (count_p_comm .eqv. .true.) &
-                  particles_communicated = particles_communicated + 1
-          else if (xx .gt. ite+1) then
-             call this%put_east_p(particle, i)
-             if (count_p_comm .eqv. .true.) &
-                  particles_communicated = particles_communicated + 1
-          end if
-        end associate
         ! end if
-      end associate
-    end do
-
+        ! end associate
+        ! print *, "end loop"
+   end do
+#ifdef OMP_LOOP
+   !$omp end do simd
+   !!!$omp end parallel
+   !!!$omp end parallel loop
+#endif
+   return
 
     if (brunt_vaisala_data .eqv. .true.) then
       do image=1,num_images()
@@ -987,7 +1077,7 @@ contains
       end do
 
    end if
-   if (debug .eqv. .true.) print *, "============= process done ==============="
+   if (debug_val .eqv. .true.) print *, "============= process done ==============="
   end subroutine process
 
 
@@ -1098,6 +1188,9 @@ contains
          end do
        end associate
     end do
+    if (local_i > current_max_local_particles) then
+       current_max_local_particles = local_i
+    end if
   end subroutine
 
   module subroutine put_north(this, particle)
