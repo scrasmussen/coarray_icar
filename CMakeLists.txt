@@ -35,13 +35,21 @@ set (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-g -O2 -DNDEBUG -DUSE_ASSERTIONS=.true.
   STRING "Flags used by the compiler during release builds with debug info."
   FORCE)
 
-if (NOT "${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU|Intel|Cray" )
+if (NOT "${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU|Intel|Cray|NVidia" )
   message(WARNING
     "\n"
     "Attempting to build with untested Fortran compiler: ${CMAKE_Fortran_COMPILER_ID}. "
     "Please report any failures at https://github.com/gutmann/coarray_icar/issues\n\n"
   )
 endif()
+
+
+if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "NVidia" )
+  set(coarray_flags "")
+  message(STATUS "NVidia currently does not suppport coarrays, compiling with ${coarray_flags}")
+	exit()
+endif()
+
 
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
   if (DISTRIBUTED)
@@ -63,6 +71,9 @@ elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
 elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Cray" )
   set(CMAKE_Fortran_FLAGS_RELEASE
     "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -e F -DUSE_ASSERTIONS=.false.")
+elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "NVidia" )
+  set(CMAKE_Fortran_FLAGS_RELEASE
+    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -Mpreprocess -DUSE_ASSERTIONS=.false.")
 endif()
 
 
