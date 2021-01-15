@@ -1,0 +1,1 @@
+&parcel_parameters total_parcels=100000 parcel_is_dry=.true. wind_speed=8.0 /
