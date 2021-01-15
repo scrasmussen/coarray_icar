@@ -541,7 +541,6 @@ contains
 
     module subroutine halo_send(this)
       class(domain_t), intent(inout) :: this
-      ! call this%convection_obj%send() ARTLESS
       call this%water_vapor%send()
       call this%potential_temperature%send()
       call this%cloud_water_mass%send()
@@ -570,7 +569,6 @@ contains
 
     module subroutine halo_exchange(this)
       class(domain_t), intent(inout) :: this
-      ! call this%convection_obj%send() ! ARTLESS
       call this%water_vapor%send()
       call this%potential_temperature%send()
       call this%cloud_water_mass%send()
@@ -581,7 +579,7 @@ contains
       call this%snow_mass%send()
       call this%graupel_mass%send()
 
-      ! call this%convection_obj%retrieve() ! ARTLESS, should this be no_sync?
+      call this%convection_obj%retrieve() ! should this be no_sync?
       call this%water_vapor%retrieve()
       call this%potential_temperature%retrieve(no_sync=.True.)
       call this%cloud_water_mass%retrieve(no_sync=.True.)

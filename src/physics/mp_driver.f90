@@ -109,18 +109,6 @@ contains
           dz_lb = lbound(domain%dz_interface)
 
           if (n_particles .gt. 0) then
-          !  if (domain%convection_obj%do_replacement() .eqv. .false.) then
-          !     print *, "---Artless: unsure why this is needed now---"
-          !     stop
-          !     call domain%convection_obj%process( &
-          !         domain%nx_global, domain%ny_global, &
-          !         domain%ims, domain%ime, domain%kms, domain%kme, domain%jms, domain%jme, &
-          !         dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
-          !         domain%temperature, domain%z_interface(:,1,:), &
-          !         domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
-          !         domain%jte)
-             ! else
-
              if (1 .eq. 1 ) then  ! take every time step
              do i=1,int(dt)
                 if ((i .gt. 1)) then

@@ -115,7 +115,6 @@ contains
           its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
           z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in)
 
-      ! call exit ! artless
       ! this%local(create) = convection_particle(this%particle_id_count, .true., &
       !     .false., x, y, z, u_val, v_val, w_val, z_meters, z_interface_val, &
       !     pressure_val, temp_val, theta_val, 0, water_vapor_val, 0)
@@ -238,7 +237,7 @@ contains
     end if
     relative_humidity_in = water_vapor_val
 
-    ! ARTLESS: Testing, set to 0
+    ! When testing, set to 0
     ! relative_humidity_in = 0
 
     ! wind is constant in this system, ignoring w wind (aka z-direction)
