@@ -47,7 +47,6 @@ endif()
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "NVidia" )
   set(coarray_flags "")
   message(STATUS "NVidia currently does not suppport coarrays, compiling with ${coarray_flags}")
-	exit()
 endif()
 
 
