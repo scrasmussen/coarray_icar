@@ -1,4 +1,5 @@
 program main
+  use omp_lib
   use iso_fortran_env, only : input_unit
   use domain_interface, only : domain_t
   use assertions_interface, only : assert
