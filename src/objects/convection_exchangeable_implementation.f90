@@ -265,7 +265,7 @@ contains
 
   end function
 
-  pure module subroutine replace_particle(particle_id, its, ite, kts, kte, jts, jte, &
+  module subroutine replace_particle(particle_id, its, ite, kts, kte, jts, jte, &
       ims, ime, kms, kme, jms, jme, z_m, potential_temp, z_interface, &
       pressure, u_in, v_in, w_in, times_moved, particle)
     type(convection_particle), intent(inout) :: particle
@@ -520,23 +520,23 @@ contains
        ! !$omp parallel loop
        !!      !$omp parallel do simd schedule(auto)
 !!!$omp parallel
-!$omp do simd schedule(auto)
-!$omp & private(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement)
-!$omp & private(delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1)
-!$omp & private(bv, bv_i, particle_id, xx, yy)
-!$omp & private(saturate, condensate, vapor, vapor_needed, RH, C_vv, c_p)
-!$omp & private(specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1)
-!$omp & private(p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif)
-!$omp & private(water_vapor0,  water_vapor1, cloud_water0,  cloud_water1)
-!$omp & private(potential_T0, potential_T1, repeat, iter, only_dry, x,y,z)
-!$omp & private(particle)
-!$omp & shared(me,dt,dz,gravity,this,temperature,z_interface)
-!$omp & shared(jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its)
-!$omp & shared(z_m, pressure, potential_temp,input_wind_val,nx_global,ny_global)
-!$omp & shared(w_in, v_in, u_in, dry_air_particles_val, condensation_lh)
-!$omp & shared(vaporization_lh, bv_data_val, replacement_message_val)
-!$omp & shared(replacement_val, debug_val, wrap_neighbors_val, convection_val)
-!$omp & default(none)
+!$omp parallel do simd schedule(auto) &
+!$omp  private(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement) &
+!$omp  private(delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1) &
+!$omp  private(bv, bv_i, particle_id, xx, yy) &
+!$omp  private(saturate, condensate, vapor, vapor_needed, RH, C_vv, c_p) &
+!$omp  private(specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1) &
+!$omp  private(p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif) &
+!$omp  private(water_vapor0,  water_vapor1, cloud_water0,  cloud_water1) &
+!$omp  private(potential_T0, potential_T1, repeat, iter, only_dry, x,y,z) &
+!$omp  private(particle) &
+!$omp  shared(me,dt,dz,this,temperature,z_interface) &
+!$omp  shared(jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its) &
+!$omp  shared(z_m, pressure, potential_temp,input_wind_val,nx_global,ny_global) &
+!$omp  shared(w_in, v_in, u_in, dry_air_particles_val) &
+!$omp  shared(bv_data_val, replacement_message_val, current_max_local_particles) &
+!$omp  shared(replacement_val, debug_val, wrap_neighbors_val, convection_val) &
+!$omp  default(none)  ! remove gravity vaporization_lh condensation_lh
     do i=1,current_max_local_particles
        ! do i=1,ubound(this%local,1)
        ! print *, ""
@@ -674,52 +674,10 @@ contains
         particle%z_meters = z_1
 
 
-        ! --- this part is working
+        ! out of bounds is handled in data movement do loop
         if (particle%z .lt. kts) then
-           ! print *, "A:HERE"
-           ! ---- hits the ground and stops  ----
-           ! z_displacement = z_displacement + dz * (1-particle%z)
-           ! particle%z = 1
-           ! particle%z_meters = z_interface_val + dz/2
-           ! particle%velocity = 0
-
-           ! ---- replacement code ----
-           particle%exists = .false.
-           ! print *, "-replacing??!!-", particle%particle_id
-           if (replacement_val .eqv. .true.) then
-              ! ! particle = create_particle(particle%particle_id, &
-              ! !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-              ! !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-              ! !      particle%moved)
-              call replace_particle(particle%particle_id, &
-                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-                   z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-                   particle%moved, particle)
-
-              if (replacement_message_val .eqv. .true.) then
-                 print *, me,":",particle%particle_id, "hit the ground"
-              end if
-           end if
-
            cycle
         else if (particle%z .gt. kte) then
-           ! print *, "A:THERE"
-
-           particle%exists = .false.
-           if (replacement_val .eqv. .true.) then
-              ! ! particle = create_particle(particle%particle_id, &
-              ! !      its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-              ! !      z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-              ! !      particle%moved)
-              call replace_particle(particle%particle_id, &
-                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
-                   z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
-                   particle%moved, particle)
-
-              if (replacement_message_val .eqv. .true.) then
-                 print *, me,":",particle%particle_id, "went off the top"
-              end if
-           end if
            cycle
         end if
 
@@ -942,18 +900,53 @@ contains
 
         end if ! ---- end of relative humidity seciton ----
     !   end associate
-    ! end do
+     end do
+#ifdef OMP_LOOP
+     !$omp end parallel do simd
+   !!!$omp end parallel
+   !!!$omp end parallel loop
+#endif
 
     !     !-----------------------------------------------------------------
     !     ! Move particle if needed
         !-----------------------------------------------------------------
-    ! do concurrent (i=1:ubound(this%local,1))     !
+    do i=1,current_max_local_particles
     ! ! do i=1,ubound(this%local,1)     !
-    !   associate (particle=>this%local(i))        !
-    !     if (particle%exists .neqv. .true.) cycle !
+      associate (particle=>this%local(i))        !
+        if (particle%exists .neqv. .true.) cycle !
         x = particle%x
         y = particle%y
         z = particle%z
+
+
+        if (particle%z .lt. kts) then
+           particle%exists = .false.
+           if (replacement_val .eqv. .true.) then
+              call replace_particle(particle%particle_id, &
+                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+                   z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+                   particle%moved, particle)
+              if (replacement_message_val .eqv. .true.) then
+                 print *, me,":",particle%particle_id, "hit the ground"
+              end if
+           end if
+           cycle
+        else if (particle%z .gt. kte) then
+           particle%exists = .false.
+           if (replacement_val .eqv. .true.) then
+              call replace_particle(particle%particle_id, &
+                   its, ite, kts, kte, jts, jte, ims, ime, kms, kme, jms, jme, &
+                   z_m, potential_temp, z_interface, pressure, u_in, v_in, w_in,&
+                   particle%moved, particle)
+              if (replacement_message_val .eqv. .true.) then
+                 print *, me,":",particle%particle_id, "went off the top"
+              end if
+           end if
+           cycle
+        end if
+
+
+
 #ifdef DO_LOOP
         if (caf_comm_message .eqv. .true.) then
            if (  x .lt. its-1 .or. x .gt. ite+1 .or. &
@@ -1003,59 +996,54 @@ contains
         if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
            if (xx .lt. its-1) then
               ! particle%exists = .false.
-              call this%put_southwest_p(particle, i)
+              call this%put_southwest(particle)
               ! if (count_p_comm .eqv. .true.) &
               ! particles_communicated = particles_communicated + 1
            else if (xx .gt. ite+1) then
               ! particle%exists = .false.
-              call this%put_southeast_p(particle, i)
+              call this%put_southeast(particle)
               ! if (count_p_comm .eqv. .true.) &
               ! particles_communicated = particles_communicated + 1
            else
               ! particle%exists = .false.
-              call this%put_south_p(particle, i)
+              call this%put_south(particle)
               ! if (count_p_comm .eqv. .true.) &
               ! particles_communicated = particles_communicated + 1
            end if
         else if (yy .gt. jte+1) then ! jts will be 1
            if (xx .lt. its-1) then
               ! particle%exists = .false.
-              call this%put_northwest_p(particle, i)
+              call this%put_northwest(particle)
               ! if (count_p_comm .eqv. .true.) &
               ! particles_communicated = particles_communicated + 1
            else if (xx .gt. ite+1) then
               ! particle%exists = .false.
-              call this%put_northeast_p(particle, i)
+              call this%put_northeast(particle)
               ! if (count_p_comm .eqv. .true.) &
               ! particles_communicated = particles_communicated + 1
            else
               ! particle%exists = .false.
-              call this%put_north_p(particle, i)
+              call this%put_north(particle)
               ! if (count_p_comm .eqv. .true.) &
               ! particles_communicated = particles_communicated + 1
            endif
         else if (xx .lt. its-1) then ! "its  <   x    <  ite"
            ! particle%exists = .false.
-           call this%put_west_p(particle, i) ! need to double check this!
+           call this%put_west(particle) ! need to double check this!
            ! if (count_p_comm .eqv. .true.) &
            ! particles_communicated = particles_communicated + 1
         else if (xx .gt. ite+1) then
            ! particle%exists = .false.
-           call this%put_east_p(particle, i)
+           call this%put_east(particle)
            ! if (count_p_comm .eqv. .true.) &
            ! particles_communicated = particles_communicated + 1
         end if
         end if
 
         ! end if
-        ! end associate
+      end associate
         ! print *, "end loop"
    end do
-#ifdef OMP_LOOP
-   !$omp end do simd
-   !!!$omp end parallel
-   !!!$omp end parallel loop
-#endif
    return
 
     if (brunt_vaisala_data .eqv. .true.) then
@@ -1345,119 +1333,119 @@ contains
     this%northeast_i = this%northeast_i + 1
   end subroutine
 
-  pure module subroutine put_north_p(this, particle,i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%north_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_north_p(this, particle,i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%north_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_south_in(i)[north_con_neighbor] = particle
-    particle%exists = .false.
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_south_in(i)[north_con_neighbor] = particle
+  !   particle%exists = .false.
+  ! end subroutine
 
 
-  pure module subroutine put_south_p(this, particle, i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%south_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_south_p(this, particle, i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%south_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_north_in(i)[south_con_neighbor] = particle
-    particle%exists = .false.
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_north_in(i)[south_con_neighbor] = particle
+  !   particle%exists = .false.
+  ! end subroutine
 
-  pure module subroutine put_east_p(this, particle, i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%east_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_east_p(this, particle, i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%east_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_west_in(i)[east_con_neighbor] = particle
-    particle%exists = .false.
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_west_in(i)[east_con_neighbor] = particle
+  !   particle%exists = .false.
+  ! end subroutine
 
-  pure module subroutine put_west_p(this, particle, i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%west_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_west_p(this, particle, i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%west_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_east_in(i)[west_con_neighbor] = particle
-    particle%exists = .false.
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_east_in(i)[west_con_neighbor] = particle
+  !   particle%exists = .false.
+  ! end subroutine
 
-  pure module subroutine put_northeast_p(this, particle, i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%northeast_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_northeast_p(this, particle, i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%northeast_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_southwest_in(i)[northeast_con_neighbor] = particle
-    particle%exists = .false.
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_southwest_in(i)[northeast_con_neighbor] = particle
+  !   particle%exists = .false.
+  ! end subroutine
 
-  pure module subroutine put_northwest_p(this, particle, i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%northwest_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_northwest_p(this, particle, i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%northwest_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_southeast_in(i)[northwest_con_neighbor] = particle
-    particle%exists = .false.
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_southeast_in(i)[northwest_con_neighbor] = particle
+  !   particle%exists = .false.
+  ! end subroutine
 
-  pure module subroutine put_southeast_p(this, particle, i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%southeast_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_southeast_p(this, particle, i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%southeast_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_northwest_in(i)[southeast_con_neighbor] = particle
-    particle%exists = .false.
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_northwest_in(i)[southeast_con_neighbor] = particle
+  !   particle%exists = .false.
+  ! end subroutine
 
-  pure module subroutine put_southwest_p(this, particle, i)
-    class(convection_exchangeable_t), intent(inout) :: this
-    type(convection_particle), intent(inout) :: particle
-    integer, intent(in) :: i
-    if (this%southwest_boundary) then
-      particle%exists = .false.
-      return
-    end if
+  ! pure module subroutine put_southwest_p(this, particle, i)
+  !   class(convection_exchangeable_t), intent(inout) :: this
+  !   type(convection_particle), intent(inout) :: particle
+  !   integer, intent(in) :: i
+  !   if (this%southwest_boundary) then
+  !     particle%exists = .false.
+  !     return
+  !   end if
 
-    !dir$ pgas defer_sync
-    this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
-    particle%exists = .false.
-    this%northeast_i = this%northeast_i + 1
-  end subroutine
+  !   !dir$ pgas defer_sync
+  !   this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
+  !   particle%exists = .false.
+  !   this%northeast_i = this%northeast_i + 1
+  ! end subroutine
 
 
   module subroutine create_particle_id(this)
