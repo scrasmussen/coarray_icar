@@ -530,7 +530,7 @@ contains
 !$omp  private(water_vapor0,  water_vapor1, cloud_water0,  cloud_water1) &
 !$omp  private(potential_T0, potential_T1, repeat, iter, only_dry, x,y,z) &
 !$omp  private(particle) &
-!$omp shared(me,dt,dz,this,temperature,z_interface) &
+!$omp  shared(me,dt,dz,this,temperature,z_interface) &
 !$omp  shared(jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its) &
 !$omp  shared(z_m, pressure, potential_temp,input_wind_val,nx_global,ny_global) &
 !$omp  shared(w_in, v_in, u_in, dry_air_particles_val) &
