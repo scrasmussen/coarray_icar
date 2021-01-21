@@ -5,11 +5,15 @@ module co_util
 contains
     recursive subroutine co_bcast(coarray, source_image, first_image, last_image)
         implicit none
+#if NO_COARRAYS
+        real(kind=8), intent(inout) :: coarray(:,:,:,:)
+#else
         real(kind=8), intent(inout) :: coarray(:,:,:,:)[*]
+#endif
         integer, intent(in) :: source_image, first_image, last_image
         integer :: dest_image
         integer :: x,y
-
+#ifndef NO_COARRAYS
         if (first_image==last_image) return
 
         if (source_image/=first_image) then
@@ -51,7 +55,7 @@ contains
                 call co_bcast(coarray, dest_image, dest_image, last_image)
             endif
         endif
-
+#endif
     end subroutine co_bcast
 
 end module co_util
