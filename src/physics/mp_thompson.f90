@@ -352,6 +352,19 @@
 !.. allocatable (2009Jun12, J. Michalakes).
       INTEGER, PARAMETER, PRIVATE:: R8SIZE = 8
       INTEGER, PARAMETER, PRIVATE:: R4SIZE = 4
+#if NO_COARRAYS
+      REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
+                tcg_racg, tmr_racg, tcr_gacr, tmg_gacr,     &
+                tnr_racg, tnr_gacr
+      REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
+                tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, &
+                tcr_sacr1, tms_sacr1, tcr_sacr2, tms_sacr2, &
+                tnr_racs1, tnr_racs2, tnr_sacr1, tnr_sacr2
+      REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
+                tpi_qcfz, tni_qcfz
+      REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
+                tpi_qrfz, tpg_qrfz, tni_qrfz, tnr_qrfz
+#else
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
                 tcg_racg[:], tmr_racg[:], tcr_gacr[:], tmg_gacr[:],     &
                 tnr_racg[:], tnr_gacr[:]
@@ -363,6 +376,7 @@
                 tpi_qcfz[:], tni_qcfz[:]
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:,:,:)::             &
                 tpi_qrfz[:], tpg_qrfz[:], tni_qrfz[:], tnr_qrfz[:]
+#endif
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:)::                 &
                 tps_iaus, tni_iaus, tpi_ide
       REAL (KIND=R8SIZE), ALLOCATABLE, DIMENSION(:,:):: t_Efrw
@@ -422,7 +436,7 @@
       CHARACTER*256:: mp_debug
 
 
-      INTEGER:: i, j, k, l, m, n, stat
+      INTEGER:: i, j, k, l, m, n, stat, me
       REAL:: h_01, niIN3, niCCN3, max_test
       LOGICAL:: micro_init, has_CCN, has_IN
       type(timer_t) :: timer
@@ -558,86 +572,170 @@
 
 
 !..Allocate space for lookup tables (J. Michalakes 2009Jun08).
+#if NO_COARRAYS
+      me = 1
+#else
+      me = this_image()
+#endif
 
       if (.NOT. ALLOCATED(tcg_racg) ) then
+#if NO_COARRAYS
+         ALLOCATE(tcg_racg(ntb_g1,ntb_g,ntb_r1,ntb_r), stat=stat)
+#else
          ALLOCATE(tcg_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
-         if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+#endif
+         if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
          micro_init = .TRUE.
       endif
 
+#if NO_COARRAYS
+      if (.NOT. ALLOCATED(tmr_racg)) &
+           ALLOCATE(tmr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcr_gacr)) &
+           ALLOCATE(tcr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tmg_gacr)) &
+           ALLOCATE(tmg_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_racg)) &
+           ALLOCATE(tnr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_gacr)) &
+           ALLOCATE(tnr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+
+      if (.NOT. ALLOCATED(tcs_racs1)) &
+           ALLOCATE(tcs_racs1(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tmr_racs1)) &
+           ALLOCATE(tmr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcs_racs2)) &
+           ALLOCATE(tcs_racs2(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tmr_racs2)) &
+           ALLOCATE(tmr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcr_sacr1)) &
+           ALLOCATE(tcr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tms_sacr1)) &
+           ALLOCATE(tms_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tcr_sacr2)) &
+           ALLOCATE(tcr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tms_sacr2)) &
+           ALLOCATE(tms_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_racs1)) &
+           ALLOCATE(tnr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_racs2)) &
+           ALLOCATE(tnr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_sacr1)) &
+           ALLOCATE(tnr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_sacr2)) &
+           ALLOCATE(tnr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+
+      if (.NOT. ALLOCATED(tpi_qcfz)) &
+           ALLOCATE(tpi_qcfz(ntb_c,nbc,45,ntb_IN), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tni_qcfz)) &
+           ALLOCATE(tni_qcfz(ntb_c,nbc,45,ntb_IN), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+
+      if (.NOT. ALLOCATED(tpi_qrfz)) &
+           ALLOCATE(tpi_qrfz(ntb_r,ntb_r1,45,ntb_IN), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tpg_qrfz)) &
+           ALLOCATE(tpg_qrfz(ntb_r,ntb_r1,45,ntb_IN), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tni_qrfz)) &
+           ALLOCATE(tni_qrfz(ntb_r,ntb_r1,45,ntb_IN), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+      if (.NOT. ALLOCATED(tnr_qrfz)) &
+           ALLOCATE(tnr_qrfz(ntb_r,ntb_r1,45,ntb_IN), stat=stat)
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+#else
       if (.NOT. ALLOCATED(tmr_racg)) &
            ALLOCATE(tmr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tcr_gacr)) &
            ALLOCATE(tcr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tmg_gacr)) &
            ALLOCATE(tmg_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tnr_racg)) &
            ALLOCATE(tnr_racg(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tnr_gacr)) &
            ALLOCATE(tnr_gacr(ntb_g1,ntb_g,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
 
       if (.NOT. ALLOCATED(tcs_racs1)) &
            ALLOCATE(tcs_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tmr_racs1)) &
            ALLOCATE(tmr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tcs_racs2)) &
            ALLOCATE(tcs_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tmr_racs2)) &
            ALLOCATE(tmr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tcr_sacr1)) &
            ALLOCATE(tcr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tms_sacr1)) &
            ALLOCATE(tms_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tcr_sacr2)) &
            ALLOCATE(tcr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tms_sacr2)) &
            ALLOCATE(tms_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tnr_racs1)) &
            ALLOCATE(tnr_racs1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tnr_racs2)) &
            ALLOCATE(tnr_racs2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tnr_sacr1)) &
            ALLOCATE(tnr_sacr1(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tnr_sacr2)) &
            ALLOCATE(tnr_sacr2(ntb_s,ntb_t,ntb_r1,ntb_r)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
-
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
 
       if (.NOT. ALLOCATED(tpi_qcfz)) &
            ALLOCATE(tpi_qcfz(ntb_c,nbc,45,ntb_IN)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tni_qcfz)) &
            ALLOCATE(tni_qcfz(ntb_c,nbc,45,ntb_IN)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
 
       if (.NOT. ALLOCATED(tpi_qrfz)) &
            ALLOCATE(tpi_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tpg_qrfz)) &
            ALLOCATE(tpg_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tni_qrfz)) &
            ALLOCATE(tni_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
       if (.NOT. ALLOCATED(tnr_qrfz)) &
            ALLOCATE(tnr_qrfz(ntb_r,ntb_r1,45,ntb_IN)[*], stat=stat)
-      if (stat .ne. 0) print *, this_image(), ": ERROR STAT = ", stat
+      if (stat .ne. 0) print *, me, ": ERROR STAT = ", stat
+#endif
+
 
       if (.NOT. ALLOCATED(tps_iaus)) ALLOCATE(tps_iaus(ntb_i,ntb_i1))
       if (.NOT. ALLOCATED(tni_iaus)) ALLOCATE(tni_iaus(ntb_i,ntb_i1))
@@ -1040,7 +1138,7 @@
       call timer%start()
       call qr_acr_qg
       call timer%stop()
-      if (this_image()==1) then
+      if (me==1) then
           print*, "qr_acr_qg initialized:", timer%as_string()
       endif
 
@@ -1051,7 +1149,7 @@
       call timer%start()
       call qr_acr_qs
       call timer%stop()
-      if (this_image()==1) then
+      if (me==1) then
           print*, "qr_acr_qs initialized:", timer%as_string()
       endif
 
@@ -1061,7 +1159,7 @@
       call timer%start()
       call freezeH2O
       call timer%stop()
-      if (this_image()==1) then
+      if (me==1) then
           print*, "freezeH2O initialized:", timer%as_string()
       endif
 
@@ -1071,7 +1169,7 @@
       call timer%start()
       call qi_aut_qs
       call timer%stop()
-      if (this_image()==1) then
+      if (me==1) then
           print*, "qi_aut_qs initialized:", timer%as_string()
       endif
 
@@ -1220,7 +1318,7 @@
 
       !$omp do schedule(guided)
       j_loop:  do j = j_start, j_end
-        !   print*, this_image(), j-j_start, omp_get_thread_num(), omp_get_num_threads()
+        !   print*, me, j-j_start, omp_get_thread_num(), omp_get_num_threads()
       i_loop:  do i = i_start, i_end
 
          pptrain = 0.
@@ -3677,17 +3775,27 @@
       DOUBLE PRECISION:: massg, massr, dvg, dvr, t1, t2, z1, z2, y1, y2
       LOGICAL force_read_thompson, write_thompson_tables
       LOGICAL lexist,lopen
+      INTEGER :: me, n_images
+#if NO_COARRAYS
+      INTEGER, allocatable :: good
+    !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
+      allocate(good)
+      me = 1
+      n_images = 1
+#else
       INTEGER, allocatable :: good[:]
     !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
       allocate(good[*])
-
+      me = this_image()
+      n_images = num_images()
+#endif
 !+---+
 
     !   CALL nl_get_force_read_thompson(1,force_read_thompson)
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
 
       good = 0
-      if (this_image()==1) then
+      if (me==1) then
           INQUIRE(FILE="qr_acr_qg.dat",EXIST=lexist)
           IF ( lexist ) THEN
             print *, "ThompMP: read qr_acr_qg.dat instead of computing"
@@ -3706,8 +3814,10 @@
             ENDIF
 
             ! broadcast the data to all images
-            do i=2,num_images()
+            do i=2,n_images
+#ifndef NO_COARRAYS
                 good[i]     = good
+#endif
             !     tcg_racg(:,:,:,:)[i] = tcg_racg(:,:,:,:)
             !     tmr_racg(:,:,:,:)[i] = tmr_racg(:,:,:,:)
             !     tcr_gacr(:,:,:,:)[i] = tcr_gacr(:,:,:,:)
@@ -3718,18 +3828,20 @@
           ENDIF
       endif
 
+#ifndef NO_COARRAYS
       sync all
+#endif
       if (good.eq.1) then
-          call co_bcast(tcg_racg, 1, 1, num_images())
-          call co_bcast(tmr_racg, 1, 1, num_images())
-          call co_bcast(tcr_gacr, 1, 1, num_images())
-          call co_bcast(tmg_gacr, 1, 1, num_images())
-          call co_bcast(tnr_racg, 1, 1, num_images())
-          call co_bcast(tnr_gacr, 1, 1, num_images())
+          call co_bcast(tcg_racg, 1, 1, n_images)
+          call co_bcast(tmr_racg, 1, 1, n_images)
+          call co_bcast(tcr_gacr, 1, 1, n_images)
+          call co_bcast(tmg_gacr, 1, 1, n_images)
+          call co_bcast(tnr_racg, 1, 1, n_images)
+          call co_bcast(tnr_gacr, 1, 1, n_images)
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (this_image()==1) print *, "ThompMP: computing qr_acr_qg"
+        if (me==1) print *, "ThompMP: computing qr_acr_qg"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -3821,7 +3933,7 @@
 !         CALL wrf_dm_gatherv(tnr_gacr, ntb_g*ntb_g1, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( this_image()==1 ) THEN
+        IF ( me==1 ) THEN
           print *, "Writing qr_acr_qg.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qg.dat",form="unformatted",err=9234)
           WRITE(63,err=9234) tcg_racg
@@ -3849,7 +3961,7 @@
       implicit none
 
 !..Local variables
-      INTEGER:: i, j, k, m, n, n2
+      INTEGER:: i, j, k, m, n, n2, me, n_images
       INTEGER:: km, km_s, km_e
       DOUBLE PRECISION, DIMENSION(nbr):: vr, D1, N_r
       DOUBLE PRECISION, DIMENSION(nbs):: vs, N_s
@@ -3860,9 +3972,19 @@
       DOUBLE PRECISION:: y1, y2, y3, y4
       LOGICAL force_read_thompson, write_thompson_tables
       LOGICAL lexist,lopen
+#if NO_COARRAYS
+      INTEGER, allocatable :: good
+    !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
+      allocate(good)
+      me = 1
+      n_images = 1
+#else
       INTEGER, allocatable :: good[:]
     !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
       allocate(good[*])
+      me = this_image()
+      n_images = num_images()
+#endif
 
 !+---+
 
@@ -3870,7 +3992,7 @@
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
 
       good = 0
-      IF ( this_image() == 1 ) THEN
+      IF ( me == 1 ) THEN
         INQUIRE(FILE="qr_acr_qs.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read qr_acr_qs.dat instead of computing"
@@ -3893,8 +4015,12 @@
           IF (lopen) THEN
             CLOSE(63)
           ENDIF
-          do i=2,num_images()
+          do i=2,n_images
+#if NO_COARRAYS
+              good        = good
+#else
               good[i]     = good
+#endif
             !   tcs_racs1(:,:,:,:)[i] = tcs_racs1(:,:,:,:)
             !   tmr_racs1(:,:,:,:)[i] = tmr_racs1(:,:,:,:)
             !   tcs_racs2(:,:,:,:)[i] = tcs_racs2(:,:,:,:)
@@ -3911,24 +4037,26 @@
         ENDIF
       endif
 
+#ifndef NO_COARRAYS
       sync all
+#endif
       if (good.eq.1) then
-          call co_bcast(tcs_racs1, 1, 1, num_images())
-          call co_bcast(tmr_racs1, 1, 1, num_images())
-          call co_bcast(tcs_racs2, 1, 1, num_images())
-          call co_bcast(tmr_racs2, 1, 1, num_images())
-          call co_bcast(tcr_sacr1, 1, 1, num_images())
-          call co_bcast(tms_sacr1, 1, 1, num_images())
-          call co_bcast(tcr_sacr2, 1, 1, num_images())
-          call co_bcast(tms_sacr2, 1, 1, num_images())
-          call co_bcast(tnr_racs1, 1, 1, num_images())
-          call co_bcast(tnr_racs2, 1, 1, num_images())
-          call co_bcast(tnr_sacr1, 1, 1, num_images())
-          call co_bcast(tnr_sacr2, 1, 1, num_images())
+          call co_bcast(tcs_racs1, 1, 1, n_images)
+          call co_bcast(tmr_racs1, 1, 1, n_images)
+          call co_bcast(tcs_racs2, 1, 1, n_images)
+          call co_bcast(tmr_racs2, 1, 1, n_images)
+          call co_bcast(tcr_sacr1, 1, 1, n_images)
+          call co_bcast(tms_sacr1, 1, 1, n_images)
+          call co_bcast(tcr_sacr2, 1, 1, n_images)
+          call co_bcast(tms_sacr2, 1, 1, n_images)
+          call co_bcast(tnr_racs1, 1, 1, n_images)
+          call co_bcast(tnr_racs2, 1, 1, n_images)
+          call co_bcast(tnr_sacr1, 1, 1, n_images)
+          call co_bcast(tnr_sacr2, 1, 1, n_images)
       endif
 
       IF ( good .NE. 1 ) THEN
-        if (this_image()==1) print *, "ThompMP: computing qr_acr_qs"
+        if (me==1) print *, "ThompMP: computing qr_acr_qs"
         do n2 = 1, nbr
 !        vr(n2) = av_r*Dr(n2)**bv_r * DEXP(-fv_r*Dr(n2))
          vr(n2) = -0.1021 + 4.932E3*Dr(n2) - 0.9551E6*Dr(n2)*Dr(n2)     &
@@ -4096,7 +4224,7 @@
 !         CALL wrf_dm_gatherv(tnr_sacr2, ntb_s*ntb_t, km_s, km_e, R8SIZE)
 ! #endif
 
-        IF ( this_image()==1 ) THEN
+        IF ( me==1 ) THEN
           print *, "Writing qr_acr_qs.dat in Thompson MP init"
           OPEN(63,file="qr_acr_qs.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tcs_racs1
@@ -4132,7 +4260,7 @@
       implicit none
 
 !..Local variables
-      INTEGER:: i, j, k, m, n, n2
+      INTEGER:: i, j, k, m, n, n2, me, n_images
       DOUBLE PRECISION, DIMENSION(nbr):: N_r, massr
       DOUBLE PRECISION, DIMENSION(nbc):: N_c, massc
       DOUBLE PRECISION:: sum1, sum2, sumn1, sumn2, &
@@ -4142,16 +4270,26 @@
       REAL:: T_adjust
       LOGICAL force_read_thompson, write_thompson_tables
       LOGICAL lexist,lopen
+#if NO_COARRAYS
+      INTEGER, allocatable :: good
+    !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
+      allocate(good)
+      me = 1
+      n_images = 1
+#else
       INTEGER, allocatable :: good[:]
     !   LOGICAL, EXTERNAL :: wrf_dm_on_monitor
       allocate(good[*])
+      me = this_image()
+      n_images = num_images()
+#endif
 
 !+---+
     !   CALL nl_get_force_read_thompson(1,force_read_thompson)
     !   CALL nl_get_write_thompson_tables(1,write_thompson_tables)
 
       good = 0
-      IF ( this_image() == 1 ) THEN
+      IF ( me == 1 ) THEN
         INQUIRE(FILE="freezeH2O.dat",EXIST=lexist)
         IF ( lexist ) THEN
           print *, "ThompMP: read freezeH2O.dat instead of computing"
@@ -4168,8 +4306,10 @@
           IF (lopen) THEN
             CLOSE(63)
           endif
-          do i=2,num_images()
+          do i=2,n_images
+#ifndef NO_COARRAYS
               good[i]     = good
+#endif
             !   tpi_qrfz(:,:,:,:)[i] = tpi_qrfz(:,:,:,:)
             !   tni_qrfz(:,:,:,:)[i] = tni_qrfz(:,:,:,:)
             !   tpg_qrfz(:,:,:,:)[i] = tpg_qrfz(:,:,:,:)
@@ -4180,19 +4320,21 @@
         ENDIF
       ENDIF
 
+#ifndef NO_COARRAYS
       sync all
+#endif
       if (good.eq.1) then
-          call co_bcast(tpi_qrfz, 1, 1, num_images())
-          call co_bcast(tni_qrfz, 1, 1, num_images())
-          call co_bcast(tpg_qrfz, 1, 1, num_images())
-          call co_bcast(tnr_qrfz, 1, 1, num_images())
-          call co_bcast(tpi_qcfz, 1, 1, num_images())
-          call co_bcast(tni_qcfz, 1, 1, num_images())
+          call co_bcast(tpi_qrfz, 1, 1, n_images)
+          call co_bcast(tni_qrfz, 1, 1, n_images)
+          call co_bcast(tpg_qrfz, 1, 1, n_images)
+          call co_bcast(tnr_qrfz, 1, 1, n_images)
+          call co_bcast(tpi_qcfz, 1, 1, n_images)
+          call co_bcast(tni_qcfz, 1, 1, n_images)
       endif
 
 
       IF ( good .NE. 1 ) THEN
-        if (this_image()==1) print *, "ThompMP: computing freezeH2O"
+        if (me==1) print *, "ThompMP: computing freezeH2O"
 
         orho_w = 1./rho_w
 
@@ -4260,7 +4402,7 @@
         enddo
         enddo
 
-        IF ( this_image() == 1 ) THEN
+        IF ( me == 1 ) THEN
           print *, "Writing freezeH2O.dat in Thompson MP init"
           OPEN(63,file="freezeH2O.dat",form="unformatted",err=9234)
           WRITE(63,err=9234)tpi_qrfz
