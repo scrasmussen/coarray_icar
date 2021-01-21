@@ -86,6 +86,23 @@ ifeq ($(COMPILER),cray)
 	  # note to disable openmp on cray add -h noomp
 endif
 
+ifeq ($(COMPILER),nvidia)
+  compile := nvfortran
+  link := $(compile)
+  parallel := -stdpar
+  # opt := $(parallel) -fcheck=all -Wall -fbacktrace -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS) -J $(BUILD)/
+  opt := $(parallel) -I. -D${LOOP}=true -DNO_COARRAYS -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS)  $(BUILD)/
+  link_flags := $(parallel) -fcheck=all -Wall -fbacktrace -g
+  ifeq ($(MODE),fast)
+	  opt := $(parallel) -O3 -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS) -J $(BUILD)/
+	  link_flags := $(parallel) -O3
+  endif
+  ifeq ($(MODE),profile)
+	  opt := $(parallel) -g -O3 -cpp $(BUILD)/
+	  link_flags := $(parallel) -g -O3
+  endif
+endif
+
 
 comp_flags := $(opt) $(inc_dirs)
 link_flags := $(link_flags) $(lib_dirs)
@@ -105,6 +122,9 @@ tests: test-ideal test-initialization test-timer
 
 # Executable depends on object files
 test-ideal: \
+			$(BUILD)/convection_type_interface.o		\
+			$(BUILD)/convection_exchangeable_implementation.o	\
+			$(BUILD)/convection_exchangeable_interface.o \
 			$(BUILD)/test-ideal.o					\
 			$(BUILD)/domain_implementation.o		\
 			$(BUILD)/domain_interface.o				\
@@ -194,6 +214,19 @@ $(BUILD)/exchangeable_interface.o: 		$(BUILD)/grid_interface.o
 $(BUILD)/exchangeable_implementation.o: $(BUILD)/exchangeable_interface.o 	\
 										$(BUILD)/grid_interface.o
 
+$(BUILD)/convection_type_interface.o: 		$(BUILD)/grid_interface.o
+
+$(BUILD)/convection_exchangeable_interface.o: 		\
+										$(BUILD)/convection_type_interface.o 	\
+										$(BUILD)/exchangeable_interface.o 	\
+										$(BUILD)/grid_interface.o
+
+$(BUILD)/convection_exchangeable_implementation.o: \
+									  $(BUILD)/convection_exchangeable_interface.o 	\
+										$(BUILD)/assertions_interface.o		\
+										$(BUILD)/domain_interface.o \
+										$(BUILD)/grid_interface.o
+
 $(BUILD)/configuration_implementation.o: $(BUILD)/configuration_interface.o
 
 $(BUILD)/domain_interface.o: 			$(BUILD)/configuration_interface.o 	\
@@ -238,7 +271,6 @@ setup:
 	mkdir -p ${BUILD}
 
 clean :
-	-rm -f  $(BUILD)/*.o $(BUILD)/*.mod $(BUILD)/*.smod $(executable)
-
+	-rm -f  $(BUILD)/*.o $(BUILD)/*.mod $(BUILD)/*.smod $(executable) *.mod
 uninstall :
 	-rm -f  $(install_dir)/$(executable)
