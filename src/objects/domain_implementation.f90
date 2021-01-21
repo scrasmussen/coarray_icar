@@ -15,19 +15,29 @@ contains
         integer :: i, j
         integer :: nx, xstep
         integer :: ny, ystep
+        integer :: me, n_images
+#if NO_COARRAYS
+        me = 1
+        n_images = 1
+#else
+        me = this_image()
+        n_images = num_images()
+#endif
 
         nx = size(input,1)
         ny = size(input,2)
         ystep = ny/8
         xstep = nx/8
-        do i=1,num_images()
-            if (this_image()==i) then
-                write(*,*) this_image()
+        do i=1,n_images
+            if (me==i) then
+                write(*,*) me
                 do j=lbound(input,2),ubound(input,2),ystep
                     write(*,*) input(::xstep,j)
                 enddo
             endif
+#ifndef NO_COARRAYS
             sync all
+#endif
         end do
 
     end subroutine print_in_image_order
@@ -40,7 +50,15 @@ contains
       real :: sine_curve
       type(grid_t) :: grid
       logical, parameter :: dry_environment = .false.
+      integer :: me, n_images
       ! halo_width = 1
+#if NO_COARRAYS
+      me = 1
+      n_images = 1
+#else
+      me = this_image()
+      n_images = num_images()
+#endif
       associate(                                            &
         u_test_val=>0.5, v_test_val=>0.5, w_test_val=>0.0,  &
         water_vapor_test_val            => 0.001,           &
@@ -57,7 +75,7 @@ contains
         call this%u%initialize(this%get_grid_dimensions(nx_extra = 1), u_test_val)
         call this%v%initialize(this%get_grid_dimensions(ny_extra = 1), v_test_val)
         call this%w%initialize(this%get_grid_dimensions(), w_test_val)
-        if (this_image()==1) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
+        if (me==1) print *,"call this%variable%initialize(this%get_grid_dimensions(),variable_test_val)"
         call this%water_vapor%initialize(           this%get_grid_dimensions(),water_vapor_test_val)
         call this%potential_temperature%initialize( this%get_grid_dimensions(),potential_temperature_test_val)
         call this%cloud_water_mass%initialize(      this%get_grid_dimensions(),cloud_water_mass_test_val)
@@ -73,7 +91,7 @@ contains
         ! potential_temperature%local(1,:,:)=this%potential_temperature%local(1,:,:)-10
         ! Note, this can be used to create a change in water vapor at the upwind boundary so that it
         ! can be advected across the domain and permitted to interact with other species
-        ! if (this_image()==1) then
+        ! if (me==1) then
         !     this%water_vapor%local(:,1,1) = water_vapor_test_val * 2
         ! endif
       end associate
@@ -230,7 +248,7 @@ contains
                this%z_interface(:,1,:), ims,ime,kms,kme,jms,jme, dz_value, &
                this%its,this%ite,this%kts,this%kte,this%jts,this%jte,&
                this%pressure, input_buf_size=8,halo_width=2)
-          if ((this_image() .eq. 1) .and. (total_num_particles() .gt. 0)) then
+          if ((me .eq. 1) .and. (total_num_particles() .gt. 0)) then
                print *, &
                     "Domain_Implementation.f90: Convected Particles Initialized"
           end if
@@ -338,7 +356,12 @@ contains
         integer :: ysplit, xsplit, xs, ys, i, me
         real :: best, current, x, y, infinitesimal
 
-        integer :: orig, neww
+        integer :: orig, neww, me
+#if NO_COARRAYS
+        me = 1
+#else
+        me = this_image()
+#endif
         multiplier=1
         if (present(ratio)) multiplier = ratio
 
@@ -381,16 +404,16 @@ contains
         this%ximages = xs
         this%yimages = ys
 
-        this%ximg = mod(this_image()-1,  this%ximages) + 1
+        this%ximg = mod(me-1,  this%ximages) + 1
         ! original: works with GNU, not with Cray
-        ! this%yimg = floor(real(this_image()-1) / this%ximages) + 1
+        ! this%yimg = floor(real(me-1) / this%ximages) + 1
         infinitesimal = 0.00000000000000000000000000000001
-        ! this%yimg = floor(real(this_image()-1) / (this%ximages+infinitesimal)) &
+        ! this%yimg = floor(real(me-1) / (this%ximages+infinitesimal)) &
         !      + 1
-        this%yimg = (this_image()-1) / (this%ximages) + 1
+        this%yimg = (me-1) / (this%ximages) + 1
 
         ! do i=1,num_images()
-        !    if (this_image() == i)  print *, this_image(), ":", this%ximg,",", this%yimg
+        !    if (me == i)  print *, me, ":", this%ximg,",", this%yimg
         !    sync all
         ! end do
         ! call exit
@@ -399,7 +422,7 @@ contains
         y = (ny/float(ys))
 
         if (assertions) call assert((xs*ys) == nimages, "Number of tiles does not sum to number of images")
-        if (this_image()==1) print*, "ximgs=",xs, "yimgs=",ys
+        if (me==1) print*, "ximgs=",xs, "yimgs=",ys
 
     end subroutine domain_decomposition
 
@@ -415,36 +438,44 @@ contains
       real    :: preferred_ratio
       integer :: my_unit,stat
       character(len=64) error_message
+      integer :: me, n_images
+#if NO_COARRAYS
+      me = 1
+      n_images = 1
+#else
+      me = this_image()
+      n_images = num_images()
+#endif
       namelist/grid/ nx,ny,nz
       namelist/options/ preferred_ratio
 
       open(file=file_name,newunit=my_unit,iostat=stat,status='old',action='read')
-      write(error_message,*) "image ",this_image()," could not open file " // trim(file_name)
+      write(error_message,*) "image ",me," could not open file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
       if (stat/=0) print*, error_message
 
       read(unit=my_unit,nml=grid,iostat=stat)
-      write(error_message,*)"image ",this_image()," could not read file " // trim(file_name)
+      write(error_message,*)"image ",me," could not read file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
       if (stat/=0) print*, error_message
 
       preferred_ratio = 1
       read(unit=my_unit,nml=options,iostat=stat)
-      write(error_message,*)"image ",this_image()," could not read file " // trim(file_name)
+      write(error_message,*)"image ",me," could not read file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
       if (stat/=0) print*, error_message
 
       close(my_unit,iostat=stat)
-      write(error_message,*)"image ",this_image()," could not close file " // trim(file_name)
+      write(error_message,*)"image ",me," could not close file " // trim(file_name)
       if (assertions) call assert(stat==0,error_message)
 
       this%nx_global = nx
       this%ny_global = ny
-      call this%domain_decomposition(nx, ny, num_images(), preferred_ratio)
+      call this%domain_decomposition(nx, ny, n_images, preferred_ratio)
       this%nx = my_n(nx, this%ximg, this%ximages)
       this%ny = my_n(ny, this%yimg, this%yimages)
       this%nz = nz
-      if (this_image()==1) print *,"call master_initialize(this)"
+      if (me==1) print *,"call master_initialize(this)"
       call master_initialize(this,  use_sounding)
     end subroutine
 
@@ -455,10 +486,16 @@ contains
     module subroutine default_initialize(this)
       class(domain_t), intent(inout) :: this
       integer, parameter :: nx_global=200,ny_global=200,nz_global=20
+      integer :: n_images
+#if NO_COARRAYS
+      n_images = 1
+#else
+      n_images = num_images()
+#endif
 
       this%nx_global = nx_global
       this%ny_global = ny_global
-      call this%domain_decomposition(nx_global, ny_global, num_images())
+      call this%domain_decomposition(nx_global, ny_global, n_images)
       this%nx = my_n(nx_global, this%ximg, this%ximages)
       this%ny = my_n(ny_global, this%yimg, this%yimages)
       this%nz = nz_global
@@ -655,9 +692,15 @@ contains
       class(domain_t), intent(inout) :: this
       integer, intent(in) :: step
       character(len=32) :: filename, format_string
-      integer :: me, i, image
+      integer :: me, i, image, n_images
       logical :: exist
+#if NO_COARRAYS
+      me = 1
+      n_images = 1
+#else
       me = this_image()
+      n_images = num_images()
+#endif
       ! handle opening of file
       write (filename,"(A10)") "output.txt"
       if (me .eq. 1 .and. step .eq. 0) then
@@ -673,8 +716,10 @@ contains
       end if
 
       ! write to file
-      do image = 1,num_images()
+      do image = 1,n_images
+#ifndef NO_COARRAYS
         sync all
+#endif
         if (image .eq. me) then
           open(unit=me, file=filename, status='old', position='append')
           do i=1,ubound(this%convection_obj%local,1)
@@ -684,7 +729,9 @@ contains
           end do
           close(me)
         end if
+#ifndef NO_COARRAYS
         sync all
+#endif
       end do
     end subroutine
 
@@ -693,8 +740,14 @@ contains
       integer, intent(in) :: sounding_type
       integer :: sounding_n, sounding_start, sounding_max
       character(len=32) :: filename
-      integer :: me, i
+      integer :: me, i, n_images
+#if NO_COARRAYS
+      me = 1
+      n_images = 1
+#else
       me = this_image()
+      n_images = num_images()
+#endif
       ! if (me == 1) then
       if (sounding_type .eq. 1) &
            write (filename,"(A27)") "sounding-potential-temp.txt"
