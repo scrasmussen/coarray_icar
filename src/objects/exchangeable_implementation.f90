@@ -51,10 +51,17 @@ contains
       allocate(this%local(ims:ime,kms:kme,jms:jme), source=initial_value)
     end associate
 
+#ifdef NO_COARRAYS
+    allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    ), source=initial_value)
+    allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    ), source=initial_value)
+    allocate( this%halo_east_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2), source=initial_value)
+    allocate( this%halo_west_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2), source=initial_value)
+#else
     allocate( this%halo_south_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
     allocate( this%halo_north_in( grid%ns_halo_nx+halo_size*2, grid%halo_nz,   halo_size    )[*], source=initial_value)
     allocate( this%halo_east_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
     allocate( this%halo_west_in(    halo_size,     grid%halo_nz, grid%ew_halo_ny+halo_size*2)[*], source=initial_value)
+#endif
 
 
     ! set up the neighbors array so we can sync with our neighbors when needed
@@ -143,10 +150,13 @@ contains
   module subroutine put_north(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: n, nx
+#if NO_COARRAYS
+#else
       n = ubound(this%local,3)
       nx = size(this%local,1)
       if (assertions) then
         !! gfortran 6.3.0 doesn't check coarray shape conformity with -fcheck=all so we verify with an assertion
+
         call assert( shape(this%halo_south_in(:nx,:,1:halo_size)[north_neighbor]) &
                      == shape(this%local(:,:,n-halo_size+1:n)),         &
                      "put_north: conformable halo_south_in and local " )
@@ -154,6 +164,7 @@ contains
 
       !dir$ pgas defer_sync
       this%halo_south_in(1:nx,:,1:halo_size)[north_neighbor] = this%local(:,:,n-halo_size*2+1:n-halo_size)
+#endif
   end subroutine
 
   module subroutine put_south(this)

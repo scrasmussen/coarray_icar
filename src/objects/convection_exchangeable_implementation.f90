@@ -22,7 +22,16 @@ submodule(convection_exchangeable_interface) &
   logical, parameter :: init_theta = .false.
   logical, parameter :: init_velocity = .true.
   logical, parameter :: count_p_comm = .false.
+
+#ifndef NO_COARRAYS
   integer, save      :: particles_communicated[*]
+#else
+  integer, save      :: particles_communicated
+#endif
+
+! #ifnotdef NO_COARRAYS
+! #else
+! #endif
   integer, save      :: particles_per_image
   integer, save      :: local_buf_size
   real,    save      :: input_wind
@@ -66,7 +75,11 @@ contains
     integer :: x0, x1, z0, z1, y0, y1
     logical :: calc
 
+#if NO_COARRAYS
+    me = 1
+#else
     me = this_image()
+#endif
     call initialize_from_file()
     particles_communicated = 0
     if (particles_per_image .eq. 0) then
@@ -74,7 +87,6 @@ contains
        return
     end if
 
-    me = this_image()
     ! if (present(input_buf_size)) then
     !   buf_size = input_buf_size
     !   print *, 'using input_buf_size'
@@ -128,6 +140,16 @@ contains
     if (particle_create_message .eqv. .true.) then
       print *, "ALLOCATING BUFFERS OF SIZE", buf_size
     end if
+#if NO_COARRAYS
+    allocate( this%buf_north_in(buf_size))
+    allocate( this%buf_south_in(buf_size))
+    allocate( this%buf_east_in(buf_size))
+    allocate( this%buf_west_in(buf_size))
+    allocate( this%buf_northeast_in(buf_size))
+    allocate( this%buf_northwest_in(buf_size))
+    allocate( this%buf_southeast_in(buf_size))
+    allocate( this%buf_southwest_in(buf_size))
+#else
     allocate( this%buf_north_in(buf_size)[*])
     allocate( this%buf_south_in(buf_size)[*])
     allocate( this%buf_east_in(buf_size)[*])
@@ -136,6 +158,7 @@ contains
     allocate( this%buf_northwest_in(buf_size)[*])
     allocate( this%buf_southeast_in(buf_size)[*])
     allocate( this%buf_southwest_in(buf_size)[*])
+#endif
 
     call this%setup_neighbors(grid)
   end subroutine convect_const
@@ -492,7 +515,11 @@ contains
     ! rh, saturate, iter, q_dry, p1, t1, only_dry, potential_t0, p0
     ! t0
 
+#if NO_COARRAYS
+    me = 1
+#else
     me = this_image()
+#endif
 
 
 #ifdef DC_LOOP
@@ -956,7 +983,7 @@ contains
                 y .lt. 1 .or. y .gt. ny_global &
                 ) then
               print *, "PUTTING", particle%x, particle%y, particle%z_meters, &
-                   "FROM", this_image(), "id:", particle%particle_id, &
+                   "FROM", me, "id:", particle%particle_id, &
                    "M", ims,ime, kms, kme, jms, jme, "T", its,ite,jts,jte
            end if
         end if
@@ -992,7 +1019,11 @@ contains
         end if
 
         ! Check values to know where to send particle
+#if NO_COARRAYS
+        if (1 .gt. 1) then
+#else
         if (num_images() .gt. 1) then
+#endif
         if (yy .lt. jts-1) then      ! "jts  <   y    <  jte"
            if (xx .lt. its-1) then
               ! particle%exists = .false.
@@ -1047,7 +1078,11 @@ contains
    return
 
     if (brunt_vaisala_data .eqv. .true.) then
+#if NO_COARRAYS
+      do image=1,1
+#else
       do image=1,num_images()
+#endif
       if (me .eq. image) then
          write (filename,"(A17)") "brunt_vaisala.txt"
          inquire(file=filename, exist=exist)
@@ -1061,7 +1096,9 @@ contains
          end do
          close(me)
       end if
+#ifndef NO_COARRAYS
       sync all
+#endif
       end do
 
    end if
@@ -1082,6 +1119,7 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     logical,               intent(in),   optional :: no_sync
 
+#ifndef NO_COARRAYS
     if (.not. present(no_sync)) then
       ! sync images (neighbors) ! sync neighbors currently broken
       sync all
@@ -1091,7 +1129,7 @@ contains
         sync all
       endif
     endif
-
+#endif
     if (.not. this%north_boundary) call this%retrieve_buf(this%buf_north_in)
     if (.not. this%south_boundary) call this%retrieve_buf(this%buf_south_in)
     if (.not. this%east_boundary) call this%retrieve_buf(this%buf_east_in)
@@ -1105,6 +1143,7 @@ contains
     if (.not. this%southwest_boundary) &
         call this%retrieve_buf(this%buf_southwest_in)
 
+
     this%north_i = 1
     this%south_i = 1
     this%east_i  = 1
@@ -1113,7 +1152,9 @@ contains
     this%northwest_i = 1
     this%southeast_i = 1
     this%southwest_i = 1
+#ifndef NO_COARRAYS
     sync all
+#endif
   end subroutine
 
   module subroutine exchange(this)
@@ -1123,7 +1164,9 @@ contains
     ! if (.not. this%east_boundary)  call this%put_east
     ! if (.not. this%west_boundary)  call this%put_west
 
+#ifndef NO_COARRAYS
     sync images( neighbors )
+#endif
 
     if (.not. this%north_boundary) call this%retrieve_buf(this%buf_north_in)
     if (.not. this%south_boundary) call this%retrieve_buf(this%buf_south_in)
@@ -1151,7 +1194,11 @@ contains
   module subroutine retrieve_buf(this, buf)
     implicit none
     class(convection_exchangeable_t), intent(inout) :: this
+#if NO_COARRAYS
+    type(convection_particle), intent(inout) :: buf(:)
+#else
     type(convection_particle), intent(inout) :: buf(:)[*]
+#endif
     integer :: i, buf_n, local_i, local_n
     buf_n = ubound(buf, dim=1)
     local_n = ubound(this%local, dim=1)
@@ -1185,7 +1232,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", north_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", north_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%north_boundary) then
@@ -1194,8 +1245,10 @@ contains
     end if
 
     call check_buf_size(this%south_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_south_in(this%south_i)[north_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%south_i = this%south_i + 1
   end subroutine
@@ -1204,7 +1257,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", south_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", south_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%south_boundary) then
@@ -1213,8 +1270,10 @@ contains
     end if
 
     call check_buf_size(this%north_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_north_in(this%north_i)[south_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%north_i = this%north_i + 1
   end subroutine
@@ -1223,7 +1282,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", east_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", east_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%east_boundary) then
@@ -1232,8 +1295,10 @@ contains
     end if
 
     call check_buf_size(this%west_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_west_in(this%west_i)[east_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%west_i = this%west_i + 1
   end subroutine
@@ -1242,7 +1307,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", west_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", west_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%west_boundary) then
@@ -1251,8 +1320,10 @@ contains
     end if
 
     call check_buf_size(this%east_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_east_in(this%east_i)[west_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%east_i = this%east_i + 1
   end subroutine
@@ -1261,7 +1332,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", northeast_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", northeast_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%northeast_boundary) then
@@ -1270,8 +1345,10 @@ contains
     end if
 
     call check_buf_size(this%southwest_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_southwest_in(this%southwest_i)[northeast_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%southwest_i = this%southwest_i + 1
   end subroutine
@@ -1280,7 +1357,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", northwest_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", northwest_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%northwest_boundary) then
@@ -1289,8 +1370,10 @@ contains
     end if
 
     call check_buf_size(this%southeast_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_southeast_in(this%southeast_i)[northwest_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%southeast_i = this%southeast_i + 1
   end subroutine
@@ -1299,7 +1382,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", southeast_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", southeast_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%southeast_boundary) then
@@ -1308,8 +1395,10 @@ contains
     end if
 
     call check_buf_size(this%northwest_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_northwest_in(this%northwest_i)[southeast_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%northwest_i = this%northwest_i + 1
   end subroutine
@@ -1318,7 +1407,11 @@ contains
     class(convection_exchangeable_t), intent(inout) :: this
     type(convection_particle), intent(inout) :: particle
     if (caf_comm_message .eqv. .true.) then
+#if NO_COARRAYS
+       print*, "from", 1, "to", southwest_con_neighbor, particle%particle_id
+#else
        print*, "from", this_image(), "to", southwest_con_neighbor, particle%particle_id
+#endif
     end if
 
     if (this%southwest_boundary) then
@@ -1327,8 +1420,10 @@ contains
     end if
 
     call check_buf_size(this%northeast_i)
+#ifndef NO_COARRAYS
     !dir$ pgas defer_sync
     this%buf_northeast_in(this%northeast_i)[southwest_con_neighbor] = particle
+#endif
     particle%exists = .false.
     this%northeast_i = this%northeast_i + 1
   end subroutine
@@ -1452,10 +1547,17 @@ contains
     use iso_fortran_env, only : int32
     implicit none
     class(convection_exchangeable_t), intent(inout) :: this
-    integer :: id_range, h
+    integer :: id_range, h, me, n_images
+#if NO_COARRAYS
+    n_images = 1
+    me = 1
+#else
+    n_images = num_images()
+    me = this_image()
+#endif
     if (this%particle_id_count .eq. -1) then
-      id_range = huge(int32) / num_images()
-      this%particle_id_count = (this_image()-1) * id_range
+      id_range = huge(int32) / n_images
+      this%particle_id_count = (me-1) * id_range
     else
       this%particle_id_count = this%particle_id_count + 1
     end if
@@ -1487,7 +1589,11 @@ contains
 
 
     if (.not.allocated(neighbors)) then
+#if NO_COARRAYS
+      associate(me=>1)
+#else
       associate(me=>this_image())
+#endif
         north_con_neighbor = me + grid%ximages
         south_con_neighbor = me - grid%ximages
         east_con_neighbor  = me + 1
@@ -1536,7 +1642,11 @@ contains
         associate(nx => grid%ximages, ny => grid%yimages, &
             nimages => grid%ximages * grid%yimages)
           if (wrap_neighbors .eqv. .true.) then
+#if NO_COARRAYS
+            n_images = 1
+#else
             n_images = num_images()
+#endif
             ! --- handle diagonals
             if (this%north_boundary .eqv. .true.) then
               northeast_con_neighbor = modulo( (me+nx+1)-nimages, (nx+1))
@@ -1666,7 +1776,11 @@ contains
 
   module function total_num_particles()
     integer :: total_num_particles
+#if NO_COARRAYS
+    total_num_particles = particles_per_image * 1
+#else
     total_num_particles = particles_per_image * num_images()
+#endif
   end function total_num_particles
 
   module function num_particles_per_image()
@@ -1720,7 +1834,11 @@ contains
   module subroutine check_buf_size(i)
     integer, intent(in) :: i
     if (i .gt. particles_per_image) then
+#if NO_COARRAYS
+       print *, 1, ": ERROR put buffer overflow"
+#else
        print *, this_image(), ": ERROR put buffer overflow"
+#endif
        call exit
     end if
   end subroutine check_buf_size
@@ -1733,16 +1851,23 @@ contains
     namelist/parcel_parameters/ total_parcels, parcel_is_dry, wind_speed
 
     character(len=*), parameter :: file = 'parcel-parameters.txt'
-    integer :: unit, rc
+    integer :: unit, rc, me, n_images
     logical :: exists
 
+#if NO_COARRAYS
+    me = 1
+    n_images = 1
+#else
+    me = this_image()
+    n_images = num_images()
+#endif
 
-    if (this_image() .eq. 1) &
+    if (me .eq. 1) &
          print *, "Initializing convection parcels from file"
     inquire(file=file, exist=exists)
 
     if (exists .neqv. .true.) then
-       if (this_image() .eq. 1) &
+       if (me .eq. 1) &
             print*, trim(file), " does not exist, please create file"
        call exit
     end if
@@ -1752,7 +1877,7 @@ contains
     read(unit=unit, nml=parcel_parameters, iostat=rc)
     close(unit)
 
-    particles_per_image = nint(total_parcels / real(num_images()))
+    particles_per_image = nint(total_parcels / real(n_images))
     local_buf_size = particles_per_image * 4
     dry_air_particles = parcel_is_dry
     input_wind = wind_speed

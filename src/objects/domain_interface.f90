@@ -36,9 +36,15 @@ module domain_interface
     real, allocatable :: accumulated_precipitation(:,:)
     real, allocatable :: accumulated_snowfall(:,:)
 
-    ! these coarrays are used to send all data back to a master image for IO... feels very inefficient
+    ! these coarrays are used to send all data back to a master image for
+    ! IO... feels very inefficient
+#if NO_COARRAYS
+    real, public, allocatable :: transfer_array_3d(:,:,:)
+    real, public, allocatable :: transfer_array_2d(:,:)
+#else
     real, public, allocatable :: transfer_array_3d(:,:,:)[:]
     real, public, allocatable :: transfer_array_2d(:,:)[:]
+#endif
 
     ! wind field to control advection
     type(exchangeable_t) :: u

@@ -13,6 +13,17 @@ module convection_exchangeable_interface
 
   type convection_exchangeable_t
      private
+#if NO_COARRAYS
+     type(convection_particle), allocatable, public :: local(:)
+     type(convection_particle), allocatable :: buf_north_in(:)
+     type(convection_particle), allocatable :: buf_south_in(:)
+     type(convection_particle), allocatable :: buf_east_in(:)
+     type(convection_particle), allocatable :: buf_west_in(:)
+     type(convection_particle), allocatable :: buf_northeast_in(:)
+     type(convection_particle), allocatable :: buf_northwest_in(:)
+     type(convection_particle), allocatable :: buf_southeast_in(:)
+     type(convection_particle), allocatable :: buf_southwest_in(:)
+#else
      type(convection_particle), allocatable, public :: local(:)
      type(convection_particle), allocatable :: buf_north_in(:)[:]
      type(convection_particle), allocatable :: buf_south_in(:)[:]
@@ -22,6 +33,7 @@ module convection_exchangeable_interface
      type(convection_particle), allocatable :: buf_northwest_in(:)[:]
      type(convection_particle), allocatable :: buf_southeast_in(:)[:]
      type(convection_particle), allocatable :: buf_southwest_in(:)[:]
+#endif
 
      logical :: north_boundary=.false.
      logical :: south_boundary=.false.
@@ -130,7 +142,11 @@ module convection_exchangeable_interface
      module subroutine retrieve_buf(this, buf)
        implicit none
        class(convection_exchangeable_t), intent(inout) :: this
+#if NO_COARRAYS
+       type(convection_particle), intent(inout) :: buf(:)
+#else
        type(convection_particle), intent(inout) :: buf(:)[*]
+#endif
      end subroutine
 
      module subroutine retrieve(this, no_sync)

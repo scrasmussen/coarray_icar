@@ -8,10 +8,17 @@ module exchangeable_interface
   type exchangeable_t
     private
     real, allocatable, public :: local(:,:,:)
+#if NO_COARRAYS
+    real, allocatable :: halo_south_in(:,:,:)
+    real, allocatable :: halo_north_in(:,:,:)
+    real, allocatable :: halo_west_in(:,:,:)
+    real, allocatable :: halo_east_in(:,:,:)
+#else
     real, allocatable :: halo_south_in(:,:,:)[:]
     real, allocatable :: halo_north_in(:,:,:)[:]
     real, allocatable :: halo_west_in(:,:,:)[:]
     real, allocatable :: halo_east_in(:,:,:)[:]
+#endif
 
     logical :: north_boundary=.false.
     logical :: south_boundary=.false.
