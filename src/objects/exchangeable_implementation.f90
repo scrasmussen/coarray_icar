@@ -18,6 +18,12 @@ contains
 
     integer :: n_neighbors, current
     integer :: ims,ime,kms,kme,jms,jme
+    integer :: me
+#if NO_COARRAYS
+    me = 1
+#else
+    me = this_image()
+#endif
 
     if (present(halo_width)) then
         halo_size = halo_width
@@ -66,7 +72,6 @@ contains
 
     ! set up the neighbors array so we can sync with our neighbors when needed
     if (.not.allocated(neighbors)) then
-      associate(me=>this_image())
         south_neighbor = me - grid%ximages
         north_neighbor = me + grid%ximages
         east_neighbor  = me + 1
@@ -101,7 +106,6 @@ contains
         if (current == 1) then
             neighbors(current) = me
         endif
-      end associate
     endif
 
   end subroutine
@@ -117,7 +121,7 @@ contains
   module subroutine retrieve(this, no_sync)
     class(exchangeable_t), intent(inout) :: this
     logical,               intent(in),   optional :: no_sync
-
+#ifndef NO_COARRAYS
     if (.not. present(no_sync)) then
         sync images( neighbors )
     else
@@ -125,6 +129,7 @@ contains
             sync images( neighbors )
         endif
     endif
+#endif
 
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
@@ -139,7 +144,9 @@ contains
     if (.not. this%east_boundary)  call this%put_east
     if (.not. this%west_boundary)  call this%put_west
 
+#ifndef NO_COARRAYS
     sync images( neighbors )
+#endif
 
     if (.not. this%north_boundary) call this%retrieve_north_halo
     if (.not. this%south_boundary) call this%retrieve_south_halo
@@ -150,8 +157,7 @@ contains
   module subroutine put_north(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: n, nx
-#if NO_COARRAYS
-#else
+#ifndef NO_COARRAYS
       n = ubound(this%local,3)
       nx = size(this%local,1)
       if (assertions) then
@@ -171,6 +177,7 @@ contains
       class(exchangeable_t), intent(inout) :: this
 
       integer :: start, nx
+#ifndef NO_COARRAYS
       start = lbound(this%local,3)
       nx = size(this%local,1)
 
@@ -182,6 +189,7 @@ contains
       end if
       !dir$ pgas defer_sync
       this%halo_north_in(1:nx,:,1:halo_size)[south_neighbor] = this%local(:,:,start+halo_size:start+halo_size*2-1)
+#endif
   end subroutine
 
   module subroutine retrieve_north_halo(this)
@@ -207,6 +215,7 @@ contains
   module subroutine put_east(this)
       class(exchangeable_t), intent(inout) :: this
       integer :: n, ny
+#ifndef NO_COARRAYS
       n = ubound(this%local,1)
       ny = size(this%local,3)
 
@@ -219,12 +228,14 @@ contains
 
       !dir$ pgas defer_sync
       this%halo_west_in(1:halo_size,:,1:ny)[east_neighbor] = this%local(n-halo_size*2+1:n-halo_size,:,:)
+#endif
   end subroutine
 
   module subroutine put_west(this)
       class(exchangeable_t), intent(inout) :: this
 
       integer :: start, ny
+#ifndef NO_COARRAYS
       start = lbound(this%local,1)
       ny = size(this%local,3)
       ! print *, "START = ", start, "when shape is ", shape(this%local(:,:,:)),
@@ -237,6 +248,7 @@ contains
 
       !dir$ pgas defer_sync
       this%halo_east_in(1:halo_size,:,1:ny)[west_neighbor] = this%local(start+halo_size:start+halo_size*2-1,:,:)
+#endif
   end subroutine
 
   module subroutine retrieve_east_halo(this)
@@ -261,14 +273,24 @@ contains
 
   module subroutine print_neighbors(this)
       class(exchangeable_t), intent(in) :: this
-      integer :: me, i
+      integer :: me, n_images, i
+#if NO_COARRAYS
+      me = 1
+      n_images = 1
+#else
       me = this_image()
-      if (me .eq. 1) print *, "num images = ", num_images()
-      do i=1,num_images()-1
+      n_images = num_images()
+#endif
+      if (me .eq. 1) print *, "num images = ", n_images
+      do i=1,n_images-1
          if (me .eq. i) print *, me, ":", neighbors
+#ifndef NO_COARRAYS
          sync all
+#endif
       end do
+#ifndef NO_COARRAYS
       sync all
+#endif
   end subroutine
 
   module function get_halo_depth(this) result(num)
