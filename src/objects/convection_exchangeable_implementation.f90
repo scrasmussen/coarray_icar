@@ -121,7 +121,9 @@ contains
 
     seed = -1
     call random_seed(PUT=seed)
+#ifndef __NVCOMPILER
     call random_init(.true.,.true.)
+#endif
 
     current_max_local_particles = particles_per_image
     do create=1,particles_per_image
