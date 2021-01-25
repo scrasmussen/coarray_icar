@@ -445,7 +445,11 @@ contains
     class(exchangeable_t), intent(in), optional :: u_in, v_in, w_in
     integer, intent(in), optional :: timestep
 
+#ifdef __NVCOMPILER
+    real :: gravity = 9.80665
+#else
     real, parameter :: gravity = 9.80665
+#endif
     type(convection_particle) :: new_particle
     ! real :: Gamma
     real :: a_prime, z_displacement, T, t_prime, buoyancy
@@ -470,8 +474,13 @@ contains
     !-----------------------------------------
     real :: saturate, condensate, vapor, vapor_needed, RH
     ! specific latent heat values, calculating using formula
+#ifdef __NVCOMPILER
+    real :: condensation_lh = 2600!000 ! 2.5 x 10^6 J/kg
+    real :: vaporization_lh = -2600
+#else
     real, parameter :: condensation_lh = 2600!000 ! 2.5 x 10^6 J/kg
     real, parameter :: vaporization_lh = -condensation_lh
+#endif
     ! specific heat of water vapor at constant volume
     ! real, parameter :: C_vv = 1.0 / 1390.0
     real :: C_vv, c_p
@@ -490,13 +499,27 @@ contains
     real :: x, y, z
     type(convection_particle) :: particle
 
+    ! extra variables needed because procedure calls aren't allowed
+#ifdef __NVCOMPILER
+    real :: e_s,a,b
+#endif
+
+
+
+
 
     input_wind_val = input_wind
     dry_air_particles_val = dry_air_particles
-    bv_data_val = brunt_vaisala_data
+
     replacement_message_val = replacement_message
     replacement_val = replacement
-    debug_val = debug
+! #ifdef __NVCOMPILER
+    debug_val = .false.
+    bv_data_val = .false.
+! #else
+!     ! bv_data_val = brunt_vaisala_data
+!     ! debug_val = debug
+! #endif
     wrap_neighbors_val = wrap_neighbors
     convection_val = convection
 
@@ -535,7 +558,7 @@ contains
          p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif, &
          water_vapor0,  water_vapor1, cloud_water0,  cloud_water1, &
          potential_T0, potential_T1, repeat, iter, only_dry, x,y,z, &
-         particle) &
+         particle, e_s, a, b) &
        shared(me,dt,dz,gravity,this,temperature,z_interface, &
          jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its, & !added af
          z_m, pressure, potential_temp, input_wind_val, nx_global, ny_global, &
@@ -580,6 +603,7 @@ contains
        if (particle%exists .neqv. .true.) cycle
 
 
+#ifndef __NVCOMPILER
         if (particle%x .lt. its-1 .or. &
              particle%z .lt. kts-1 .or. &
              particle%y .lt. jts-1 .or. &
@@ -600,7 +624,13 @@ contains
 #endif
            cycle
         end if
+#endif
+
+#ifdef __NVCOMPILER
+        if (.true. .eqv. .true.) bv_i = 1
+#else
         if (bv_data_val .eqv. .true.) bv_i = 1
+#endif
 
 
         !-----------------------------------------------------------------
@@ -631,7 +661,11 @@ contains
         end associate
 
 
+#ifdef __NVCOMPILER
+        if (.true. .eqv. .true.) then
+#else
         if (convection_val .eqv. .true.) then
+#endif
            buoyancy = (T - T_prime) / T_prime
            a_prime = buoyancy * gravity
            ! d = v_0 * t + 1/2 * a * t^2
@@ -675,9 +709,15 @@ contains
 
            ! u: zonal velocity, wind towards the east
            ! v: meridional velocity, wind towards north
+#ifdef __NVCOMPILER
+           if (.true. .eqv. .true.) then
+              particle%x = particle%x + (8.0 * wind_correction)
+              particle%y = particle%y + (8.0 * wind_correction)
+#else
            if (use_input_wind .eqv. .true.) then
               particle%x = particle%x + (input_wind_val * wind_correction)
               particle%y = particle%y + (input_wind_val * wind_correction)
+#endif
            else
               particle%x = particle%x + (particle%u * wind_correction)
               particle%y = particle%y + (particle%v * wind_correction)
@@ -711,20 +751,31 @@ contains
         end if
 
 
+#ifndef __NVCOMPILER
         if (bv_data_val .eqv. .true.) then
-           associate (A => potential_temp%local, x => particle%x, &
-                z => particle%z , y => particle%y)
-             x0 = floor(x); z0 = floor(z); y0 = floor(y);
-             x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
+           x0 = floor(particle%x)
+           z0 = floor(particle%z)
+           y0 = floor(particle%y)
+           x1 = ceiling(particle%x)
+           z1 = ceiling(particle%z)
+           y1 = ceiling(particle%y);
 
-             bv(bv_i) = trilinear_interpolation( &
-                  x, x0, x1, z, z0, z1, y, y0,y1, &
-                  A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
-                  A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
-             particle_id(bv_i) = particle%particle_id
-             bv_i = bv_i + 1
-           end associate
+           bv(bv_i) = trilinear_interpolation( &
+                particle%x, x0, x1, &
+                particle%z, z0, z1, &
+                particle%y, y0, y1, &
+                potential_temp%local(x0,z0,y0), &
+                potential_temp%local(x0,z0,y1), &
+                potential_temp%local(x0,z1,y0), &
+                potential_temp%local(x1,z0,y0), &
+                potential_temp%local(x0,z1,y1), &
+                potential_temp%local(x1,z0,y1), &
+                potential_temp%local(x1,z1,y0), &
+                potential_temp%local(x1,z1,y1))
+           particle_id(bv_i) = particle%particle_id
+           bv_i = bv_i + 1
         end if
+#endif
 
         !-----------------------------------------------------------------
         ! Dry Lapse Rate
@@ -734,8 +785,13 @@ contains
         ! Method one: physics
         !        a) change pressure         b) update temperature
         !-----------------------------------------------------------------
+#ifdef __NVCOMPILER
+        if (.false. .eqv. .true.) then !artless
+           if (DEBUG_VAL .eqv. .true.) print *, "-- only dry air parcels --"
+#else
         if (dry_air_particles_val .eqv. .true.) then
            if (debug_val .eqv. .true.) print *, "-- only dry air parcels --"
+#endif
            call dry_lapse_rate(particle%pressure, particle%temperature, &
                 particle%potential_temp, z_displacement)
            ! particle%pressure = particle%pressure - z_displacement * &
@@ -775,7 +831,23 @@ contains
              q_dry = 1004 * 1 * (abs(t1-t0))  ! q = c_p x m x delta_T
 
              do iter = 1,4
+#ifdef __NVCOMPILER
+                if (particle%temperature < 273.15) then
+                   a = 21.8745584
+                   b = 7.66
+                else
+                   a = 17.2693882
+                   b = 35.86
+                endif
+                e_s = 610.78 * exp(a * (particle%temperature - 273.16) / &
+                     (particle%temperature - b)) !(Pa)
+                if ((particle%pressure - e_s) <= 0) then
+                   e_s = particle%pressure * 0.99999
+                endif
+                saturate = 0.6219907 * e_s / (particle%pressure - e_s) !(kg/kg)
+#else
                 saturate = sat_mr(particle%temperature, particle%pressure)
+#endif
                 RH = particle%water_vapor / saturate
                 potential_T1 = particle%potential_temp
                 water_vapor0 = particle%water_vapor
@@ -791,9 +863,13 @@ contains
 
                 if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0 &
                      .and. vapor_needed .gt. 0.0000001) then
+#ifdef __NVCOMPILER
+                   if (DEBUG_VAL .eqv. .true.) &
+                        print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
+#else
                    if (debug_val .eqv. .true.) &
                         print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
-
+#endif
 
                    only_dry = .false.
                    if (vapor_needed > particle%cloud_water) then
@@ -817,13 +893,33 @@ contains
                    delta_t = Q_heat / c_p   ! 3.2c
                    particle%temperature = T1 - delta_t
 
+#ifdef __NVCOMPILER
+                   if (DEBUG_VAL .eqv. .true.) &
+#else
                    if (debug_val .eqv. .true.) &
+#endif
                         potential_temp0 = particle%potential_temp
 
-                   ! update potential temperature, assumming pressure is constant
+                   ! update potential temperature, assumming pressure is
+                   ! constant
+#ifdef __NVCOMPILER
+                if (particle%temperature < 273.15) then
+                   a = 21.8745584
+                   b = 7.66
+                else
+                   a = 17.2693882
+                   b = 35.86
+                endif
+                e_s = 610.78 * exp(a * (particle%temperature - 273.16) / &
+                     (particle%temperature - b)) !(Pa)
+                if ((particle%pressure - e_s) <= 0) then
+                   e_s = particle%pressure * 0.99999
+                endif
+                particle%potential_temp = particle%temperature /&
+                     & 0.6219907 * e_s / (particle%pressure - e_s) !(kg/kg)
+#else
                    particle%potential_temp = particle%temperature / exner_function(particle%pressure)
-
-
+#endif
                    ! Particle is raising and condensation is occurring
                 else if (RH .gt. 1.0) then
                    ! ==== rh .gt. 1 ====
@@ -832,7 +928,11 @@ contains
                    ! Q_heat 0.
                    ! ============= process done ===============
 
+#ifdef __NVCOMPILER
+                   if (DEBUG_VAL .eqv. .true.) print*, "==== rh .gt. 1, wet ===="
+#else
                    if (debug_val .eqv. .true.) print*, "==== rh .gt. 1, wet ===="
+#endif
 
                    only_dry = .false.
                    condensate = particle%water_vapor - saturate
@@ -873,7 +973,25 @@ contains
                    ! update potential temperature, assumming pressure is constant
                    ! particle%potential_temp = exner_function(particle%pressure) / &
                    !      particle%temperature
-                   particle%potential_temp = particle%temperature / exner_function(particle%pressure)
+#ifdef __NVCOMPILER
+                if (particle%temperature < 273.15) then
+                   a = 21.8745584
+                   b = 7.66
+                else
+                   a = 17.2693882
+                   b = 35.86
+                endif
+                e_s = 610.78 * exp(a * (particle%temperature - 273.16) / &
+                     (particle%temperature - b)) !(Pa)
+                if ((particle%pressure - e_s) <= 0) then
+                   e_s = particle%pressure * 0.99999
+                endif
+                particle%potential_temp = particle%temperature /&
+                     & 0.6219907 * e_s / (particle%pressure - e_s) !(kg/kg)
+#else
+                   particle%potential_temp = particle%temperature /&
+                        & exner_function(particle%pressure)
+#endif
                    ! call dry_lapse_rate(particle%pressure, particle%temperature, &
                    !      particle%potential_temp, z_displacement)
 
@@ -883,13 +1001,21 @@ contains
                    ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
 
                 else if (iter .eq. 1) then
+#ifdef __NVCOMPILER
+                   if (DEBUG_VAL .eqv. .true.) then
+#else
                    if (debug_val .eqv. .true.) then
+#endif
                       print*, "==== was dry process ===="
                    end if
                    exit
                 end if
 
+#ifdef __NVCOMPILER
+                if (DEBUG_VAL .eqv. .true.) then
+#else
                 if (debug_val .eqv. .true.) then
+#endif
                    print *, "     pressure  |  temp      |   ~heat    | potential"
                    print *, "pre ", p0, t0, ", -none-       ,", potential_t0
 
