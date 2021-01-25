@@ -10,14 +10,20 @@ program main
        current_num_particles, num_particles_per_image
   implicit none
 
-  integer :: me, ierrr
+  integer :: me, n_images, ierrr
+#if NO_COARRAYS
+  me = 1
+  n_images = 1
+#else
   me = this_image()
+  n_images = num_images()
+#endif
   ! call TAU_PROFILE_SET_NODE(me)
 #if _CRAYFTN
   call assign('assign -S on -y on p:%.txt', ierrr)
 #endif
 
-  if (me==1) print *,"Number of images = ",num_images()
+  if (me==1) print *,"Number of images = ",n_images
 
   block
     type(domain_t), save :: domain
@@ -33,7 +39,11 @@ program main
     logical, parameter :: save_particles_moved = .false.
 
     integer :: i,nz, ypos,xpos, particles_communicated, p
+#if NO_COARRAYS
+    integer, allocatable :: current_n_particles
+#else
     integer, allocatable :: current_n_particles[:]
+#endif
     type(timer_t) :: timer
     logical :: exist
     character(len=32) :: filename
@@ -86,8 +96,9 @@ program main
 
     ! print *, me,":", domain%nx, domain%ny, domain%nx_global, domain%ny_global
 
-
+#ifndef NO_COARRAYS
     sync all
+#endif
     call timer%start()
 
     do i=1, timesteps
@@ -134,7 +145,9 @@ program main
         call domain%advect(dt = 1.0)
      end do
 
+#ifndef NO_COARRAYS
     sync all
+#endif
     call timer%stop()
 
     if (me==1) print *, "Finished"
@@ -142,9 +155,15 @@ program main
 
     if (count_p_comm .eqv. .true.) then
        particles_communicated = num_particles_communicated()
+#if NO_COARRAYS
+       allocate(current_n_particles)
+#else
        allocate(current_n_particles[*])
+#endif
        current_n_particles = current_num_particles(domain%convection_obj)
+#ifndef NO_COARRAYS
        call co_sum(current_n_particles)
+#endif
     else
        particles_communicated = -1
     end if
@@ -160,7 +179,6 @@ program main
         end if
         print *,"Model run time:",timer%as_string('(f8.3," seconds")')
         print *,"Model get_time():", timer%get_time()
-        me = this_image()
 
         ! handle opening of file and report
         write (filename,"(A18)") "timing_results.txt"
@@ -170,9 +188,9 @@ program main
         else
            open(unit=me, file=filename, status='new')
         end if
-        write(me,*) ceiling(num_images()/44.0), &
+        write(me,*) ceiling(n_images/44.0), &
              domain%nx_global, domain%nz, domain%ny_global, &
-             num_images(), domain%ximages, domain%yimages, &
+             n_images, domain%ximages, domain%yimages, &
              num_particles_per_image(), timesteps, timer%get_time(), &
              are_particles_dry(), get_wind_speed(), &
 #ifdef OMP_LOOP
@@ -190,8 +208,10 @@ program main
 
 
     if (save_particles_moved .eqv. .true.) then
-       do i=1,num_images()
+       do i=1,n_images
+#ifndef NO_COARRAYS
           sync all
+#endif
           if (me==i) then
              write (filename,"(A19)") "particles-moved.txt"
              inquire(file=filename, exist=exist)
@@ -211,8 +231,10 @@ program main
     end if
 
     ypos = (domain%jde-domain%jds)/2 + domain%jds
-    do i=1,num_images()
+    do i=1,n_images
+#ifndef NO_COARRAYS
         sync all
+#endif
         if (me==i) then
             if ((ypos>=domain%jts).and.(ypos<=domain%jte)) then
                 xpos = (domain%ite-domain%its)/2 + domain%its

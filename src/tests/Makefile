@@ -90,9 +90,10 @@ ifeq ($(COMPILER),nvidia)
   compile := nvfortran
   link := $(compile)
   parallel := -stdpar
+  parallel :=
   # opt := $(parallel) -fcheck=all -Wall -fbacktrace -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS) -J $(BUILD)/
-  opt := $(parallel) -I. -D${LOOP}=true -DNO_COARRAYS -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS)  $(BUILD)/
-  link_flags := $(parallel) -fcheck=all -Wall -fbacktrace -g
+  opt := $(parallel) -I./ -D${LOOP}=true -traceback -Mchkstk -DNO_COARRAYS -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS)  $(BUILD)/
+  link_flags := $(parallel) -Wall -g
   ifeq ($(MODE),fast)
 	  opt := $(parallel) -O3 -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS) -J $(BUILD)/
 	  link_flags := $(parallel) -O3
@@ -201,6 +202,7 @@ $(BUILD)/mp_thompson.o: 				$(BUILD)/timer_interface.o			\
 										$(BUILD)/co_utilities.o
 
 $(BUILD)/mp_driver.o: 					$(BUILD)/mp_thompson.o 				\
+										$(BUILD)/convection_exchangeable_interface.o			\
 										$(BUILD)/domain_interface.o
 
 $(BUILD)/grid_implementation.o: 		$(BUILD)/grid_interface.o
