@@ -502,6 +502,9 @@ contains
     ! extra variables needed because procedure calls aren't allowed
 #ifdef __NVCOMPILER
     real :: e_s,a,b
+    real :: c000, c001, c010, c100, c011, c101, c110, c111
+    real :: xd, zd, yd, c00, c01, c10, c11, c0, c1, c
+    real :: gravity1
 #endif
 
 
@@ -548,8 +551,8 @@ contains
 
 
 #ifdef DC_LOOP
-    do concurrent (i=1:current_max_local_particles) & ! this is 14% faster
     ! do concurrent (i=1:ubound(this%local,1)) &      ! than this
+    do concurrent (i=1:current_max_local_particles) & ! this is 14% faster
        local(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement, &
          delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1, & ! add after
          bv, bv_i, particle_id, xx, yy, &
@@ -558,16 +561,27 @@ contains
          p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif, &
          water_vapor0,  water_vapor1, cloud_water0,  cloud_water1, &
          potential_T0, potential_T1, repeat, iter, only_dry, x,y,z, &
-         particle, e_s, a, b) &
+#ifdef __NVCOMPILER
+         particle, &
+         e_s,a,b,c000, c001, c010, c100, c011, c101, c110, c111, &
+         xd, zd, yd, c00, c01, c10, c11, c0, c1, c &
+#else
+         particle &
+#endif
+         ) &
        shared(me,dt,dz,gravity,this,temperature,z_interface, &
          jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its, & !added af
          z_m, pressure, potential_temp, input_wind_val, nx_global, ny_global, &
          w_in, v_in, u_in, dry_air_particles_val, condensation_lh, &
          vaporization_lh, bv_data_val, replacement_message_val, &
          replacement_val, debug_val, wrap_neighbors_val, convection_val &
+#ifdef __NVCOMPILER
+         )
+#else
          ) &
-       default(none)
+         default(none)
 #endif
+#endif ! end DC_LOOP
 #ifdef OMP_LOOP
        ! !$omp parallel loop
        !!      !$omp parallel do simd schedule(auto)
@@ -597,9 +611,11 @@ contains
     do i=1,current_max_local_particles
     ! do i=1,ubound(this%local,1)
 #endif
+
        particle = this%local(i)
        ! print *, particle%particle_id, particle%exists
        ! if (i .eq. 1) print*, omp_in_parallel(), "omp_num_threads", omp_get_num_threads()
+
        if (particle%exists .neqv. .true.) cycle
 
 
@@ -650,14 +666,67 @@ contains
         !-----------------------------------------------------------------
         ! new: properites of environment are prime
         T = particle%temperature
+
         associate (A => temperature, x => particle%x, z => particle%z , &
              y => particle%y)
           x0 = floor(x); z0 = floor(z); y0 = floor(y);
           x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
 
+#ifdef __NVCOMPILER
+    ! start trilinear function
+          c000 = A(x0,z0,y0); c001 = A(x0,z0,y1); c010 = A(x0,z1,y0)
+          c100 = A(x1,z0,y0)
+          c011 = A(x0,z1,y1); c101 = A(x1,z0,y1); c110 = A(x1,z1,y0)
+          c111 = A(x1,z1,y1)
+    ! start bilinear check
+    if ((x0 .eq. x1) .and. (z0 .eq. z1) .and. (y0 .eq. y1)) then
+       c = c000
+    else if ((x0 .eq. x1) .and. (z0 .eq. z1)) then
+       c = c000 + (c011-c000) * (y-y0) / (y1-y0)
+    else if ((x0 .eq. x1) .and. (y0 .eq. y1)) then
+       c = c000 + (c011-c000) * (z-z0) / (z1-z0)
+    else if ((y0 .eq. y1) .and. (z0 .eq. z1)) then
+       c = c000 + (c110-c000) * (x-x0) / (x1-x0)
+
+    else if ((x0 .eq. x1)) then
+       c00 = c000; c01 = c001; c10 = c010; c11 = c011
+       c0 = ((z1 - z)/(z1 - z0)) * c00 + ((z - z0)/(z1 - z0)) * c10
+       c1 = ((z1 - z)/(z1 - z0)) * c01 + ((z - z0)/(z1 - z0)) * c11
+       c  = ((y1 - y)/(y1 - y0)) * c0 + ((y - y0)/(y1 - y0)) * c1
+
+    else if (y0 .eq. y1) then
+       c00 = c000; c01 = c010; c10 = c100; c11 = c110
+       c0 = ((x1 - x)/(x1 - x0)) * c00 + ((x - x0)/(x1 - x0)) * c10
+       c1 = ((x1 - x)/(x1 - x0)) * c01 + ((x - x0)/(x1 - x0)) * c11
+       c = ((z1 - z)/(z1 - z0)) * c0 + ((z - z0)/(z1 - z0)) * c1
+    else if (z0 .eq. z1 ) then
+       c00 = c000; c01 = c001; c10 = c100; c11 = c101
+       c0 = ((x1 - x)/(x1 - x0)) * c00 + ((x - x0)/(x1 - x0)) * c10
+       c1 = ((x1 - x)/(x1 - x0)) * c01 + ((x - x0)/(x1 - x0)) * c11
+       c = ((y1 - y)/(y1 - y0)) * c0 + ((y - y0)/(y1 - y0)) * c1
+    ! end bilinear
+    else
+       xd = (x - x0) / (x1 - x0)
+       zd = (z - z0) / (z1 - z0)
+       yd = (y - y0) / (y1 - y0)
+
+       c00 = c000 * (1 - xd) + c100 * xd
+       c01 = c001 * (1 - xd) + c101 * xd
+       c10 = c010 * (1 - xd) + c110 * xd
+       c11 = c011 * (1 - xd) + c111 * xd
+
+       c0 = c00 * (1 - zd) + c10 * zd
+       c1 = c01 * (1 - zd) + c11 * zd
+
+       c = c0 * (1 - yd) + c1 * yd
+       T_prime = c
+    end if
+    ! end trilinear
+#else
           T_prime = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0,y1,&
                A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
                A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
+#endif
         end associate
 
 
@@ -727,8 +796,28 @@ contains
              x0 = floor(x); x1 = ceiling(x)
              y0 = floor(y); y1 = ceiling(y)
 
+#ifdef __NVCOMPILER
+    ! start bilinear check
+    c00 = A(x0,y0); c01 = A(x0,y1)
+    c10 = A(x1,y0); c11 = A(x1,y1)
+    if ((x0 .eq. x1) .and. (y0 .eq. y1)) then
+       c = c00
+    else if (x0 .eq. x1) then
+       c = c00 + (c11-c00) * (y-y0) / (y1-y0)
+    else if (y0 .eq. y1) then
+       c = c00 + (c11-c00) * (x-x0) / (x1-x0)
+    else
+       c0 = ((x1 - x)/(x1 - x0)) * c00 + ((x - x0)/(x1 - x0)) * c10
+       c1 = ((x1 - x)/(x1 - x0)) * c01 + ((x - x0)/(x1 - x0)) * c11
+       c = ((y1 - y)/(y1 - y0)) * c0 + ((y - y0)/(y1 - y0)) * c1
+    end if
+    ! end bilinear
+             z_interface_val = c
+
+#else
              z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
                   A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
+#endif
            end associate
            z_wind_change = z_interface_val - particle%z_interface
            particle%z_interface = z_interface_val
@@ -1054,6 +1143,8 @@ contains
 
 
         end if ! ---- end of relative humidity seciton ----
+! #if 0
+! #endif
     !   end associate
      end do
 #ifdef OMP_LOOP
@@ -1848,6 +1939,7 @@ contains
     end if
 
   end subroutine
+
 
   pure function bilinear_interpolation(x, x0, x1, y, y0, y1, &
       c00, c01, c10, c11) result(c)
