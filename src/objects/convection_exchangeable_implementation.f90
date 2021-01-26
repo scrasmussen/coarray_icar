@@ -3,7 +3,7 @@ submodule(convection_exchangeable_interface) &
   use assertions_interface, only : assert, assertions
   ! use exchangeable_interface, only : exchangeable_t
   use domain_interface, only : pressure_at_elevation, exner_function, sat_mr
-
+  ! use cudafor, only : random_number
   ! use grid_interface, only : grid_t
   implicit none
 
@@ -183,12 +183,24 @@ contains
     real :: random_start(3), x, z, y
     integer :: x0, x1, z0, z1, y0, y1, times_moved_val
     real :: pressure_val, exner_val, temp_val, water_vapor_val
-    real :: u_val, v_val, w_val, velocity, cloud_water
-    call random_number(random_start)
+    real :: u_val, v_val, w_val, velocity, cloud_water, r1
 
+#ifdef __NVCOMPILER
+    x = its + ((1.0/(particle_id+2.0)) * (ite-its))
+    z = kts + ((2.0/(particle_id+3.0)) * (kte-kts))
+    y = jts + ((3.0/(particle_id+4.0)) * (jte-jts))
+    ! x = curandCreateGenerator() 100
+    ! call random_number(random_start)
+    ! print *, random_start
+    ! call random_number(r1)
+    ! print*, r1
+#else
+    call random_number(random_start)
     x = its + (random_start(1) * (ite-its))
     z = kts + (random_start(3) * (kte-kts))
     y = jts + (random_start(2) * (jte-jts))
+#endif
+    ! print *, x,y,z
 
     if (x .lt. its .or. &
         x .gt. ite .or. &
@@ -504,9 +516,10 @@ contains
     real :: e_s,a,b
     real :: c000, c001, c010, c100, c011, c101, c110, c111
     real :: xd, zd, yd, c00, c01, c10, c11, c0, c1, c
-    real :: gravity1
+    real :: gravity1, exner_function_val
+    type(convection_particle),allocatable :: local(:)
+    integer, allocatable :: test_all(:)
 #endif
-
 
 
 
@@ -549,39 +562,26 @@ contains
     me = this_image()
 #endif
 
+    allocate(local(size(this%local)))
+    local = this%local
+
+    allocate(test_all(size(this%local)))
+    test_all = 0
 
 #ifdef DC_LOOP
-    ! do concurrent (i=1:ubound(this%local,1)) &      ! than this
+    ! ARTLESS
     do concurrent (i=1:current_max_local_particles) & ! this is 14% faster
-       local(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement, &
-         delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1, & ! add after
-         bv, bv_i, particle_id, xx, yy, &
-         saturate, condensate, vapor, vapor_needed, RH, C_vv, c_p, &
-         specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1, &
-         p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif, &
-         water_vapor0,  water_vapor1, cloud_water0,  cloud_water1, &
-         potential_T0, potential_T1, repeat, iter, only_dry, x,y,z, &
-#ifdef __NVCOMPILER
-         particle, &
-         e_s,a,b,c000, c001, c010, c100, c011, c101, c110, c111, &
-         xd, zd, yd, c00, c01, c10, c11, c0, c1, c &
-#else
-         particle &
-#endif
-         ) &
-       shared(me,dt,dz,gravity,this,temperature,z_interface, &
-         jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its, & !added af
-         z_m, pressure, potential_temp, input_wind_val, nx_global, ny_global, &
-         w_in, v_in, u_in, dry_air_particles_val, condensation_lh, &
-         vaporization_lh, bv_data_val, replacement_message_val, &
-         replacement_val, debug_val, wrap_neighbors_val, convection_val &
-#ifdef __NVCOMPILER
-         )
-#else
-         ) &
+         local(particle, bv_i, e_s,a,b,x0,z0,y0,x1,z1,y1,T,T_prime,x,y,z, &
+         c000, c001, c010, c100, c011, c101, c110, c111, &
+         xd, zd, yd, c00, c01, c10, c11, c0, c1, c, exner_function_val, &
+         buoyancy,a_prime,z_displacement, delta_z, wind_correction, &
+         z_interface_val,z_wind_change,z_0,z_1,T0,p0,potential_T0, &
+         t1, p1, q_dry, iter,saturate, RH, potential_T1, water_vapor0, &
+         cloud_water0, specific_latent_heat, vapor_needed,only_dry, &
+         vapor, Q_heat, q_wet, c_p, delta_t, condensate) &
+         shared(local, temperature, dt, dz, z_interface, kte, kts, test_all) &
          default(none)
 #endif
-#endif ! end DC_LOOP
 #ifdef OMP_LOOP
        ! !$omp parallel loop
        !!      !$omp parallel do simd schedule(auto)
@@ -612,12 +612,13 @@ contains
     ! do i=1,ubound(this%local,1)
 #endif
 
-       particle = this%local(i)
+
+       particle = local(i) ! particle = this%local(i)
+
        ! print *, particle%particle_id, particle%exists
        ! if (i .eq. 1) print*, omp_in_parallel(), "omp_num_threads", omp_get_num_threads()
 
        if (particle%exists .neqv. .true.) cycle
-
 
 #ifndef __NVCOMPILER
         if (particle%x .lt. its-1 .or. &
@@ -641,6 +642,7 @@ contains
            cycle
         end if
 #endif
+
 
 #ifdef __NVCOMPILER
         if (.true. .eqv. .true.) bv_i = 1
@@ -667,17 +669,20 @@ contains
         ! new: properites of environment are prime
         T = particle%temperature
 
-        associate (A => temperature, x => particle%x, z => particle%z , &
-             y => particle%y)
-          x0 = floor(x); z0 = floor(z); y0 = floor(y);
-          x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
 
 #ifdef __NVCOMPILER
+        ! associate (A => temperature,
+        !      y => particle%y)
+        x = particle%x
+        z = particle%z
+        y = particle%y
+        x0 = floor(x); z0 = floor(z); y0 = floor(y);
+        x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
     ! start trilinear function
-          c000 = A(x0,z0,y0); c001 = A(x0,z0,y1); c010 = A(x0,z1,y0)
-          c100 = A(x1,z0,y0)
-          c011 = A(x0,z1,y1); c101 = A(x1,z0,y1); c110 = A(x1,z1,y0)
-          c111 = A(x1,z1,y1)
+          c000 = temperature(x0,z0,y0); c001 = temperature(x0,z0,y1); c010 = temperature(x0,z1,y0)
+          c100 = temperature(x1,z0,y0)
+          c011 = temperature(x0,z1,y1); c101 = temperature(x1,z0,y1); c110 = temperature(x1,z1,y0)
+          c111 = temperature(x1,z1,y1)
     ! start bilinear check
     if ((x0 .eq. x1) .and. (z0 .eq. z1) .and. (y0 .eq. y1)) then
        c = c000
@@ -723,11 +728,16 @@ contains
     end if
     ! end trilinear
 #else
+        associate (A => temperature, x => particle%x, z => particle%z , &
+             y => particle%y)
+          x0 = floor(x); z0 = floor(z); y0 = floor(y);
+          x1 = ceiling(x); z1 = ceiling(z); y1 = ceiling(y);
           T_prime = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0,y1,&
                A(x0,z0,y0), A(x0,z0,y1), A(x0,z1,y0), A(x1,z0,y0), &
                A(x0,z1,y1), A(x1,z0,y1), A(x1,z1,y0), A(x1,z1,y1))
-#endif
         end associate
+#endif
+     ! checked, the same
 
 
 #ifdef __NVCOMPILER
@@ -736,7 +746,7 @@ contains
         if (convection_val .eqv. .true.) then
 #endif
            buoyancy = (T - T_prime) / T_prime
-           a_prime = buoyancy * gravity
+           a_prime = buoyancy * 9.80665  ! gravity
            ! d = v_0 * t + 1/2 * a * t^2
            z_displacement = particle%velocity * dt + 0.5 * a_prime * dt * dt
            ! z_displacement = particle%velocity + 0.5 * a_prime
@@ -762,6 +772,7 @@ contains
         else
            z_displacement = 0.0
         end if
+     ! end do
 
 
         !-----------------------------------------------------------------
@@ -792,37 +803,46 @@ contains
               particle%y = particle%y + (particle%v * wind_correction)
            end if
 
-           associate (A => z_interface, x=> particle%x, y=>particle%y)
-             x0 = floor(x); x1 = ceiling(x)
-             y0 = floor(y); y1 = ceiling(y)
+           ! associate (A => z_interface, x=> particle%x, y=>particle%y)
+           !   x0 = floor(x); x1 = ceiling(x)
+           !   y0 = floor(y); y1 = ceiling(y)
 
 #ifdef __NVCOMPILER
     ! start bilinear check
-    c00 = A(x0,y0); c01 = A(x0,y1)
-    c10 = A(x1,y0); c11 = A(x1,y1)
+    x0 = floor(particle%x); x1 = ceiling(particle%x)
+    y0 = floor(particle%y); y1 = ceiling(particle%y)
+
+    c00 = z_interface(x0,y0); c01 = z_interface(x0,y1)
+    c10 = z_interface(x1,y0); c11 = z_interface(x1,y1)
     if ((x0 .eq. x1) .and. (y0 .eq. y1)) then
        c = c00
     else if (x0 .eq. x1) then
-       c = c00 + (c11-c00) * (y-y0) / (y1-y0)
+       c = c00 + (c11-c00) * (particle%y-y0) / (y1-y0)
     else if (y0 .eq. y1) then
-       c = c00 + (c11-c00) * (x-x0) / (x1-x0)
+       c = c00 + (c11-c00) * (particle%x-x0) / (x1-x0)
     else
-       c0 = ((x1 - x)/(x1 - x0)) * c00 + ((x - x0)/(x1 - x0)) * c10
-       c1 = ((x1 - x)/(x1 - x0)) * c01 + ((x - x0)/(x1 - x0)) * c11
-       c = ((y1 - y)/(y1 - y0)) * c0 + ((y - y0)/(y1 - y0)) * c1
+       c0 = ((x1 - particle%x)/(x1 - x0)) * c00 + ((particle%x - x0)/(x1 - x0)) * c10
+       c1 = ((x1 - particle%x)/(x1 - x0)) * c01 + ((particle%x - x0)/(x1 - x0)) * c11
+       c = ((y1 - particle%y)/(y1 - y0)) * c0 + ((particle%y - y0)/(y1 - y0)) * c1
     end if
     ! end bilinear
              z_interface_val = c
 
 #else
+           associate (A => z_interface, x=> particle%x, y=>particle%y)
+             x0 = floor(x); x1 = ceiling(x)
+             y0 = floor(y); y1 = ceiling(y)
              z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
                   A(x0,y0), A(x0,y1), A(x1,y0), A(x1,y1))
-#endif
            end associate
+#endif
+           ! checked
+
            z_wind_change = z_interface_val - particle%z_interface
            particle%z_interface = z_interface_val
            z_displacement = z_displacement + z_wind_change
         end if
+
 
         !-----------------------------------------------------------------
         ! Move particle, remove particle if beyond the z axis
@@ -830,7 +850,6 @@ contains
         z_0 = particle%z_meters
         z_1 = particle%z_meters + z_displacement
         particle%z_meters = z_1
-
 
         ! out of bounds is handled in data movement do loop
         if (particle%z .lt. kts) then
@@ -865,6 +884,8 @@ contains
            bv_i = bv_i + 1
         end if
 #endif
+    ! end do
+    ! print *, "DONE"
 
         !-----------------------------------------------------------------
         ! Dry Lapse Rate
@@ -881,12 +902,25 @@ contains
         if (dry_air_particles_val .eqv. .true.) then
            if (debug_val .eqv. .true.) print *, "-- only dry air parcels --"
 #endif
-           call dry_lapse_rate(particle%pressure, particle%temperature, &
-                particle%potential_temp, z_displacement)
+#ifndef __NVCOMPILER
+           ! --- dry_lapse_rate function ---
            ! particle%pressure = particle%pressure - z_displacement * &
            !      gravity / (287.05 * particle%temperature) * particle%pressure
            ! particle%temperature = exner_function(particle%pressure) * &
            !      particle%potential_temp
+           ! -------------------------------
+             particle%pressure = particle%pressure - z_displacement * &
+                  9.80665 / (287.05 * particle%temperature) * particle&
+                  &%pressure
+             exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
+             particle%temperature = exner_function_val * &
+                  particle%potential_temp
+           ! -------------
+
+#else
+             call dry_lapse_rate(particle%pressure, particle%temperature, &
+                  particle%potential_temp, z_displacement)
+#endif
         else
            !-----------------------------------------------------------------
            ! Relative Humidity and physics of Moist Adiabatic Lapse Rate
@@ -906,20 +940,28 @@ contains
              T0 = particle%temperature
              p0 = particle%pressure
              potential_T0 = particle%potential_temp
+
+#ifdef __NVCOMPILER
+             particle%pressure = particle%pressure - z_displacement * &
+                  9.80665 / (287.05 * particle%temperature) * particle&
+                  &%pressure
+             exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
+             particle%temperature = exner_function_val * &
+                  particle%potential_temp
+#else
              call dry_lapse_rate(particle%pressure, particle%temperature, &
                   particle%potential_temp, z_displacement)
+#endif
 
-             ! particle%pressure = particle%pressure - z_displacement * &
-             !      gravity / (287.05 * particle%temperature) * particle%pressure
-             ! particle%temperature = exner_function(particle%pressure) * &
-             !      particle%potential_temp
-
+#ifndef DC_LOOP
              only_dry = .true.
+#endif
              T1 = particle%temperature
              p1 = particle%pressure
              q_dry = 1004 * 1 * (abs(t1-t0))  ! q = c_p x m x delta_T
 
-             do iter = 1,4
+
+             do iter = 1,4 ! ARTLESS
 #ifdef __NVCOMPILER
                 if (particle%temperature < 273.15) then
                    a = 21.8745584
@@ -937,6 +979,7 @@ contains
 #else
                 saturate = sat_mr(particle%temperature, particle%pressure)
 #endif
+
                 RH = particle%water_vapor / saturate
                 potential_T1 = particle%potential_temp
                 water_vapor0 = particle%water_vapor
@@ -945,20 +988,19 @@ contains
                 ! https://en.wikipedia.org/wiki/Latent_heat#Specific_latent_heat
                 ! specific latent heat for condensation and evaporation
                 specific_latent_heat = 2.5 * 10**6 ! J kg^-1
-
                 ! Particle is falling, using evaporation of cloud water to keep
                 ! the relative humidity at 1 if possible
                 vapor_needed = saturate - particle%water_vapor
+                ! print *, ":",saturate, "-", particle%water_vapor
+                ! print *, "----",particle%cloud_water, RH, vapor_needed
 
                 if (particle%cloud_water .gt. 0.0 .and. RH .lt. 1.0 &
                      .and. vapor_needed .gt. 0.0000001) then
-#ifdef __NVCOMPILER
-                   if (DEBUG_VAL .eqv. .true.) &
-                        print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
-#else
+#ifdef DO_LOOP
                    if (debug_val .eqv. .true.) &
                         print*, "==== cloud_water .gt. 0, rh .lt. 1, wet ===="
 #endif
+                   test_all(i) = 1
 
                    only_dry = .false.
                    if (vapor_needed > particle%cloud_water) then
@@ -982,44 +1024,32 @@ contains
                    delta_t = Q_heat / c_p   ! 3.2c
                    particle%temperature = T1 - delta_t
 
-#ifdef __NVCOMPILER
-                   if (DEBUG_VAL .eqv. .true.) &
-#else
+#ifdef DO_LOOP
                    if (debug_val .eqv. .true.) &
-#endif
                         potential_temp0 = particle%potential_temp
+#endif
 
                    ! update potential temperature, assumming pressure is
                    ! constant
 #ifdef __NVCOMPILER
-                if (particle%temperature < 273.15) then
-                   a = 21.8745584
-                   b = 7.66
-                else
-                   a = 17.2693882
-                   b = 35.86
-                endif
-                e_s = 610.78 * exp(a * (particle%temperature - 273.16) / &
-                     (particle%temperature - b)) !(Pa)
-                if ((particle%pressure - e_s) <= 0) then
-                   e_s = particle%pressure * 0.99999
-                endif
-                particle%potential_temp = particle%temperature /&
-                     & 0.6219907 * e_s / (particle%pressure - e_s) !(kg/kg)
+             exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
+             particle%potential_temp = particle%temperature /&
+                     exner_function_val
 #else
                    particle%potential_temp = particle%temperature / exner_function(particle%pressure)
 #endif
                    ! Particle is raising and condensation is occurring
+
+
                 else if (RH .gt. 1.0) then
+                   test_all(i) = 2
                    ! ==== rh .gt. 1 ====
                    ! water_vapor 5.271018017E-4 saturate 5.271018017E-4 cloud water 0.
                    ! condensate 0. new water_vapor 5.271018017E-4 new cloud water 0.
                    ! Q_heat 0.
                    ! ============= process done ===============
 
-#ifdef __NVCOMPILER
-                   if (DEBUG_VAL .eqv. .true.) print*, "==== rh .gt. 1, wet ===="
-#else
+#ifdef DO_LOOP
                    if (debug_val .eqv. .true.) print*, "==== rh .gt. 1, wet ===="
 #endif
 
@@ -1063,20 +1093,10 @@ contains
                    ! particle%potential_temp = exner_function(particle%pressure) / &
                    !      particle%temperature
 #ifdef __NVCOMPILER
-                if (particle%temperature < 273.15) then
-                   a = 21.8745584
-                   b = 7.66
-                else
-                   a = 17.2693882
-                   b = 35.86
-                endif
-                e_s = 610.78 * exp(a * (particle%temperature - 273.16) / &
-                     (particle%temperature - b)) !(Pa)
-                if ((particle%pressure - e_s) <= 0) then
-                   e_s = particle%pressure * 0.99999
-                endif
-                particle%potential_temp = particle%temperature /&
-                     & 0.6219907 * e_s / (particle%pressure - e_s) !(kg/kg)
+             exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
+             particle%potential_temp = particle%temperature /&
+                  exner_function_val
+
 #else
                    particle%potential_temp = particle%temperature /&
                         & exner_function(particle%pressure)
@@ -1090,62 +1110,61 @@ contains
                    ! particle%pressure = p0/ ((T0/particle%temperature)**(1/0.286))
 
                 else if (iter .eq. 1) then
-#ifdef __NVCOMPILER
-                   if (DEBUG_VAL .eqv. .true.) then
-#else
-                   if (debug_val .eqv. .true.) then
-#endif
+                   ! test_all(i) = .true.
+                   test_all(i) = 3
+#ifdef DO_LOOP
+                   if (debug_val .eqv. .true.) &
                       print*, "==== was dry process ===="
-                   end if
+#endif
+                   ! cycle
                    exit
                 end if
-
-#ifdef __NVCOMPILER
-                if (DEBUG_VAL .eqv. .true.) then
-#else
-                if (debug_val .eqv. .true.) then
-#endif
-                   print *, "     pressure  |  temp      |   ~heat    | potential"
-                   print *, "pre ", p0, t0, ", -none-       ,", potential_t0
-
-                   q_new_dry = &
-                        1004 * (1) * (abs(particle%temperature-t0))
-                   q_dif = abs(q_dry-(q_new_dry+q_wet))
-                   print *, q_dry, q_new_dry, q_wet, q_dif, &
-                        1004 * (1) * q_dif
-                end if
-                ! if ((debug_val .eqv. .true.) .and. (only_dry .eqv. .false.)) then
-                !    print *, "post", p1, t1, q_dry, potential_t1
-                !    print *, "new ", &
-                !         particle%pressure, particle%temperature, &
-                !         q_wet,  particle%potential_temp
+                ! test_all(i) = 4
 
 
-                ! print *, "heat: q_dry = q_new_dry + q_wet"
-                ! print *, " ", q_dry, "=", q_new_dry, "+", q_wet
-                ! print *, "dif         =", q_dif, "which is ~ temp diff", &
-                !      1004 * (1) * q_dif
+! #ifdef __NVCOMPILER
+!                 if (DEBUG_VAL .eqv. .true.) then
+! #else
+!                 if (debug_val .eqv. .true.) then
+! #endif
+!                    print *, "     pressure  |  temp      |   ~heat    | potential"
+!                    print *, "pre ", p0, t0, ", -none-       ,", potential_t0
 
-                ! print *, "--test--"
-                ! print *, " t? ", t0 - (q_new_dry / (1004 * (1)) )
+!                    q_new_dry = &
+!                         1004 * (1) * (abs(particle%temperature-t0))
+!                    q_dif = abs(q_dry-(q_new_dry+q_wet))
+!                    print *, q_dry, q_new_dry, q_wet, q_dif, &
+!                         1004 * (1) * q_dif
+!                 end if
+!                 ! if ((debug_val .eqv. .true.) .and. (only_dry .eqv. .false.)) then
+!                 !    print *, "post", p1, t1, q_dry, potential_t1
+!                 !    print *, "new ", &
+!                 !         particle%pressure, particle%temperature, &
+!                 !         q_wet,  particle%potential_temp
 
-                ! print *, "vapor_needed", vapor_needed, &
-                !      "new water_vapor", particle%water_vapor, &
-                !      "new cloud water", particle%cloud_water, &
-                !      "water_vapor0", water_vapor0, &
-                !      "cloud water0", cloud_water0
-                ! end if
+
+!                 ! print *, "heat: q_dry = q_new_dry + q_wet"
+!                 ! print *, " ", q_dry, "=", q_new_dry, "+", q_wet
+!                 ! print *, "dif         =", q_dif, "which is ~ temp diff", &
+!                 !      1004 * (1) * q_dif
+
+!                 ! print *, "--test--"
+!                 ! print *, " t? ", t0 - (q_new_dry / (1004 * (1)) )
+
+!                 ! print *, "vapor_needed", vapor_needed, &
+!                 !      "new water_vapor", particle%water_vapor, &
+!                 !      "new cloud water", particle%cloud_water, &
+!                 !      "water_vapor0", water_vapor0, &
+!                 !      "cloud water0", cloud_water0
+!                 ! end if
 
              end do
-             ! saturate = sat_mr(particle%temperature, particle%pressure)
-             ! RH = particle%water_vapor / saturate
-             ! particle%relative_humidity = RH
+!              ! saturate = sat_mr(particle%temperature, particle%pressure)
+!              ! RH = particle%water_vapor / saturate
+!              ! particle%relative_humidity = RH
 
 
         end if ! ---- end of relative humidity seciton ----
-! #if 0
-! #endif
-    !   end associate
      end do
 #ifdef OMP_LOOP
      !$omp end parallel do simd
@@ -1153,9 +1172,12 @@ contains
    !!!$omp end parallel loop
 #endif
 
-    !     !-----------------------------------------------------------------
-    !     ! Move particle if needed
-        !-----------------------------------------------------------------
+    ! print *, test_all(1)
+    ! print *, "DONE"
+
+!     !     !-----------------------------------------------------------------
+!     !     ! Move particle if needed
+!         !-----------------------------------------------------------------
     do i=1,current_max_local_particles
     ! ! do i=1,ubound(this%local,1)     !
       associate (particle=>this%local(i))        !
@@ -1190,7 +1212,6 @@ contains
            end if
            cycle
         end if
-
 
 
 #ifdef DO_LOOP
@@ -1296,32 +1317,32 @@ contains
    end do
    return
 
-    if (brunt_vaisala_data .eqv. .true.) then
-#if NO_COARRAYS
-      do image=1,1
-#else
-      do image=1,num_images()
-#endif
-      if (me .eq. image) then
-         write (filename,"(A17)") "brunt_vaisala.txt"
-         inquire(file=filename, exist=exist)
-         if (exist) then
-            open(unit=me, file=filename, status='old', position='append')
-         else
-            open(unit=me, file=filename, status='new')
-         end if
-         do i=1,bv_i-1
-            write(me,*) me, timestep, particle_id(i), bv(i)
-         end do
-         close(me)
-      end if
-#ifndef NO_COARRAYS
-      sync all
-#endif
-      end do
-
-   end if
-   if (debug_val .eqv. .true.) print *, "============= process done ==============="
+!     if (brunt_vaisala_data .eqv. .true.) then
+! #if NO_COARRAYS
+!       do image=1,1
+! #else
+!       do image=1,num_images()
+! #endif
+!       if (me .eq. image) then
+!          write (filename,"(A17)") "brunt_vaisala.txt"
+!          inquire(file=filename, exist=exist)
+!          if (exist) then
+!             open(unit=me, file=filename, status='old', position='append')
+!          else
+!             open(unit=me, file=filename, status='new')
+!          end if
+!          do i=1,bv_i-1
+!             write(me,*) me, timestep, particle_id(i), bv(i)
+!          end do
+!          close(me)
+!       end if
+! #ifndef NO_COARRAYS
+!       sync all
+! #endif
+!       end do
+ ! ARTLESS
+!    end if
+!    ! if (debug_val .eqv. .true.) print *, "============= process done ==============="
   end subroutine process
 
 
