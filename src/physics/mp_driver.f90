@@ -99,7 +99,6 @@ module module_mp_driver
         integer,        intent(in),   optional :: halo, subset
         integer,        intent(in),   optional :: t, total_num_particles
         logical,        intent(in),   optional :: report_convection
-        integer,        intent(in),   optional :: total_num_particles
 
         integer                       :: dz_lb(3), i, n_particles
 
@@ -149,17 +148,17 @@ module module_mp_driver
              end do
              end if
              ! end if
-             if (0 .eq. 1 ) then  ! no extra time steps taken
-                call domain%convection_obj%process( &
-                  domain%nx_global, domain%ny_global, &
-                  domain%ims, domain%ime, domain%kms, &
-                  domain%kme, domain%jms, domain%jme, &
-                  dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
-                  domain%temperature, domain%z_interface(:,1,:), &
-                  domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
-                  domain%jte, domain%z, domain%potential_temperature, &
-                  domain%pressure, domain%u, domain%v, domain%w)
-             end if
+             ! if (0 .eq. 1 ) then  ! no extra time steps taken
+             !    call domain%convection_obj%process( &
+             !      domain%nx_global, domain%ny_global, &
+             !      domain%ims, domain%ime, domain%kms, &
+             !      domain%kme, domain%jms, domain%jme, &
+             !      dt, domain%dz_interface(dz_lb(1),dz_lb(2),dz_lb(3)), &
+             !      domain%temperature, domain%z_interface(:,1,:), &
+             !      domain%its, domain%ite, domain%kts, domain%kte, domain%jts, &
+             !      domain%jte, domain%z, domain%potential_temperature, &
+             !      domain%pressure, domain%u, domain%v, domain%w)
+             ! end if
 
           end if
 
