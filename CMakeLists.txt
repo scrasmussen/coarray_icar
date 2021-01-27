@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+# cmake_minimum_required(VERSION 3.16)
 # Set the type/configuration of build to perform
 set ( CMAKE_CONFIGURATION_TYPES "Debug" "Release" "MinSizeRel" "RelWithDebInfo" )
 set ( CMAKE_BUILD_TYPE "Release"
@@ -45,8 +46,10 @@ endif()
 
 
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "NVidia" )
-  set(coarray_flags "")
-  message(STATUS "NVidia currently does not suppport coarrays, compiling with ${coarray_flags}")
+  set(coarray_flags "-DNO_COARRAYS")
+  message(STATUS "NVidia currently does not suppport coarrays, compiling with
+  ${coarray_flags}")
+  message(STATUS "CMake may not build the project, use Makefile in src/tests")
 endif()
 
 
@@ -72,7 +75,7 @@ elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Cray" )
     "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -e F -DUSE_ASSERTIONS=.false.")
 elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "NVidia" )
   set(CMAKE_Fortran_FLAGS_RELEASE
-    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -Mpreprocess -DUSE_ASSERTIONS=.false.")
+    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -Mpreprocess") #" -DUSE_ASSERTIONS=.false.")
 endif()
 
 
@@ -166,4 +169,6 @@ function(add_caf_test name num_caf_img test_target)
   set_property(TEST ${name} PROPERTY PASS_REGULAR_EXPRESSION "Test passed.")
 endfunction(add_caf_test)
 
-add_caf_test(test-ideal 4 test-ideal)
+if (NOT "${CMAKE_Fortran_COMPILER_ID}" MATCHES "NVidia" )
+	add_caf_test(test-ideal 4 test-ideal)
+endif()
