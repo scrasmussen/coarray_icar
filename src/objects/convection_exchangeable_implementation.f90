@@ -1,8 +1,22 @@
 #ifdef __NVCOMPILER
 #ifdef DC_LOOP
-#define NV_DC_LOOP
+#define EXPAND_FUNC
 #endif
 #endif
+
+#ifdef __NVCOMPILER
+#ifdef DO_LOOP
+#define EXPAND_FUNC
+#endif
+#endif
+
+#ifdef __NVCOMPILER
+#ifdef OMP_LOOP
+#define EXPAND_FUNC
+#endif
+#endif
+
+
 
 submodule(convection_exchangeable_interface) &
     convection_exchangeable_implementation
@@ -502,12 +516,12 @@ contains
     ! specific heat of water vapor at constant volume
     ! real, parameter :: C_vv = 1.0 / 1390.0
     real :: C_vv, c_p
-    real :: specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1, &
+    real :: specific_latent_heat, Q_heat, delta_t, T0, T1, &
          p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif
-    real :: water_vapor0,  water_vapor1
+    real :: water_vapor0
     real :: cloud_water0,  cloud_water1
     real :: potential_T0, potential_T1
-    integer :: repeat, iter
+    integer :: iter
     logical :: bv_data_val, replacement_message_val, replacement_val
     logical :: debug_val, wrap_neighbors_val, convection_val
 
@@ -571,8 +585,8 @@ contains
     allocate(local(size(this%local)))
     local = this%local
 
-    allocate(test_all(size(this%local)))
-    test_all = 0
+    ! allocate(test_all(size(this%local)))
+    ! test_all = 0
 
 #ifdef DC_LOOP
     ! ARTLESS
@@ -593,18 +607,25 @@ contains
        !!      !$omp parallel do simd schedule(auto)
 !!!$omp parallel
 !!$omp parallel do simd schedule(auto) &
-!$omp  parallel do simd schedule(auto) &
+!$omp  do simd schedule(auto) &
 !$omp  private(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement) &
 !$omp  private(delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1) &
-!$omp  private(bv, bv_i, particle_id, xx, yy) &
-!$omp  private(saturate, condensate, vapor, vapor_needed, RH, C_vv, c_p) &
-!$omp  private(specific_latent_heat, Q_heat, temp_c, delta_t, T0, T1) &
-!$omp  private(p0, p1, q_dry, q_wet, potential_temp0, q_new_dry, q_dif) &
-!$omp  private(water_vapor0,  water_vapor1, cloud_water0,  cloud_water1) &
-!$omp  private(potential_T0, potential_T1, repeat, iter, x,y,z) &
+!$omp  private(bv_i) &
+!$omp  private(saturate, condensate, vapor, vapor_needed, RH, c_p) &
+!$omp  private(specific_latent_heat, Q_heat, delta_t, T0, T1) &
+!$omp  private(p0, p1, q_dry, q_wet) &
+!$omp  private(water_vapor0, cloud_water0) &
+!$omp  private(potential_T0, potential_T1, iter, x,y,z) &
+#ifdef EXPAND_FUNC
+!$omp  private(e_s,a,b,c000, c001, c010, c100, c011, c101, c110, c111) &
+!$omp  private(xd, zd, yd, c00, c01, c10, c11, c0, c1, c, exner_function_val) &
+#endif
+#ifdef ONLY_IF_CHECKING_BV
+!$omp  private(particle_id, bv) &
+#endif
 !$omp  private(particle)
 !!$omp  shared(me,dt,dz,local,temperature,z_interface) &
-!!$omp  shared(jme, jms, kme, kms, ime, ims, jte, jts, kte, kts, ite, its) &
+!!$omp  shared(kte, kts) &
 !!$omp  shared(z_m, pressure, potential_temp,input_wind_val,nx_global,ny_global) &
 !!$omp  shared(w_in, v_in, u_in, dry_air_particles_val) &
 !!$omp  shared(bv_data_val, replacement_message_val, current_max_local_particles) &
@@ -676,7 +697,7 @@ contains
         T = particle%temperature
 
 
-#ifdef NV_DC_LOOP
+#ifdef EXPAND_FUNC
         ! associate (A => temperature,
         !      y => particle%y)
         x = particle%x
@@ -810,7 +831,7 @@ contains
               particle%y = particle%y + (particle%v * wind_correction)
            end if
 
-#ifdef NV_DC_LOOP
+#ifdef EXPAND_FUNC
     ! start bilinear check
     x0 = floor(particle%x); x1 = ceiling(particle%x)
     y0 = floor(particle%y); y1 = ceiling(particle%y)
@@ -861,7 +882,7 @@ contains
         end if
 
 
-#ifndef __NVCOMPILER
+#ifdef ONLY_IF_CHECKING_BV
         if (bv_data_val .eqv. .true.) then
            x0 = floor(particle%x)
            z0 = floor(particle%z)
@@ -904,7 +925,7 @@ contains
         if (dry_air_particles_val .eqv. .true.) then
            if (debug_val .eqv. .true.) print *, "-- only dry air parcels --"
 #endif
-#ifdef NV_DC_LOOP
+#ifdef EXPAND_FUNC
            ! --- dry_lapse_rate function ---
            ! particle%pressure = particle%pressure - z_displacement * &
            !      gravity / (287.05 * particle%temperature) * particle%pressure
@@ -943,7 +964,7 @@ contains
              p0 = particle%pressure
              potential_T0 = particle%potential_temp
 
-#ifdef NV_DC_LOOP
+#ifdef EXPAND_FUNC
              particle%pressure = particle%pressure - z_displacement * &
                   9.80665 / (287.05 * particle%temperature) * particle&
                   &%pressure
@@ -961,7 +982,7 @@ contains
 
 
              do iter = 1,4 ! ARTLESS
-#ifdef NV_DC_LOOP
+#ifdef EXPAND_FUNC
                 if (particle%temperature < 273.15) then
                    a = 21.8745584
                    b = 7.66
@@ -1029,7 +1050,7 @@ contains
 
                    ! update potential temperature, assumming pressure is
                    ! constant
-#ifdef NV_DC_LOOP
+#ifdef EXPAND_FUNC
              exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
              particle%potential_temp = particle%temperature /&
                      exner_function_val
@@ -1089,7 +1110,7 @@ contains
                    ! update potential temperature, assumming pressure is constant
                    ! particle%potential_temp = exner_function(particle%pressure) / &
                    !      particle%temperature
-#ifdef NV_DC_LOOP
+#ifdef EXPAND_FUNC
              exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
              particle%potential_temp = particle%temperature /&
                   exner_function_val
@@ -1163,9 +1184,10 @@ contains
         end if ! ---- end of relative humidity seciton ----
 #ifdef OMP_LOOP
      end do
-     !$omp end parallel do
+     !$omp end do
+     !!$omp end parallel do simd
 
-   !!!$omp end parallel do simd
+   !!
    !!!$omp end parallel loop
 #else
      end do
