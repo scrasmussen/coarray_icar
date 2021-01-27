@@ -30,7 +30,7 @@ program main
 
     ! parameters to setup test
     logical, parameter :: just_particles = .true.
-    integer, parameter :: timesteps = 10! 200
+    integer, parameter :: timesteps = 50! 200
     logical            :: report = .false.
     logical, parameter :: use_sounding   = .false.
     logical, parameter :: print_timestep = .false.
