@@ -89,11 +89,24 @@ endif
 ifeq ($(COMPILER),nvidia)
   compile := nvfortran
   link := $(compile)
-  parallel := -stdpar
-  parallel :=
+  parallel := -O3 -stdpar=gpu -Minfo
+  # parallel := -O3 -stdpar=multicore -Minfo
+	convection_parallel :=
+	ifeq ($(LOOP),DO_LOOP)
+	  convection_parallel :=
+	endif
+	ifeq ($(LOOP),DC_LOOP)
+    # have to build who project to use gpu
+	  convection_parallel := -stdpar=gpu -O3 -Minfo
+	  # convection_parallel := -stdpar=multicore -O3 -Minfo
+	endif
+	ifeq ($(LOOP),OMP_LOOP)
+	  convection_parallel += -mp
+	endif
+
   # opt := $(parallel) -fcheck=all -Wall -fbacktrace -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS) -J $(BUILD)/
-  opt := $(parallel) -I./ -D${LOOP}=true -traceback -Mchkstk -DNO_COARRAYS -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS)  $(BUILD)/
-  link_flags := $(parallel) -Wall -g
+  opt := $(parallel) -I./ -D${LOOP}=true -DDEBUG_VAL=${DEBUGVAL} -traceback -Mchkstk -DNO_COARRAYS -g -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS)  $(BUILD)/
+  link_flags := $(parallel) -Wall -g -mp
   ifeq ($(MODE),fast)
 	  opt := $(parallel) -O3 -cpp -DUSE_ASSERTIONS=$(USE_ASSERTIONS) -J $(BUILD)/
 	  link_flags := $(parallel) -O3
@@ -109,6 +122,9 @@ comp_flags := $(opt) $(inc_dirs)
 link_flags := $(link_flags) $(lib_dirs)
 
 executable := test-ideal test-initialization test-timer
+extra_flags := -g
+
+
 
 # Locate required source files
 # objects_source := $(shell ls $(objects_dir)/*.f90)
@@ -213,6 +229,7 @@ $(BUILD)/assertions_implementation.o: 	$(BUILD)/assertions_interface.o
 
 $(BUILD)/exchangeable_interface.o: 		$(BUILD)/grid_interface.o
 
+$(BUILD)/exchangeable_implementation.o:	convection_flags :=
 $(BUILD)/exchangeable_implementation.o: $(BUILD)/exchangeable_interface.o 	\
 										$(BUILD)/grid_interface.o
 
@@ -223,6 +240,7 @@ $(BUILD)/convection_exchangeable_interface.o: 		\
 										$(BUILD)/exchangeable_interface.o 	\
 										$(BUILD)/grid_interface.o
 
+$(BUILD)/convection_exchangeable_implementation.o: convection_flags :=  $(convection_parallel)
 $(BUILD)/convection_exchangeable_implementation.o: \
 									  $(BUILD)/convection_exchangeable_interface.o 	\
 										$(BUILD)/assertions_interface.o		\
@@ -235,6 +253,7 @@ $(BUILD)/domain_interface.o: 			$(BUILD)/configuration_interface.o 	\
 										$(BUILD)/exchangeable_interface.o	\
 										$(BUILD)/grid_interface.o
 
+$(BUILD)/domain_implementation.o:	convection_flags :=
 $(BUILD)/domain_implementation.o: 		$(BUILD)/domain_interface.o 		\
 										$(BUILD)/assertions_interface.o		\
 										$(BUILD)/grid_interface.o
@@ -250,8 +269,6 @@ $(info $$physics      = ${physics})
 # %.o: %.f90
 # 	$(compile) $(comp_flags) -c $< -o $@
 
-
-
 %.o: $(tests_dir)/%.f90
 	$(compile) $(comp_flags) -c $< -o $@
 
@@ -265,7 +282,8 @@ $(info $$physics      = ${physics})
 
 # Compile dependencies from objects
 %.o: $(objects_dir)/%.f90
-	$(compile) $(comp_flags) -c $< -o $@
+	$(compile) $(convection_flags) $(comp_flags) -c $< -o $@
+
 
 .PHONY : clean uninstall install tests all
 
