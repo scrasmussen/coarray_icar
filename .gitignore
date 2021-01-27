@@ -29,11 +29,16 @@
 *.out
 *.app
 
+# Python bytecode
+__pycache__
+
 # =============================
 # Developer-created directories
 # =============================
 build
+build_*
 doc
+
 
 # =========================
 # Executables
