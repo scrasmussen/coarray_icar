@@ -49,22 +49,25 @@ if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
   else()
     set(coarray_flags "-coarray=shared")
   endif()
-  message(STATUS "Compiling with ${coarray_flags}")
+  message(STATUS "Compiling with '${coarray_flags}' coarray flags")
 endif()
 
+if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU" )
+  set(coarray_flags "-fcoarray=lib")
+  message(STATUS "Compiling with '${coarray_flags}' coarray flags")
+endif()
 
 # Default Fortran Flags
 if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU" )
   set(CMAKE_Fortran_FLAGS_RELEASE
-    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -cpp -DUSE_ASSERTIONS=.false.")
+    "-DNDEBUG -Ofast -cpp -DUSE_ASSERTIONS=.false.")
 elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Intel" )
   set(CMAKE_Fortran_FLAGS_RELEASE
-    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -fpp -DUSE_ASSERTIONS=.false.")
+    "-DNDEBUG -O3 -fpp -DUSE_ASSERTIONS=.false.")
 elseif ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "Cray" )
   set(CMAKE_Fortran_FLAGS_RELEASE
-    "${CMAKE_Fortran_FLAGS_RELEASE} -O3 -e F -DUSE_ASSERTIONS=.false.")
+    "-DNDEBUG -O3 -e F -DUSE_ASSERTIONS=.false.")
 endif()
-
 
 set(CMAKE_Fortran_FLAGS_DEBUG "${coarray_flags} ${CMAKE_Fortran_FLAGS_DEBUG}")
 set(CMAKE_Fortran_FLAGS_RELEASE "${coarray_flags} ${CMAKE_Fortran_FLAGS_RELEASE}")
@@ -157,3 +160,7 @@ function(add_caf_test name num_caf_img test_target)
 endfunction(add_caf_test)
 
 add_caf_test(test-ideal 4 test-ideal)
+
+string(TOUPPER ${CMAKE_BUILD_TYPE} which_build)
+message(STATUS "Compiler options used are '${CMAKE_Fortran_FLAGS_${which_build}}'
+ for ${which_build} build")
