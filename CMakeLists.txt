@@ -155,7 +155,7 @@ function(add_caf_test name num_caf_img test_target)
 endfunction(add_caf_test)
 
 add_caf_test(test-ideal 4 test-ideal)
-message("this is a thing : : ${CMAKE_BUILD_TYPE}")
+
 string(TOUPPER ${CMAKE_BUILD_TYPE} which_build)
 message("Compiler options used are '${CMAKE_Fortran_FLAGS_${which_build}}'
  for ${which_build} build")
