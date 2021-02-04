@@ -16,6 +16,9 @@
 #endif
 #endif
 
+! #define EXPAND_FUNC
+#define NO_RANDOM_NUMBER
+
 
 
 submodule(convection_exchangeable_interface) &
@@ -205,7 +208,7 @@ contains
     real :: pressure_val, exner_val, temp_val, water_vapor_val
     real :: u_val, v_val, w_val, velocity, cloud_water, r1
 
-#ifdef __NVCOMPILER
+#ifdef NO_RANDOM_NUMBER
     x = its + ((1.0/(particle_id+2.0)) * (ite-its))
     z = kts + ((2.0/(particle_id+3.0)) * (kte-kts))
     y = jts + ((3.0/(particle_id+4.0)) * (jte-jts))
@@ -532,13 +535,14 @@ contains
     type(convection_particle) :: particle
 
     ! extra variables needed because procedure calls aren't allowed
-#ifdef __NVCOMPILER
+    type(convection_particle),allocatable :: local(:)
+
+#ifdef EXPAND_FUNC
     real :: e_s,a,b
     real :: c000, c001, c010, c100, c011, c101, c110, c111
     real :: xd, zd, yd, c00, c01, c10, c11, c0, c1, c
     real :: gravity1, exner_function_val
-    type(convection_particle),allocatable :: local(:)
-    integer, allocatable :: test_all(:)
+    ! integer, allocatable :: test_all(:)
 #endif
 
 
@@ -591,9 +595,11 @@ contains
 #ifdef DC_LOOP
     ! ARTLESS
     do concurrent (i=1:current_max_local_particles) & ! this is 14% faster
-         local(particle, bv_i, e_s,a,b,x0,z0,y0,x1,z1,y1,T,T_prime,x,y,z, &
-         c000, c001, c010, c100, c011, c101, c110, c111, &
+         local(particle, bv_i,x0,z0,y0,x1,z1,y1,T,T_prime,x,y,z, &
+#ifdef EXPAND_FUNC
+         e_s,a,b,c000, c001, c010, c100, c011, c101, c110, c111, &
          xd, zd, yd, c00, c01, c10, c11, c0, c1, c, exner_function_val, &
+#endif
          buoyancy,a_prime,z_displacement, delta_z, wind_correction, &
          z_interface_val,z_wind_change,z_0,z_1,T0,p0,potential_T0, &
          t1, p1, q_dry, iter,saturate, RH, potential_T1, water_vapor0, &
@@ -647,35 +653,35 @@ contains
 
        if (particle%exists .neqv. .true.) cycle
 
-#ifndef __NVCOMPILER
-        if (particle%x .lt. its-1 .or. &
-             particle%z .lt. kts-1 .or. &
-             particle%y .lt. jts-1 .or. &
-             particle%x .gt. ite+1 .or. &
-             particle%z .gt. kte+1 .or. &
-             particle%y .gt. jte+1) then
-           print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
-           print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
-           print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
-           ! stop "x,y,z is out of bounds" ! can't be in DC
-           print *, "ERROR: x,y,z is out of bounds", " particle_id:", &
-                particle%particle_id, "on image", me
-           ! print *, "particle_id:", &
-           !      particle%particle_id,"E=", particle%exists
-           particle%exists = .false.
-#ifdef DO_LOOP
-           stop "x,y,z is out of bounds" ! can't be in DC
-#endif
-           cycle
-        end if
-#endif
+! #ifndef __NVCOMPILER
+!         if (particle%x .lt. its-1 .or. &
+!              particle%z .lt. kts-1 .or. &
+!              particle%y .lt. jts-1 .or. &
+!              particle%x .gt. ite+1 .or. &
+!              particle%z .gt. kte+1 .or. &
+!              particle%y .gt. jte+1) then
+!            print *, "x:", its, "<", particle%x, "<", ite, "with halo 2"
+!            print *, "z:", kts, "<", particle%z, "<", kte, "with halo 2"
+!            print *, "y:", jts, "<", particle%y, "<", jte, "with halo 2"
+!            ! stop "x,y,z is out of bounds" ! can't be in DC
+!            print *, "ERROR: x,y,z is out of bounds", " particle_id:", &
+!                 particle%particle_id, "on image", me
+!            ! print *, "particle_id:", &
+!            !      particle%particle_id,"E=", particle%exists
+!            particle%exists = .false.
+! #ifdef DO_LOOP
+!            stop "x,y,z is out of bounds" ! can't be in DC
+! #endif
+!            cycle
+!         end if
+! #endif
 
 
-#ifdef __NVCOMPILER
+! #ifdef __NVCOMPILER
         if (.true. .eqv. .true.) bv_i = 1
-#else
-        if (bv_data_val .eqv. .true.) bv_i = 1
-#endif
+! #else
+!         if (bv_data_val .eqv. .true.) bv_i = 1
+! #endif
 
 
         !-----------------------------------------------------------------
@@ -759,7 +765,9 @@ contains
     y0 = floor(particle%y)
     x1 = ceiling(particle%x); z1 = ceiling(particle%z)
     y1 = ceiling(particle%y)
-    T_prime = trilinear_interpolation(x, x0, x1, z, z0, z1, y, y0,y1,&
+    T_prime = trilinear_interpolation(particle%x, x0, x1, &
+         particle%z, z0, z1, &
+         particle%y, y0,y1,&
          temperature(x0,z0,y0), temperature(x0,z0,y1), &
          temperature(x0,z1,y0), temperature(x1,z0,y0), &
          temperature(x0,z1,y1), temperature(x1,z0,y1), &
@@ -768,11 +776,11 @@ contains
      ! checked, the same
 
 
-#ifdef __NVCOMPILER
+! #ifdef __NVCOMPILER
         if (.true. .eqv. .true.) then
-#else
-        if (convection_val .eqv. .true.) then
-#endif
+! #else
+!         if (convection_val .eqv. .true.) then
+! #endif
            buoyancy = (T - T_prime) / T_prime
            a_prime = buoyancy * 9.80665  ! gravity
            ! d = v_0 * t + 1/2 * a * t^2
@@ -817,15 +825,15 @@ contains
 
            ! u: zonal velocity, wind towards the east
            ! v: meridional velocity, wind towards north
-#ifdef __NVCOMPILER
+! #ifdef __NVCOMPILER
            if (.true. .eqv. .true.) then
               particle%x = particle%x + (8.0 * wind_correction)
               particle%y = particle%y + (8.0 * wind_correction)
-#else
-           if (use_input_wind .eqv. .true.) then
-              particle%x = particle%x + (input_wind_val * wind_correction)
-              particle%y = particle%y + (input_wind_val * wind_correction)
-#endif
+! #else
+!            if (use_input_wind .eqv. .true.) then
+!               particle%x = particle%x + (input_wind_val * wind_correction)
+!               particle%y = particle%y + (input_wind_val * wind_correction)
+! #endif
            else
               particle%x = particle%x + (particle%u * wind_correction)
               particle%y = particle%y + (particle%v * wind_correction)
@@ -855,7 +863,8 @@ contains
 #else
              x0 = floor(particle%x); x1 = ceiling(particle%x)
              y0 = floor(particle%y); y1 = ceiling(particle%y)
-             z_interface_val = bilinear_interpolation(x, x0, x1, y, y0, y1, &
+             z_interface_val = bilinear_interpolation(particle%x, x0, x1, &
+                  particle%y, y0, y1, &
                   z_interface(x0,y0), z_interface(x0,y1), &
                   z_interface(x1,y0), z_interface(x1,y1))
 #endif
@@ -918,13 +927,13 @@ contains
         ! Method one: physics
         !        a) change pressure         b) update temperature
         !-----------------------------------------------------------------
-#ifdef __NVCOMPILER
+! #ifdef __NVCOMPILER
         if (.false. .eqv. .true.) then !artless, parcels wet
            if (DEBUG_VAL .eqv. .true.) print *, "-- only dry air parcels --"
-#else
-        if (dry_air_particles_val .eqv. .true.) then
-           if (debug_val .eqv. .true.) print *, "-- only dry air parcels --"
-#endif
+! #else
+!         if (dry_air_particles_val .eqv. .true.) then
+!            if (debug_val .eqv. .true.) print *, "-- only dry air parcels --"
+! #endif
 #ifdef EXPAND_FUNC
            ! --- dry_lapse_rate function ---
            ! particle%pressure = particle%pressure - z_displacement * &
@@ -1184,8 +1193,12 @@ contains
         end if ! ---- end of relative humidity seciton ----
 #ifdef OMP_LOOP
      end do
+#ifdef __NVCOMPILER
      !$omp end do
+#else
+     !$omp end do simd
      !!$omp end parallel do simd
+#endif
 
    !!
    !!!$omp end parallel loop
@@ -2034,7 +2047,52 @@ contains
       c1 = c01 * (1 - zd) + c11 * zd
 
       c = c0 * (1 - yd) + c1 * yd
-    end if
+   end if
+
+    ! ! expanded version of trilinear interpolation
+    ! if ((x0 .eq. x1) .and. (z0 .eq. z1) .and. (y0 .eq. y1)) then
+    !    c = c000
+    ! else if ((x0 .eq. x1) .and. (z0 .eq. z1)) then
+    !    c = c000 + (c011-c000) * (y-y0) / (y1-y0)
+    ! else if ((x0 .eq. x1) .and. (y0 .eq. y1)) then
+    !    c = c000 + (c011-c000) * (z-z0) / (z1-z0)
+    ! else if ((y0 .eq. y1) .and. (z0 .eq. z1)) then
+    !    c = c000 + (c110-c000) * (x-x0) / (x1-x0)
+    ! ! end linear
+
+    ! else if ((x0 .eq. x1)) then
+    !    c00 = c000; c01 = c001; c10 = c010; c11 = c011
+    !    c0 = ((z1 - z)/(z1 - z0)) * c00 + ((z - z0)/(z1 - z0)) * c10
+    !    c1 = ((z1 - z)/(z1 - z0)) * c01 + ((z - z0)/(z1 - z0)) * c11
+    !    c  = ((y1 - y)/(y1 - y0)) * c0 + ((y - y0)/(y1 - y0)) * c1
+
+    ! else if (y0 .eq. y1) then
+    !    c00 = c000; c01 = c010; c10 = c100; c11 = c110
+    !    c0 = ((x1 - x)/(x1 - x0)) * c00 + ((x - x0)/(x1 - x0)) * c10
+    !    c1 = ((x1 - x)/(x1 - x0)) * c01 + ((x - x0)/(x1 - x0)) * c11
+    !    c = ((z1 - z)/(z1 - z0)) * c0 + ((z - z0)/(z1 - z0)) * c1
+    ! else if (z0 .eq. z1 ) then
+    !    c00 = c000; c01 = c001; c10 = c100; c11 = c101
+    !    c0 = ((x1 - x)/(x1 - x0)) * c00 + ((x - x0)/(x1 - x0)) * c10
+    !    c1 = ((x1 - x)/(x1 - x0)) * c01 + ((x - x0)/(x1 - x0)) * c11
+    !    c = ((y1 - y)/(y1 - y0)) * c0 + ((y - y0)/(y1 - y0)) * c1
+    ! ! end bilinear
+    ! else
+    !    xd = (x - x0) / (x1 - x0)
+    !    zd = (z - z0) / (z1 - z0)
+    !    yd = (y - y0) / (y1 - y0)
+
+    !    c00 = c000 * (1 - xd) + c100 * xd
+    !    c01 = c001 * (1 - xd) + c101 * xd
+    !    c10 = c010 * (1 - xd) + c110 * xd
+    !    c11 = c011 * (1 - xd) + c111 * xd
+
+    !    c0 = c00 * (1 - zd) + c10 * zd
+    !    c1 = c01 * (1 - zd) + c11 * zd
+
+    !    c = c0 * (1 - yd) + c1 * yd
+    ! ! end trilinear
+    ! end if
   end function trilinear_interpolation
 
   module function total_num_particles()
