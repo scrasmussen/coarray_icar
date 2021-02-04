@@ -1,3 +1,4 @@
+#define REMOVE_OMP
 !+---+-----------------------------------------------------------------+
 !.. This subroutine computes the moisture tendencies of water vapor,
 !.. cloud droplets, rain, cloud ice (pristine), snow, and graupel.
@@ -57,7 +58,9 @@
 
       LOGICAL, PARAMETER, PRIVATE:: iiwarm = .false.
       LOGICAL, PRIVATE:: is_aerosol_aware = .false.
+#ifndef REMOVE_OMP
       !$omp threadprivate(is_aerosol_aware)
+#endif
       LOGICAL, PARAMETER, PRIVATE:: dustyIce = .true.
       LOGICAL, PARAMETER, PRIVATE:: homogIce = .true.
 
@@ -95,8 +98,9 @@
       REAL, PARAMETER, PRIVATE:: mu_g = 0.0
       REAL, PARAMETER, PRIVATE:: mu_i = 0.0
       REAL, PRIVATE:: mu_c
+#ifndef REMOVE_OMP
       !$omp threadprivate(mu_c)
-
+#endif
 !..Sum of two gamma distrib for snow (Field et al. 2005).
 !.. N(D) = M2**4/M3**3 * [Kap0*exp(-M2*Lam0*D/M3)
 !..    + Kap1*(M2/M3)**mu_s * D**mu_s * exp(-M2*Lam1*D/M3)]
@@ -173,8 +177,9 @@
 !..Schmidt number
       REAL, PARAMETER, PRIVATE:: Sc = 0.632
       REAL, PRIVATE:: Sc3
+#ifndef REMOVE_OMP
       !$omp threadprivate(Sc3)
-
+#endif
 !..Homogeneous freezing temperature
       REAL, PARAMETER, PRIVATE:: HGFR = 235.16
 
@@ -206,8 +211,9 @@
       REAL, PARAMETER, PRIVATE:: D0s = 200.E-6
       REAL, PARAMETER, PRIVATE:: D0g = 250.E-6
       REAL, PRIVATE:: D0i, xm0s, xm0g
+#ifndef REMOVE_OMP
       !$omp threadprivate(D0i, xm0s, xm0g)
-
+#endif
 !..Lookup table dimensions
       INTEGER, PARAMETER, PRIVATE:: nbins = 100
       INTEGER, PARAMETER, PRIVATE:: nbc = nbins
@@ -225,7 +231,9 @@
       INTEGER, PARAMETER, PRIVATE:: ntb_i1 = 55
       INTEGER, PARAMETER, PRIVATE:: ntb_t = 9
       INTEGER, PRIVATE:: nic1, nic2, nii2, nii3, nir2, nir3, nis2, nig2, nig3
+#ifndef REMOVE_OMP
       !$omp threadprivate(nic1, nic2, nii2, nii3, nir2, nir3, nis2, nig2, nig3)
+#endif
       INTEGER, PARAMETER, PRIVATE:: ntb_arc = 7
       INTEGER, PARAMETER, PRIVATE:: ntb_arw = 9
       INTEGER, PARAMETER, PRIVATE:: ntb_art = 7
@@ -233,8 +241,9 @@
       INTEGER, PARAMETER, PRIVATE:: ntb_ark = 4
       INTEGER, PARAMETER, PRIVATE:: ntb_IN = 55
       INTEGER, PRIVATE:: niIN2
+#ifndef REMOVE_OMP
       !$omp threadprivate(niIN2)
-
+#endif
       DOUBLE PRECISION, DIMENSION(nbins+1):: xDx
       DOUBLE PRECISION, DIMENSION(nbc):: Dc, dtc
       DOUBLE PRECISION, DIMENSION(nbi):: Di, dti
@@ -1254,6 +1263,7 @@
       CHARACTER*256:: mp_debug
       integer :: OMP_GET_NUM_THREADS, OMP_GET_THREAD_NUM
 
+#ifndef REMOVE_OMP
 !+---+
      !$OMP PARALLEL DEFAULT(PRIVATE) FIRSTPRIVATE(ids,ide,jds,jde,kds,kde,ims,ime,jms,jme,          &
      !$OMP kms,kme,its,ite,jts,jte,kts,kte,dt_in,itimestep,diagflag,has_reqc, has_reqi, has_reqs)   &
@@ -1261,7 +1271,7 @@
      !$OMP SHARED(RAINNCV,RAINNC,SNOWNCV,SNOWNC,GRAUPELNCV,GRAUPELNC,SR,w,th,pii,p,dz,qv,qc,        &
      !$OMP qi,qr,qs,qg,ni,nr,nc,nwfa,nifa,nwfa2d,refl_10cm,re_cloud,re_ice,re_snow)
      ! parameter list : Nt_c,TNO,rho_g,av_s,bv_s,fv_s,av_g,bv_g,EF_si,Ef_ri
-
+#endif
       i_start = its
       j_start = jts
       i_end   = MIN(ite, ide-1)
@@ -1315,8 +1325,9 @@
         !  write(mp_debug,*) 'WARNING, nc-nwfa-nifa-nwfa2d present but is_aerosol_aware is FALSE'
         !  CALL wrf_debug(0, mp_debug)
       endif
-
+#ifndef REMOVE_OMP
       !$omp do schedule(guided)
+#endif
       j_loop:  do j = j_start, j_end
         !   print*, me, j-j_start, omp_get_thread_num(), omp_get_num_threads()
       i_loop:  do i = i_start, i_end
@@ -1527,9 +1538,10 @@
 
       enddo i_loop
       enddo j_loop
+#ifndef REMOVE_OMP
       !$omp end do
       !$omp end parallel
-
+#endif
 ! DEBUG - GT
     !   write(mp_debug,'(a,7(a,e13.6,1x,a,i3,a,i3,a,i3,a,1x))') 'MP-GT:', &
     !      'qc: ', qc_max, '(', imax_qc, ',', jmax_qc, ',', kmax_qc, ')', &
