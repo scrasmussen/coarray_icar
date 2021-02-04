@@ -356,7 +356,6 @@ contains
         integer :: ysplit, xsplit, xs, ys, i, me
         real :: best, current, x, y, infinitesimal
 
-        integer :: orig, neww, me
 #if NO_COARRAYS
         me = 1
 #else
