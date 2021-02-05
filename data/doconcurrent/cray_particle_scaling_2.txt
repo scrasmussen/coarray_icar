@@ -1,16 +1,16 @@
-# OMP_NUM_THREADS=1 aprun -n 1 -d 1./test-ideal-dc-threads-nfunc
-# OMP_NUM_THREADS=1 aprun -n 1 -d 1./test-ideal-dc-threads-nfunc
- 1 20 30 20 1 1 1 500000 50 39.1156845 F 8. -1 dc 1
-# OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-dc-threads-func
- 1 20 30 20 1 1 1 500000 50 158.028702 F 8. -1 dc 1
-# OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
- 1 20 30 20 1 1 1 500000 50 39.0572968 F 8. -1 dc 1
-# OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-dc-threads-func
- 1 20 30 20 1 1 1 500000 50 158.602814 F 8. -1 dc 1
-# OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
- 1 20 30 20 1 1 1 500000 50 40.8846512 F 8. -1 dc 38
-# OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-func
- 1 20 30 20 1 1 1 500000 50 46.1165771 F 8. -1 dc 38
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 1./test-ideal-dc-threads-nfunc
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 1./test-ideal-dc-threads-nfunc
+#  1 20 30 20 1 1 1 500000 50 39.1156845 F 8. -1 dc 1
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-dc-threads-func
+#  1 20 30 20 1 1 1 500000 50 158.028702 F 8. -1 dc 1
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
+#  1 20 30 20 1 1 1 500000 50 39.0572968 F 8. -1 dc 1
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-dc-threads-func
+#  1 20 30 20 1 1 1 500000 50 158.602814 F 8. -1 dc 1
+# # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
+#  1 20 30 20 1 1 1 500000 50 40.8846512 F 8. -1 dc 38
+# # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-func
+#  1 20 30 20 1 1 1 500000 50 46.1165771 F 8. -1 dc 38
 # ------------------------------------------------------------------
 # OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-dc-threads-nfunc
  1 20 30 20 1 1 1 1 50 8.647345821E-4 F 8. -1 dc 1
@@ -48,3 +48,21 @@
  1 20 30 20 1 1 1 100000 50 30.6807098 F 8. -1 dc 1
  1 20 30 20 1 1 1 500000 50 157.804825 F 8. -1 dc 1
  1 20 30 20 1 1 1 1000000 50 316.352173 F 8. -1 dc 1
+# OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
+ 1 20 30 20 1 1 1 1 50 8.221529424E-3 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 10 50 7.71054998E-3 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 100 50 9.446569718E-3 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 1000 50 2.3675384E-2 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 10000 50 0.411253333 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 100000 50 7.40130901 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 500000 50 39.8773117 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 1000000 50 80.5795898 F 8. -1 dc 38
+# OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-func
+ 1 20 30 20 1 1 1 1 50 8.437712677E-3 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 10 50 9.485876188E-3 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 100 50 1.219144743E-2 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 1000 50 4.155311733E-2 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 10000 50 0.570482433 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 100000 50 8.74441814 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 500000 50 46.2758904 F 8. -1 dc 38
+ 1 20 30 20 1 1 1 1000000 50 93.2479324 F 8. -1 dc 38
