@@ -438,6 +438,8 @@ contains
       integer :: my_unit,stat
       character(len=64) error_message
       integer :: me, n_images
+      namelist/grid/ nx,ny,nz
+      namelist/options/ preferred_ratio
 #if NO_COARRAYS
       me = 1
       n_images = 1
@@ -445,8 +447,6 @@ contains
       me = this_image()
       n_images = num_images()
 #endif
-      namelist/grid/ nx,ny,nz
-      namelist/options/ preferred_ratio
 
       open(file=file_name,newunit=my_unit,iostat=stat,status='old',action='read')
       write(error_message,*) "image ",me," could not open file " // trim(file_name)
