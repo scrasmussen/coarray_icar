@@ -4,21 +4,32 @@
 #endif
 #endif
 
-#ifdef __NVCOMPILER
-#ifdef DO_LOOP
-#define EXPAND_FUNC
+! #ifdef __NVCOMPILER
+! #ifdef DO_LOOP
+! #define EXPAND_FUNC
+! #endif
+! #endif
+
+! #ifdef __NVCOMPILER
+! #ifdef OMP_LOOP
+! #define EXPAND_FUNC
+! #endif
+! #endif
+
+#ifdef __GFORTRAN__
+#ifdef DC_LOOP
+#undef DC_LOOP
+#define DC_LOOP_GFORTRAN
 #endif
 #endif
 
-#ifdef __NVCOMPILER
-#ifdef OMP_LOOP
-#define EXPAND_FUNC
-#endif
-#endif
 
 ! #define EXPAND_FUNC
 #define NO_RANDOM_NUMBER
 ! #define LOCAL_FUNCS 1
+
+
+
 
 
 
@@ -593,8 +604,10 @@ contains
     ! allocate(test_all(size(this%local)))
     ! test_all = 0
 
+#ifdef DC_LOOP_GFORTRAN
+    do concurrent (i=1:current_max_local_particles)  ! this is 14% faster
+#endif
 #ifdef DC_LOOP
-    ! ARTLESS
     do concurrent (i=1:current_max_local_particles) & ! this is 14% faster
          local(particle, bv_i,x0,z0,y0,x1,z1,y1,T,T_prime,x,y,z, &
 #ifdef EXPAND_FUNC
