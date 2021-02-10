@@ -13,7 +13,7 @@ plt.rcParams['axes.linewidth'] = 2
 
 # f_cray = open('cray_particle_scaling.txt')
 f_system76 = open('system76_particle_scaling.txt')
-f_system76 = open('cray_particle_scaling.txt')
+f_cray = open('cray_particle_scaling2.txt')
 
 # ---- read input data ----
 plot_title = ""
@@ -23,30 +23,50 @@ header = ['n_nodes', 'nx','nz','ny','np','x_images','y_images','n_particles',
           'timesteps', 'time',  'is_dry', 'wind_speed', 'scaling_run',
           'loop_type', 'n_threads']
 
-# df = pd.read_csv(f_cray, sep='\s+',header=None)
-df_s = pd.read_csv(f_system76, sep='\s+',header=None, comment='#')
+df_c = pd.read_csv(f_cray, sep='\s+',header=None, comment='#')
+df_c.columns = header
 
-# df.columns = header
-df_s.columns= header
+df_s = pd.read_csv(f_system76, sep='\s+',header=None, comment='#')
+df_s.columns = header
 
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')
 
 def get_label(loop):
-    # print(":"+loop+":")
-    # sys.exit()
-    print(loop)
+    # print(loop)
     label=''
-    if (loop == 'do'):
-        label = 'Do'
-    elif (loop == 'dc'):
-        label = 'Do Concurrent, with Threads'
-    elif (loop == 'dc_no_threads'):
-        label = 'Do Concurrent, without Threads'
-    elif (loop == 'omp_simd'):
-        label = 'OpenMP SIMD'
-    elif (loop == 'omp_parallel_simd'):
-        label = 'OpenMP Parallel SIMD'
+    # Cray loops, cleaner
+    if (loop == 'do-func'):
+        label = 'Do w/ functions'
+    elif (loop == 'do-nfunc'):
+        label = 'Do no functions'
+    elif (loop == 'do-local-funcs'):
+        label = 'Do w/ local functions'
+    elif (loop == 'do-all-minus-dry-interop'):
+        label = 'Do, local functions, one non-module one'
+    elif (loop == 'do-all-minus-exner-satmr'):
+        label = 'Do, no functions but two non-module ones'
+
+    elif (loop == 'dc-func'):
+        label = 'Do Concurrent w/ functions'
+    elif (loop == 'dc-nfunc'):
+        label = 'Do Concurrent no functions'
+    elif (loop == 'dc-threads-func'):
+        label = 'Do Concurrent, threads & functions'
+    elif (loop == 'dc-threads-nfunc'):
+        label = 'Do Concurrent, threads & no functions'
+
+    elif (loop == 'omp-simd-func'):
+        label = 'OpenMP SIMD w/ functions'
+    elif (loop == 'omp-simd-nfunc'):
+        label = 'OpenMP SIMD no functions'
+    elif (loop == 'omp-parallel-simd-func'):
+        label = 'OpenMP Parallel SIMD w/ functions'
+    elif (loop == 'omp-parallel-simd-nfunc'):
+        label = 'OpenMP Parallel SIMD no functions'
+
+
+
     # NVidia
     elif (loop == 'omp_parallel_do_simd'):
         label = 'OpenMP Parallel SIMD???'
@@ -69,9 +89,9 @@ def get_label(loop):
     elif (loop == 'omp_parallel_do_simd_expand_gpu'):
         label = 'OpenMP Parallel SIMD, GPU'
     elif (loop == 'omp_parallel_do_simd_multicore'):
-        label = 'OpenMP parallel_SIMD, Multicore w/ Procedures'
+        label = 'OpenMP parallel SIMD, Multicore w/ Procedures'
     elif (loop == 'omp_parallel_do_simd_expand_multicore'):
-        label = 'OpenMP parallel_SIMD, Multicore '
+        label = 'OpenMP parallel SIMD, Multicore '
     elif (loop == 'do_gpu_expanded'):
         label = 'Do GPU'
     elif (loop == 'do_multicore_expanded'):
@@ -85,23 +105,48 @@ def get_label(loop):
 
     return label
 
+
+
 def plot_data(data_in, name):
     unique_loop_list = \
-        df_s[(df_s.n_particles==1000000) & (df_s.time < 1000) ].loop_type.unique()
+        data_in[(data_in.n_particles==1000000) &
+                (data_in.time < 1000) ].loop_type.unique()
+                # (data_in.time < 100) ].loop_type.unique() ! Cray
     for i,loop_type in enumerate(unique_loop_list):
         label = get_label(loop_type)
+        if '???' in label:
+            continue
 
-        # data = data_in[(data_in.loop_type == loop_type) & (data_in[].time<500)]
+
         data = data_in[(data_in.loop_type == loop_type)]
 
 
+
+        # data = data_in[(data_in.loop_type == loop_type) &
+        #                (data_in.time<600) &
+        #                # (data_in.time<100) &
+        #                (data_in.n_particles == 1000000)]
+
+        # data = data_in[(data_in.loop_type == loop_type) &
+        # (data_in[data_in['n_particles'] >= 1000000].time<500)]
+        marker = '.'
+        if 'GPU' in label:
+            marker = 's'
+        elif 'OpenMP' in label:
+            marker = 'x'
+        elif 'Do Concurrent' in label:
+            marker = 'o'
+
+
         if (not data.empty):
-            plt.plot(data.n_particles, data.time, marker = '.', label=label)
+            data = data_in[(data_in.loop_type == loop_type)]
+            plt.plot(data.n_particles, data.time, marker = marker, label=label)
 
 
-# plot_data(df, 'Cray')
+# plot_data(df_c, 'Cray')
 # plot_data(df_g, 'SGI')
 plot_data(df_s, 'System76')
+# plot_data(df_c, 'Cray')
 
 
 
@@ -113,12 +158,14 @@ plt.ylabel("time (seconds)")
 plt.title(plot_title)
 
 # plt.yscale('log', base=2)
-# plt.xscale('log', base=2)
+plt.xscale('log', base=10)
 
 # ax.set_xticklabels([])
 # ax.set_yticklabels([])
 
+bottom, upper = plt.ylim()
 # plt.ylim(0,600)
+# plt.ylim(600,upper)
 # print(len(ax.get_yticklabels()))
 # ax.get_xaxis().set_visible(False)
 # ax.get_yaxis().set_visible(False)
