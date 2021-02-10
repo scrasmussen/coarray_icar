@@ -14,195 +14,195 @@
 # ------------------------------------------------------------------
 
 # OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-dc-threads-func
- 1 20 30 20 1 1 1 1 50 1.094020205E-3 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 10 50 3.570305649E-3 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 100 50 3.484487161E-2 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 1000 50 0.269712031 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 10000 50 2.77339363 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 100000 50 30.5855045 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 500000 50 157.355759 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 1000000 50 314.485931 F 8. -1 test-ideal-dc-threads-func 1
+ 1 20 30 20 1 1 1 1 50 1.094020205E-3 F 8. -1 dc-func 1
+ 1 20 30 20 1 1 1 10 50 3.570305649E-3 F 8. -1 dc-func 1
+ 1 20 30 20 1 1 1 100 50 3.484487161E-2 F 8. -1 dc-func 1
+ 1 20 30 20 1 1 1 1000 50 0.269712031 F 8. -1 dc-func 1
+ 1 20 30 20 1 1 1 10000 50 2.77339363 F 8. -1 dc-func 1
+ 1 20 30 20 1 1 1 100000 50 30.5855045 F 8. -1 dc-func 1
+ 1 20 30 20 1 1 1 500000 50 157.355759 F 8. -1 dc-func 1
+ 1 20 30 20 1 1 1 1000000 50 314.485931 F 8. -1 dc-func 1
 
 # OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-dc-threads-func
- 1 20 30 20 1 1 1 1 50 1.198836602E-3 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 10 50 3.662019735E-3 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 100 50 2.788113803E-2 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 1000 50 0.272083491 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 10000 50 2.78263712 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 100000 50 30.6807098 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 500000 50 157.804825 F 8. -1 test-ideal-dc-threads-func 1
- 1 20 30 20 1 1 1 1000000 50 316.352173 F 8. -1 test-ideal-dc-threads-func 1
+# 1 20 30 20 1 1 1 1 50 1.198836602E-3 F 8. -1 dc-threads-func 1
+# 1 20 30 20 1 1 1 10 50 3.662019735E-3 F 8. -1 dc-threads-func 1
+# 1 20 30 20 1 1 1 100 50 2.788113803E-2 F 8. -1 dc-threads-func 1
+# 1 20 30 20 1 1 1 1000 50 0.272083491 F 8. -1 dc-threads-func 1
+# 1 20 30 20 1 1 1 10000 50 2.78263712 F 8. -1 dc-threads-func 1
+# 1 20 30 20 1 1 1 100000 50 30.6807098 F 8. -1 dc-threads-func 1
+# 1 20 30 20 1 1 1 500000 50 157.804825 F 8. -1 dc-threads-func 1
+# 1 20 30 20 1 1 1 1000000 50 316.352173 F 8. -1 dc-threads-func 1
 
 # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-func
- 1 20 30 20 1 1 1 1 50 8.437712677E-3 F 8. -1 test-ideal-dc-threads-func 38
- 1 20 30 20 1 1 1 10 50 9.485876188E-3 F 8. -1 test-ideal-dc-threads-func 38
- 1 20 30 20 1 1 1 100 50 1.219144743E-2 F 8. -1 test-ideal-dc-threads-func 38
- 1 20 30 20 1 1 1 1000 50 4.155311733E-2 F 8. -1 test-ideal-dc-threads-func 38
- 1 20 30 20 1 1 1 10000 50 0.570482433 F 8. -1 test-ideal-dc-threads-func 38
- 1 20 30 20 1 1 1 100000 50 8.74441814 F 8. -1 test-ideal-dc-threads-func 38
- 1 20 30 20 1 1 1 500000 50 46.2758904 F 8. -1 test-ideal-dc-threads-func 38
- 1 20 30 20 1 1 1 1000000 50 93.2479324 F 8. -1 test-ideal-dc-threads-func 38
+ 1 20 30 20 1 1 1 1 50 8.437712677E-3 F 8. -1 dc-threads-func 38
+ 1 20 30 20 1 1 1 10 50 9.485876188E-3 F 8. -1 dc-threads-func 38
+ 1 20 30 20 1 1 1 100 50 1.219144743E-2 F 8. -1 dc-threads-func 38
+ 1 20 30 20 1 1 1 1000 50 4.155311733E-2 F 8. -1 dc-threads-func 38
+ 1 20 30 20 1 1 1 10000 50 0.570482433 F 8. -1 dc-threads-func 38
+ 1 20 30 20 1 1 1 100000 50 8.74441814 F 8. -1 dc-threads-func 38
+ 1 20 30 20 1 1 1 500000 50 46.2758904 F 8. -1 dc-threads-func 38
+ 1 20 30 20 1 1 1 1000000 50 93.2479324 F 8. -1 dc-threads-func 38
 
 # OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-dc-threads-nfunc
- 1 20 30 20 1 1 1 1 50 8.647345821E-4 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 10 50 9.82652884E-4 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 100 50 2.050469164E-3 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 1000 50 1.396677364E-2 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 10000 50 0.373034686 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 100000 50 7.22050095 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 500000 50 39.3954735 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 1000000 50 79.7130966 F 8. -1 test-ideal-dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 1 50 8.647345821E-4 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 10 50 9.82652884E-4 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 100 50 2.050469164E-3 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 1000 50 1.396677364E-2 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 10000 50 0.373034686 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 100000 50 7.22050095 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 500000 50 39.3954735 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 1000000 50 79.7130966 F 8. -1 dc-threads-nfunc 1
 
-# OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
- 1 20 30 20 1 1 1 1 50 8.647345821E-4 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 10 50 1.028510043E-3 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 100 50 2.129081404E-3 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 1000 50 1.362612005E-2 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 10000 50 0.374364555 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 100000 50 7.2007103 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 500000 50 39.2385292 F 8. -1 test-ideal-dc-threads-nfunc 1
- 1 20 30 20 1 1 1 1000000 50 79.6537628 F 8. -1 test-ideal-dc-threads-nfunc 1
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
+#  1 20 30 20 1 1 1 1 50 8.647345821E-4 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 10 50 1.028510043E-3 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 100 50 2.129081404E-3 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 1000 50 1.362612005E-2 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 10000 50 0.374364555 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 100000 50 7.2007103 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 500000 50 39.2385292 F 8. -1 dc-threads-nfunc 1
+#  1 20 30 20 1 1 1 1000000 50 79.6537628 F 8. -1 dc-threads-nfunc 1
 
 # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-dc-threads-nfunc
- 1 20 30 20 1 1 1 1 50 8.221529424E-3 F 8. -1 test-ideal-dc-threads-nfunc 38
- 1 20 30 20 1 1 1 10 50 7.71054998E-3 F 8. -1 test-ideal-dc-threads-nfunc 38
- 1 20 30 20 1 1 1 100 50 9.446569718E-3 F 8. -1 test-ideal-dc-threads-nfunc 38
- 1 20 30 20 1 1 1 1000 50 2.3675384E-2 F 8. -1 test-ideal-dc-threads-nfunc 38
- 1 20 30 20 1 1 1 10000 50 0.411253333 F 8. -1 test-ideal-dc-threads-nfunc 38
- 1 20 30 20 1 1 1 100000 50 7.40130901 F 8. -1 test-ideal-dc-threads-nfunc 38
- 1 20 30 20 1 1 1 500000 50 39.8773117 F 8. -1 test-ideal-dc-threads-nfunc 38
- 1 20 30 20 1 1 1 1000000 50 80.5795898 F 8. -1 test-ideal-dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 1 50 8.221529424E-3 F 8. -1 dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 10 50 7.71054998E-3 F 8. -1 dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 100 50 9.446569718E-3 F 8. -1 dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 1000 50 2.3675384E-2 F 8. -1 dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 10000 50 0.411253333 F 8. -1 dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 100000 50 7.40130901 F 8. -1 dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 500000 50 39.8773117 F 8. -1 dc-threads-nfunc 38
+ 1 20 30 20 1 1 1 1000000 50 80.5795898 F 8. -1 dc-threads-nfunc 38
 
 # OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-do-func
- 1 20 30 20 1 1 1 1 50 9.761019028E-4 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 10 50 3.39997909E-3 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 100 50 2.712121978E-2 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 1000 50 0.273164421 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 10000 50 2.69746733 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 100000 50 30.2540226 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 500000 50 155.148178 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 1000000 50 310.942444 F 8. -1 test-ideal-do-func 0
+ 1 20 30 20 1 1 1 1 50 9.761019028E-4 F 8. -1 do-func 0
+ 1 20 30 20 1 1 1 10 50 3.39997909E-3 F 8. -1 do-func 0
+ 1 20 30 20 1 1 1 100 50 2.712121978E-2 F 8. -1 do-func 0
+ 1 20 30 20 1 1 1 1000 50 0.273164421 F 8. -1 do-func 0
+ 1 20 30 20 1 1 1 10000 50 2.69746733 F 8. -1 do-func 0
+ 1 20 30 20 1 1 1 100000 50 30.2540226 F 8. -1 do-func 0
+ 1 20 30 20 1 1 1 500000 50 155.148178 F 8. -1 do-func 0
+ 1 20 30 20 1 1 1 1000000 50 310.942444 F 8. -1 do-func 0
 
-# OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-do-func
- 1 20 30 20 1 1 1 1 50 1.107122283E-3 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 10 50 3.406530013E-3 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 100 50 2.507075109E-2 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 1000 50 0.256341398 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 10000 50 2.6981225 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 100000 50 30.4458427 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 500000 50 155.807617 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 1000000 50 311.786041 F 8. -1 test-ideal-do-func 0
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-do-func
+#  1 20 30 20 1 1 1 1 50 1.107122283E-3 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 10 50 3.406530013E-3 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 100 50 2.507075109E-2 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 1000 50 0.256341398 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 10000 50 2.6981225 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 100000 50 30.4458427 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 500000 50 155.807617 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 1000000 50 311.786041 F 8. -1 do-func 0
 
-# OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-do-func
- 1 20 30 20 1 1 1 1 50 9.82652884E-4 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 10 50 3.393427934E-3 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 100 50 2.79400982E-2 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 1000 50 0.248440862 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 10000 50 2.71501756 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 100000 50 30.4025536 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 500000 50 155.541458 F 8. -1 test-ideal-do-func 0
- 1 20 30 20 1 1 1 1000000 50 311.485016 F 8. -1 test-ideal-do-func 0
+# # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-do-func
+#  1 20 30 20 1 1 1 1 50 9.82652884E-4 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 10 50 3.393427934E-3 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 100 50 2.79400982E-2 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 1000 50 0.248440862 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 10000 50 2.71501756 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 100000 50 30.4025536 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 500000 50 155.541458 F 8. -1 do-func 0
+#  1 20 30 20 1 1 1 1000000 50 311.485016 F 8. -1 do-func 0
 
 # OMP_NUM_THREADS=1 aprun -n 1 -d 40 ./test-ideal-do-nfunc
- 1 20 30 20 1 1 1 1 50 7.206121227E-4 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 10 50 9.040407022E-4 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 100 50 2.004612004E-3 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 1000 50 1.374403853E-2 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 10000 50 0.371803105 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 100000 50 7.51586676 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 500000 50 39.2622643 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 1000000 50 79.2858658 F 8. -1 test-ideal-do-nfunc 0
+ 1 20 30 20 1 1 1 1 50 7.206121227E-4 F 8. -1 do-nfunc 0
+ 1 20 30 20 1 1 1 10 50 9.040407022E-4 F 8. -1 do-nfunc 0
+ 1 20 30 20 1 1 1 100 50 2.004612004E-3 F 8. -1 do-nfunc 0
+ 1 20 30 20 1 1 1 1000 50 1.374403853E-2 F 8. -1 do-nfunc 0
+ 1 20 30 20 1 1 1 10000 50 0.371803105 F 8. -1 do-nfunc 0
+ 1 20 30 20 1 1 1 100000 50 7.51586676 F 8. -1 do-nfunc 0
+ 1 20 30 20 1 1 1 500000 50 39.2622643 F 8. -1 do-nfunc 0
+ 1 20 30 20 1 1 1 1000000 50 79.2858658 F 8. -1 do-nfunc 0
 
-# OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-do-nfunc
- 1 20 30 20 1 1 1 1 50 8.319794433E-4 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 10 50 9.040407022E-4 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 100 50 1.899795607E-3 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 1000 50 1.408469211E-2 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 10000 50 0.369451284 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 100000 50 7.50932884 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 500000 50 39.1318741 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 1000000 50 79.030899 F 8. -1 test-ideal-do-nfunc 0
+# # OMP_NUM_THREADS=1 aprun -n 1 -d 1 ./test-ideal-do-nfunc
+#  1 20 30 20 1 1 1 1 50 8.319794433E-4 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 10 50 9.040407022E-4 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 100 50 1.899795607E-3 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 1000 50 1.408469211E-2 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 10000 50 0.369451284 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 100000 50 7.50932884 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 500000 50 39.1318741 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 1000000 50 79.030899 F 8. -1 do-nfunc 0
 
-# OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-do-nfunc
- 1 20 30 20 1 1 1 1 50 8.319794433E-4 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 10 50 8.909386233E-4 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 100 50 2.089775167E-3 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 1000 50 1.384885516E-2 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 10000 50 0.369772285 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 100000 50 7.52711487 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 500000 50 39.4305534 F 8. -1 test-ideal-do-nfunc 0
- 1 20 30 20 1 1 1 1000000 50 80.5554428 F 8. -1 test-ideal-do-nfunc 0
+# # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-do-nfunc
+#  1 20 30 20 1 1 1 1 50 8.319794433E-4 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 10 50 8.909386233E-4 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 100 50 2.089775167E-3 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 1000 50 1.384885516E-2 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 10000 50 0.369772285 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 100000 50 7.52711487 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 500000 50 39.4305534 F 8. -1 do-nfunc 0
+#  1 20 30 20 1 1 1 1000000 50 80.5554428 F 8. -1 do-nfunc 0
 
 # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-omp-simd-func
- 1 20 30 20 1 1 1 1 50 9.892039234E-4 F 8. -1 test-ideal-omp-simd-func 38
- 1 20 30 20 1 1 1 10 50 3.341019852E-3 F 8. -1 test-ideal-omp-simd-func 38
- 1 20 30 20 1 1 1 100 50 2.55162213E-2 F 8. -1 test-ideal-omp-simd-func 38
- 1 20 30 20 1 1 1 1000 50 0.247510612 F 8. -1 test-ideal-omp-simd-func 38
- 1 20 30 20 1 1 1 10000 50 2.61578918 F 8. -1 test-ideal-omp-simd-func 38
- 1 20 30 20 1 1 1 100000 50 29.4784203 F 8. -1 test-ideal-omp-simd-func 38
- 1 20 30 20 1 1 1 500000 50 151.729996 F 8. -1 test-ideal-omp-simd-func 38
- 1 20 30 20 1 1 1 1000000 50 305.07312 F 8. -1 test-ideal-omp-simd-func 38
+ 1 20 30 20 1 1 1 1 50 9.892039234E-4 F 8. -1 omp-simd-func 38
+ 1 20 30 20 1 1 1 10 50 3.341019852E-3 F 8. -1 omp-simd-func 38
+ 1 20 30 20 1 1 1 100 50 2.55162213E-2 F 8. -1 omp-simd-func 38
+ 1 20 30 20 1 1 1 1000 50 0.247510612 F 8. -1 omp-simd-func 38
+ 1 20 30 20 1 1 1 10000 50 2.61578918 F 8. -1 omp-simd-func 38
+ 1 20 30 20 1 1 1 100000 50 29.4784203 F 8. -1 omp-simd-func 38
+ 1 20 30 20 1 1 1 500000 50 151.729996 F 8. -1 omp-simd-func 38
+ 1 20 30 20 1 1 1 1000000 50 305.07312 F 8. -1 omp-simd-func 38
 
 # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-omp-simd-nfunc
- 1 20 30 20 1 1 1 1 50 7.468162221E-4 F 8. -1 test-ideal-omp-simd-nfunc 38
- 1 20 30 20 1 1 1 10 50 9.040407022E-4 F 8. -1 test-ideal-omp-simd-nfunc 38
- 1 20 30 20 1 1 1 100 50 1.978407847E-3 F 8. -1 test-ideal-omp-simd-nfunc 38
- 1 20 30 20 1 1 1 1000 50 1.40126301E-2 F 8. -1 test-ideal-omp-simd-nfunc 38
- 1 20 30 20 1 1 1 10000 50 0.372838169 F 8. -1 test-ideal-omp-simd-nfunc 38
- 1 20 30 20 1 1 1 100000 50 7.18893814 F 8. -1 test-ideal-omp-simd-nfunc 38
- 1 20 30 20 1 1 1 500000 50 39.3395119 F 8. -1 test-ideal-omp-simd-nfunc 38
- 1 20 30 20 1 1 1 1000000 50 79.3937073 F 8. -1 test-ideal-omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 1 50 7.468162221E-4 F 8. -1 omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 10 50 9.040407022E-4 F 8. -1 omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 100 50 1.978407847E-3 F 8. -1 omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 1000 50 1.40126301E-2 F 8. -1 omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 10000 50 0.372838169 F 8. -1 omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 100000 50 7.18893814 F 8. -1 omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 500000 50 39.3395119 F 8. -1 omp-simd-nfunc 38
+ 1 20 30 20 1 1 1 1000000 50 79.3937073 F 8. -1 omp-simd-nfunc 38
 
 # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-omp-parallel-simd-func
- 1 20 30 20 1 1 1 1 50 8.98799859E-3 F 8. -1 test-ideal-omp-parallel-simd-func 38
- 1 20 30 20 1 1 1 10 50 8.974896744E-3 F 8. -1 test-ideal-omp-parallel-simd-func 38
- 1 20 30 20 1 1 1 100 50 1.274828333E-2 F 8. -1 test-ideal-omp-parallel-simd-func 38
- 1 20 30 20 1 1 1 1000 50 4.412766546E-2 F 8. -1 test-ideal-omp-parallel-simd-func 38
- 1 20 30 20 1 1 1 10000 50 0.572401881 F 8. -1 test-ideal-omp-parallel-simd-func 38
- 1 20 30 20 1 1 1 100000 50 8.73046494 F 8. -1 test-ideal-omp-parallel-simd-func 38
- 1 20 30 20 1 1 1 500000 50 46.2187653 F 8. -1 test-ideal-omp-parallel-simd-func 38
- 1 20 30 20 1 1 1 1000000 50 92.9724274 F 8. -1 test-ideal-omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 1 50 8.98799859E-3 F 8. -1 omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 10 50 8.974896744E-3 F 8. -1 omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 100 50 1.274828333E-2 F 8. -1 omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 1000 50 4.412766546E-2 F 8. -1 omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 10000 50 0.572401881 F 8. -1 omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 100000 50 8.73046494 F 8. -1 omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 500000 50 46.2187653 F 8. -1 omp-parallel-simd-func 38
+ 1 20 30 20 1 1 1 1000000 50 92.9724274 F 8. -1 omp-parallel-simd-func 38
 
 # OMP_NUM_THREADS=38 aprun -n 1 -d 40 ./test-ideal-omp-parallel-simd-nfunc
- 1 20 30 20 1 1 1 1 50 7.075101021E-4 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
- 1 20 30 20 1 1 1 10 50 8.778366027E-4 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
- 1 20 30 20 1 1 1 100 50 1.998060849E-3 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
- 1 20 30 20 1 1 1 1000 50 1.34099368E-2 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
- 1 20 30 20 1 1 1 10000 50 0.372124106 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
- 1 20 30 20 1 1 1 100000 50 7.22169971 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
- 1 20 30 20 1 1 1 500000 50 39.4038506 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
- 1 20 30 20 1 1 1 1000000 50 79.5354538 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 1 50 7.075101021E-4 F 8. -1 omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 10 50 8.778366027E-4 F 8. -1 omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 100 50 1.998060849E-3 F 8. -1 omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 1000 50 1.34099368E-2 F 8. -1 omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 10000 50 0.372124106 F 8. -1 omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 100000 50 7.22169971 F 8. -1 omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 500000 50 39.4038506 F 8. -1 omp-parallel-simd-nfunc 38
+ 1 20 30 20 1 1 1 1000000 50 79.5354538 F 8. -1 omp-parallel-simd-nfunc 38
 
 # aprun -n 1 -d 40 ./test-ideal-do-local-funcs
- 1 20 30 20 1 1 1 1 50 7.140611415E-4 F 8. -1 test-ideal-do-local-funcs 0
- 1 20 30 20 1 1 1 10 50 8.647345821E-4 F 8. -1 test-ideal-do-local-funcs 0
- 1 20 30 20 1 1 1 100 50 1.932550687E-3 F 8. -1 test-ideal-do-local-funcs 0
- 1 20 30 20 1 1 1 1000 50 1.418295689E-2 F 8. -1 test-ideal-do-local-funcs 0
- 1 20 30 20 1 1 1 10000 50 0.371750712 F 8. -1 test-ideal-do-local-funcs 0
- 1 20 30 20 1 1 1 100000 50 7.51065874 F 8. -1 test-ideal-do-local-funcs 0
- 1 20 30 20 1 1 1 500000 50 39.2730331 F 8. -1 test-ideal-do-local-funcs 0
- 1 20 30 20 1 1 1 1000000 50 79.2492828 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 1 50 7.140611415E-4 F 8. -1 do-local-funcs 0
+ 1 20 30 20 1 1 1 10 50 8.647345821E-4 F 8. -1 do-local-funcs 0
+ 1 20 30 20 1 1 1 100 50 1.932550687E-3 F 8. -1 do-local-funcs 0
+ 1 20 30 20 1 1 1 1000 50 1.418295689E-2 F 8. -1 do-local-funcs 0
+ 1 20 30 20 1 1 1 10000 50 0.371750712 F 8. -1 do-local-funcs 0
+ 1 20 30 20 1 1 1 100000 50 7.51065874 F 8. -1 do-local-funcs 0
+ 1 20 30 20 1 1 1 500000 50 39.2730331 F 8. -1 do-local-funcs 0
+ 1 20 30 20 1 1 1 1000000 50 79.2492828 F 8. -1 do-local-funcs 0
 
 # aprun -n 1 -d 40 ./test-ideal-do-all-minus-dry-interop
- 1 20 30 20 1 1 1 1 50 8.385304827E-4 F 8. -1 test-ideal-do-all-minus-dry-interop 0
- 1 20 30 20 1 1 1 10 50 1.808081404E-3 F 8. -1 test-ideal-do-all-minus-dry-interop 0
- 1 20 30 20 1 1 1 100 50 9.308998473E-3 F 8. -1 test-ideal-do-all-minus-dry-interop 0
- 1 20 30 20 1 1 1 1000 50 8.065614849E-2 F 8. -1 test-ideal-do-all-minus-dry-interop 0
- 1 20 30 20 1 1 1 10000 50 1.03552616 F 8. -1 test-ideal-do-all-minus-dry-interop 0
- 1 20 30 20 1 1 1 100000 50 13.8592052 F 8. -1 test-ideal-do-all-minus-dry-interop 0
- 1 20 30 20 1 1 1 500000 50 72.949585 F 8. -1 test-ideal-do-all-minus-dry-interop 0
- 1 20 30 20 1 1 1 1000000 50 146.476349 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 1 50 8.385304827E-4 F 8. -1 do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 10 50 1.808081404E-3 F 8. -1 do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 100 50 9.308998473E-3 F 8. -1 do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 1000 50 8.065614849E-2 F 8. -1 do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 10000 50 1.03552616 F 8. -1 do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 100000 50 13.8592052 F 8. -1 do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 500000 50 72.949585 F 8. -1 do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 1000000 50 146.476349 F 8. -1 do-all-minus-dry-interop 0
 
 
 # aprun -n 1 -d 40 ./test-ideal-do-all-minus-exner-satmr
- 1 20 30 20 1 1 1 1 50 1.015407965E-3 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
- 1 20 30 20 1 1 1 10 50 4.238509573E-3 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
- 1 20 30 20 1 1 1 100 50 2.655783296E-2 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
- 1 20 30 20 1 1 1 1000 50 0.243730679 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
- 1 20 30 20 1 1 1 10000 50 2.64177728 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
- 1 20 30 20 1 1 1 100000 50 29.4853191 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
- 1 20 30 20 1 1 1 500000 50 152.134293 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
- 1 20 30 20 1 1 1 1000000 50 303.484619 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 1 50 1.015407965E-3 F 8. -1 do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 10 50 4.238509573E-3 F 8. -1 do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 100 50 2.655783296E-2 F 8. -1 do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 1000 50 0.243730679 F 8. -1 do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 10000 50 2.64177728 F 8. -1 do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 100000 50 29.4853191 F 8. -1 do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 500000 50 152.134293 F 8. -1 do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 1000000 50 303.484619 F 8. -1 do-all-minus-exner-satmr 0
 
 # # aprun -n 1 -d 40 ./test-ideal-do-all
 #  1 20 30 20 1 1 1 1 50 7.402651827E-4 F 8. -1 do 0
