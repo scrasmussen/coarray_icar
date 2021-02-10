@@ -342,5 +342,18 @@ module convection_exchangeable_interface
        real, intent(inout) :: pressure, temperature, potential_temp
        real, intent(in) :: z_displacement
      end subroutine
+
+     elemental module function exner_function_local(pressure) result(exner)
+       implicit none
+       real, intent(in) :: pressure
+       real :: exner
+     end function exner_function_local
+
+     elemental module function sat_mr_local(temperature,pressure)
+       ! Calculate the saturated mixing ratio at a temperature (K), pressure (Pa)
+       implicit none
+       real,intent(in) :: temperature,pressure
+       real :: sat_mr_local
+     end function sat_mr_local
   end interface
 end module convection_exchangeable_interface

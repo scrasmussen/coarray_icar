@@ -18,6 +18,7 @@
 
 ! #define EXPAND_FUNC
 #define NO_RANDOM_NUMBER
+! #define LOCAL_FUNCS 1
 
 
 
@@ -612,8 +613,8 @@ contains
        ! !$omp parallel loop
        !!      !$omp parallel do simd schedule(auto)
 !!!$omp parallel
-!!$omp parallel do simd schedule(auto) &
-!$omp  do simd schedule(auto) &
+!$omp parallel do simd schedule(auto) &
+!! $omp  do simd schedule(auto) &
 !$omp  private(T,T_prime,x0,z0,y0,x1,z1,y1,buoyancy,a_prime,z_displacement) &
 !$omp  private(delta_z,wind_correction,z_interface_val,z_wind_change,z_0,z_1) &
 !$omp  private(bv_i) &
@@ -1005,6 +1006,8 @@ contains
                    e_s = particle%pressure * 0.99999
                 endif
                 saturate = 0.6219907 * e_s / (particle%pressure - e_s) !(kg/kg)
+#elif LOCAL_FUNCS
+                saturate = sat_mr_local(particle%temperature, particle%pressure)
 #else
                 saturate = sat_mr(particle%temperature, particle%pressure)
 #endif
@@ -1063,6 +1066,8 @@ contains
              exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
              particle%potential_temp = particle%temperature /&
                      exner_function_val
+#elif LOCAL_FUNCS
+             particle%potential_temp = particle%temperature / exner_function_local(particle%pressure)
 #else
                    particle%potential_temp = particle%temperature / exner_function(particle%pressure)
 #endif
@@ -1123,7 +1128,9 @@ contains
              exner_function_val = (particle%pressure/100000)**(287.058/1003.5)
              particle%potential_temp = particle%temperature /&
                   exner_function_val
-
+#elif LOCAL_FUNCS
+                   particle%potential_temp = particle%temperature /&
+                        & exner_function_local(particle%pressure)
 #else
                    particle%potential_temp = particle%temperature /&
                         & exner_function(particle%pressure)
@@ -1196,8 +1203,8 @@ contains
 #ifdef __NVCOMPILER
      !$omp end do
 #else
-     !$omp end do simd
-     !!$omp end parallel do simd
+     !!$omp end do simd
+     !$omp end parallel do simd
 #endif
 
    !!
@@ -2223,8 +2230,84 @@ contains
          gravity / (287.05 * temperature) * p0
 
     T_original = temperature
+#if LOCAL_FUNCS
+    temperature = exner_function_local(pressure) * potential_temp
+#else
     temperature = exner_function(pressure) * potential_temp
-  end subroutine
+#endif
+
+    ! temperature = (pressure/100000)**(287.058/1003.5) * potential_temp
+
+  end subroutine dry_lapse_rate
+
+
+  elemental module function exner_function_local(pressure) result(exner)
+    implicit none
+    real, intent(in) :: pressure
+    real :: exner
+
+    associate(po=>100000, Rd=>287.058, cp=>1003.5)
+      exner = (pressure / po) ** (Rd/cp)
+    end associate
+  end function exner_function_local
+
+
+  !>----------------------------------------------------------
+  !!  Calculate the saturated mixing ratio for a given temperature and pressure
+  !!
+  !!  If temperature > 0C: returns the saturated mixing ratio with respect to liquid
+  !!  If temperature < 0C: returns the saturated mixing ratio with respect to ice
+  !!
+  !!  @param temperature  Air Temperature [K]
+  !!  @param pressure     Air Pressure [Pa]
+  !!  @retval sat_mr      Saturated water vapor mixing ratio [kg/kg]
+  !!
+  !!  @see http://www.dtic.mil/dtic/tr/fulltext/u2/778316.pdf
+  !!   Lowe, P.R. and J.M. Ficke., 1974: The Computation of Saturation Vapor Pressure
+  !!   Environmental Prediction Research Facility, Technical Paper No. 4-74
+  !!
+  !!----------------------------------------------------------
+  elemental module function sat_mr_local(temperature,pressure)
+    ! Calculate the saturated mixing ratio at a temperature (K), pressure (Pa)
+    implicit none
+    real,intent(in) :: temperature,pressure
+    real :: e_s,a,b
+    real :: sat_mr_local
+
+    ! from http://www.dtic.mil/dtic/tr/fulltext/u2/778316.pdf
+    !   Lowe, P.R. and J.M. Ficke., 1974: THE COMPUTATION OF SATURATION VAPOR PRESSURE
+    !       Environmental Prediction Research Facility, Technical Paper No. 4-74
+    ! which references:
+    !   Murray, F. W., 1967: On the computation of saturation vapor pressure.
+    !       Journal of Applied Meteorology, Vol. 6, pp. 203-204.
+    ! Also notes a 6th order polynomial and look up table as viable options.
+    if (temperature < 273.15) then
+       a = 21.8745584
+       b = 7.66
+    else
+       a = 17.2693882
+       b = 35.86
+    endif
+
+    e_s = 610.78 * exp(a * (temperature - 273.16) / (temperature - b)) !(Pa)
+
+    ! alternate formulations
+    ! Polynomial:
+    ! e_s = ao + t*(a1+t*(a2+t*(a3+t*(a4+t*(a5+a6*t))))) a0-6 defined separately for water and ice
+    ! e_s = 611.2*exp(17.67*(t-273.15)/(t-29.65)) ! (Pa)
+    ! from : http://www.srh.noaa.gov/images/epz/wxcalc/vaporPressure.pdf
+    ! e_s = 611.0*10.0**(7.5*(t-273.15)/(t-35.45))
+
+
+    if ((pressure - e_s) <= 0) then
+       e_s = pressure * 0.99999
+    endif
+    ! from : http://www.srh.noaa.gov/images/epz/wxcalc/mixingRatio.pdf
+    sat_mr_local = 0.6219907 * e_s / (pressure - e_s) !(kg/kg)
+  end function sat_mr_local
+
+
+
   ! if (temperature /= temperature) then
   !    print *, this_image(), ":: ~~~~~~NAN ERROR~~~~~~", &
   !         p0, pressure, z_displacement, T_original, temperature, &
