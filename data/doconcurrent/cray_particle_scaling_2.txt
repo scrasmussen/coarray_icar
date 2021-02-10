@@ -172,3 +172,71 @@
  1 20 30 20 1 1 1 100000 50 7.22169971 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
  1 20 30 20 1 1 1 500000 50 39.4038506 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
  1 20 30 20 1 1 1 1000000 50 79.5354538 F 8. -1 test-ideal-omp-parallel-simd-nfunc 38
+
+# aprun -n 1 -d 40 ./test-ideal-do-local-funcs
+ 1 20 30 20 1 1 1 1 50 7.140611415E-4 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 10 50 8.647345821E-4 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 100 50 1.932550687E-3 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 1000 50 1.418295689E-2 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 10000 50 0.371750712 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 100000 50 7.51065874 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 500000 50 39.2730331 F 8. -1 test-ideal-do-local-funcs 0
+ 1 20 30 20 1 1 1 1000000 50 79.2492828 F 8. -1 test-ideal-do-local-funcs 0
+
+# aprun -n 1 -d 40 ./test-ideal-do-all-minus-dry-interop
+ 1 20 30 20 1 1 1 1 50 8.385304827E-4 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 10 50 1.808081404E-3 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 100 50 9.308998473E-3 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 1000 50 8.065614849E-2 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 10000 50 1.03552616 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 100000 50 13.8592052 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 500000 50 72.949585 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+ 1 20 30 20 1 1 1 1000000 50 146.476349 F 8. -1 test-ideal-do-all-minus-dry-interop 0
+
+
+# aprun -n 1 -d 40 ./test-ideal-do-all-minus-exner-satmr
+ 1 20 30 20 1 1 1 1 50 1.015407965E-3 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 10 50 4.238509573E-3 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 100 50 2.655783296E-2 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 1000 50 0.243730679 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 10000 50 2.64177728 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 100000 50 29.4853191 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 500000 50 152.134293 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+ 1 20 30 20 1 1 1 1000000 50 303.484619 F 8. -1 test-ideal-do-all-minus-exner-satmr 0
+
+# # aprun -n 1 -d 40 ./test-ideal-do-all
+#  1 20 30 20 1 1 1 1 50 7.402651827E-4 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10 50 8.647345821E-4 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100 50 1.958754845E-3 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000 50 1.354750805E-2 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10000 50 0.370270163 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100000 50 7.49707842 F 8. -1 do 0
+#  1 20 30 20 1 1 1 500000 50 39.422821 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000000 50 79.1922379 F 8. -1 do 0
+# # aprun -n 1 -d 40 ./test-ideal-do-all-minus-exner
+#  1 20 30 20 1 1 1 1 50 1.002306002E-3 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10 50 3.44583625E-3 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100 50 3.294507787E-2 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000 50 0.24906975 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10000 50 2.61111188 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100000 50 29.4351845 F 8. -1 do 0
+#  1 20 30 20 1 1 1 500000 50 151.979874 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000000 50 304.320465 F 8. -1 do 0
+# # aprun -n 1 -d 40 ./test-ideal-do-all-minus-exner-satmr-dry
+#  1 20 30 20 1 1 1 1 50 1.323305885E-3 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10 50 3.301713848E-3 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100 50 3.274854645E-2 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000 50 0.301753044 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10000 50 2.6486361 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100000 50 29.4390697 F 8. -1 do 0
+#  1 20 30 20 1 1 1 500000 50 151.395538 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000000 50 303.265778 F 8. -1 do 0
+# # aprun -n 1 -d 40 ./test-ideal-do-all-minus-exner-satmr-dry-interop
+#  1 20 30 20 1 1 1 1 50 1.008857042E-3 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10 50 3.530999413E-3 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100 50 2.796630189E-2 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000 50 0.261877 F 8. -1 do 0
+#  1 20 30 20 1 1 1 10000 50 2.70037603 F 8. -1 do 0
+#  1 20 30 20 1 1 1 100000 50 30.4768105 F 8. -1 do 0
+#  1 20 30 20 1 1 1 500000 50 155.335281 F 8. -1 do 0
+#  1 20 30 20 1 1 1 1000000 50 311.345367 F 8. -1 do 0
