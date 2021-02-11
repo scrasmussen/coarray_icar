@@ -68,39 +68,46 @@ def get_label(loop):
 
 
     # NVidia
-    elif (loop == 'omp_parallel_do_simd'):
-        label = 'OpenMP Parallel SIMD???'
-    elif (loop == 'omp_do_simd'):
-        label = 'OpenMP SIMD???'
+    # elif (loop == 'omp_parallel_do_simd'):
+    #     label = 'OpenMP Parallel SIMD???'
+    # elif (loop == 'omp_do_simd'):
+    #     label = 'OpenMP SIMD???'
+    elif (loop == 'do'): # ??
+        label = 'Do w/ functions???'
+    elif (loop == 'omp_do_simd'): # ??
+        label = 'OpenMP Do SIMD w/ functions???'
+    elif (loop == 'omp_parallel_do_simd'): # ??
+        label = 'OpenMP Parallel Do SIMD w/ functions???'
+
     elif (loop == 'dc_gpu'):
         label = 'Do Concurrent, GPU'
     elif (loop == 'dc_multicore'):
         label = 'Do Concurrent, Multicore'
     elif (loop == 'omp_do_simd_gpu'):
-        label = 'OpenMP SIMD, GPU w/ Procedures'
-    elif (loop == 'omp_do_simd_expand_gpu'):
-        label = 'OpenMP SIMD, GPU'
+        label = 'OpenMP SIMD, GPU w/ functions'
+    elif (loop == 'omp_do_simd_nfunc_gpu'):
+        label = 'OpenMP SIMD, GPU no functions'
     elif (loop == 'omp_do_simd_multicore'):
-        label = 'OpenMP SIMD, Multicore w/ Procedures'
-    elif (loop == 'omp_do_simd_expand_multicore'):
-        label = 'OpenMP SIMD, Multicore'
+        label = 'OpenMP SIMD, Multicore w/ functions'
+    elif (loop == 'omp_do_simd_nfunc_multicore'):
+        label = 'OpenMP SIMD, Multicore no functions'
     elif (loop == 'omp_parallel_do_simd_gpu'):
-        label = 'OpenMP Parallel SIMD, GPU w/ Procedures'
-    elif (loop == 'omp_parallel_do_simd_expand_gpu'):
-        label = 'OpenMP Parallel SIMD, GPU'
+        label = 'OpenMP Parallel SIMD, GPU w/ functions'
+    elif (loop == 'omp_parallel_do_simd_nfunc_gpu'):
+        label = 'OpenMP Parallel SIMD, GPU no functions'
     elif (loop == 'omp_parallel_do_simd_multicore'):
-        label = 'OpenMP parallel SIMD, Multicore w/ Procedures'
-    elif (loop == 'omp_parallel_do_simd_expand_multicore'):
-        label = 'OpenMP parallel SIMD, Multicore '
-    elif (loop == 'do_gpu_expanded'):
-        label = 'Do GPU'
-    elif (loop == 'do_multicore_expanded'):
-        label = 'Do Multicore'
+        label = 'OpenMP Parallel SIMD, Multicore w/ functions'
+    elif (loop == 'omp_parallel_do_simd_nfunc_multicore'):
+        label = 'OpenMP Parallel SIMD, Multicore no functions'
+    elif (loop == 'do_gpu_nfunc'):
+        label = 'Do GPU no functions'
+    elif (loop == 'do_multicore_nfunc'):
+        label = 'Do Multicore no functions'
     elif (loop == 'do_multicore'):
-        label = 'Do Multicore w/ Procedures'
+        label = 'Do Multicore w/ Functions'
 
     else:
-        print("WARNING, LABEL NOT FOUND FOR "+loop)
+        print("WARNING, LABEL NOT FOUND FOR |"+loop+"|")
         sys.exit()
 
     return label
@@ -110,12 +117,17 @@ def get_label(loop):
 def plot_data(data_in, name):
     unique_loop_list = \
         data_in[(data_in.n_particles==1000000) &
-                (data_in.time < 1000) ].loop_type.unique()
-                # (data_in.time < 100) ].loop_type.unique() ! Cray
+                # (data_in.time < 100000) ].loop_type.unique()
+                (data_in.time < 100) &
+                (data_in.time < 500) ].loop_type.unique() # System76
+                # (data_in.time < 100) ].loop_type.unique() # Cray
     for i,loop_type in enumerate(unique_loop_list):
         label = get_label(loop_type)
         if '???' in label:
             continue
+
+        # if 'GPU' not in label:
+        #     continue
 
 
         data = data_in[(data_in.loop_type == loop_type)]
@@ -165,7 +177,7 @@ plt.xscale('log', base=10)
 
 bottom, upper = plt.ylim()
 # plt.ylim(0,600)
-# plt.ylim(600,upper)
+# plt.ylim(30,upper)
 # print(len(ax.get_yticklabels()))
 # ax.get_xaxis().set_visible(False)
 # ax.get_yaxis().set_visible(False)
