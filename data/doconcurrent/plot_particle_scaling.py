@@ -13,6 +13,7 @@ plt.rcParams['axes.linewidth'] = 2
 
 # f_cray = open('cray_particle_scaling.txt')
 f_system76 = open('system76_particle_scaling.txt')
+f_system76_g = open('system76_particle_scaling_gfortran.txt')
 f_cray = open('cray_particle_scaling2.txt')
 
 # ---- read input data ----
@@ -28,6 +29,12 @@ df_c.columns = header
 
 df_s = pd.read_csv(f_system76, sep='\s+',header=None, comment='#')
 df_s.columns = header
+
+df_s_g = pd.read_csv(f_system76_g, sep='\s+',header=None, comment='#')
+df_s_g.columns = header
+
+
+
 
 # --- setup colormap ---
 discrete_cmap = plt.get_cmap('tab20b')
@@ -118,8 +125,11 @@ def plot_data(data_in, name):
     unique_loop_list = \
         data_in[(data_in.n_particles==1000000) &
                 # (data_in.time < 100000) ].loop_type.unique()
-                (data_in.time < 100) &
-                (data_in.time < 500) ].loop_type.unique() # System76
+                (data_in.time < 100) ].loop_type.unique()
+
+
+                # (data_in.time < 100) & # System76
+                # (data_in.time < 500) ].loop_type.unique() # System76
                 # (data_in.time < 100) ].loop_type.unique() # Cray
     for i,loop_type in enumerate(unique_loop_list):
         label = get_label(loop_type)
@@ -157,7 +167,8 @@ def plot_data(data_in, name):
 
 # plot_data(df_c, 'Cray')
 # plot_data(df_g, 'SGI')
-plot_data(df_s, 'System76')
+# plot_data(df_s, 'System76')
+plot_data(df_s_g, 'System76 Gfortran')
 # plot_data(df_c, 'Cray')
 
 
